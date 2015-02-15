@@ -1,6 +1,12 @@
 ===============================================================================
 GopherLua: VM and compiler for Lua in Go.
 ===============================================================================
+
+.. image:: https://godoc.org/github.com/yuin/gopher-lua?status.svg
+    :target: http://godoc.org/github.com/yuin/gopher-lua
+
+|
+
 GopherLua is a Lua5.1 VM and compiler written in Go. GopherLua has a same goal
 with Lua: **Be a scripting language with extensible semantics** . It provides a
 Go APIs that allow you to easily embed a scripting language to your Go host 
