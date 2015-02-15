@@ -77,12 +77,12 @@ Available options are:
 				fmt.Println(parse.Dump(chunk))
 			}
 			if opt_dc {
-				mainproto, err3 := lua.Compile(chunk, "test.lua")
+				proto, err3 := lua.Compile(chunk, script)
 				if err3 != nil {
 					fmt.Println(err3.Error())
 					os.Exit(1)
 				}
-				fmt.Println(mainproto.String())
+				fmt.Println(proto.String())
 			}
 		}
 		if err := L.DoFile(script); err != nil {
