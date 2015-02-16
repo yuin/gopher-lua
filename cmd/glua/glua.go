@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/yuin/gopher-lua"
 	"github.com/yuin/gopher-lua/parse"
+	"io"
 	"os"
 )
 
@@ -102,10 +103,12 @@ Available options are:
 		reader := bufio.NewReader(os.Stdin)
 		for {
 			fmt.Print("> ")
-			if buf, err := reader.ReadString('\n'); err != nil {
+			if buf, err := reader.ReadString('\n'); err == io.EOF {
+				break
+			} else if err != nil {
 			} else {
-				if err2 := L.DoString(buf); err2 != nil {
-					fmt.Println(err2.Error())
+				if err := L.DoString(buf); err != nil {
+					fmt.Println(err.Error())
 				}
 			}
 		}
