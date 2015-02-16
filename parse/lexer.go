@@ -101,7 +101,7 @@ func (sc *Scanner) Peek() int {
 	return ch
 }
 
-func (sc *Scanner) skipWhiteSpace(whitespace int) int {
+func (sc *Scanner) skipWhiteSpace(whitespace int64) int {
 	ch := sc.Next()
 	for ; whitespace&(1<<uint(ch)) != 0; ch = sc.Next() {
 	}
