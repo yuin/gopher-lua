@@ -13,6 +13,89 @@ Go APIs that allow you to easily embed a scripting language to your Go host
 programs.
 
 ----------------------------------------------------------------
+Performance (fib(30))
+----------------------------------------------------------------
+Performance measurements in languages in go.
+
+- `otto <https://github.com/robertkrimen/otto>`_
+- `anko <https://github.com/mattn/anko>`_
+
+Summary
+
+================ ========================= 
+ prog              time
+================ ========================= 
+ otto              0m24.848s
+ anko              0m20.207s
+ GopherLua         0m1.248s
+================ =========================
+
+GopherLua 20x faster than other implementations in this benchmark.
+
+fib.js
+
+.. code-block:: javascript
+
+       function fib(n) {
+           if (n < 2) return n;
+           return fib(n - 2) + fib(n - 1);
+       }
+       
+       console.log(fib(30));
+
+.. code-block:: bash
+
+       $ time otto fib.js
+       832040
+       
+       real    0m24.848s
+       user    0m0.015s
+       sys     0m0.078s
+
+fib.ank
+
+.. code-block::
+
+       func fib(n) {
+           if n < 2 {
+             return n
+           }
+           return fib(n - 2) + fib(n - 1)
+       }
+       
+       println(fib(30));
+
+.. code-block:: bash
+
+       $ time anko fib.ank
+       
+       832040
+       
+       real    0m20.207s
+       user    0m0.030s
+       sys     0m0.078s
+
+fib.lua
+
+.. code-block:: lua
+
+       local function fib(n)
+           if n < 2 then return n end
+           return fib(n - 2) + fib(n - 1)
+       end
+       
+       print(fib(30))
+
+.. code-block:: bash
+
+       $ time glua fib.lua
+       832040
+       
+       real    0m1.248s
+       user    0m0.015s
+       sys     0m0.187s
+
+----------------------------------------------------------------
 Installation
 ----------------------------------------------------------------
 
