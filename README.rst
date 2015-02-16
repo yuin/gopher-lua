@@ -15,10 +15,11 @@ programs.
 ----------------------------------------------------------------
 Performance (fib(30))
 ----------------------------------------------------------------
-Performance measurements in languages in go.
+Performance measurements in script languages on Go.
 
 - `otto <https://github.com/robertkrimen/otto>`_
 - `anko <https://github.com/mattn/anko>`_
+- GopherLua
 
 Summary
 
@@ -216,6 +217,20 @@ performance and debugging, but there are some limitations.
 - No error handlings.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Callstack & Registry size
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Size of the callstack & registry is **fixed** for mainly performance.
+You can change the size of the callstack & registry.
+
+.. code-block:: go
+
+   lua.RegistrySize = 1024 * 20
+   lua.CallStackSize = 1024
+   L = lua.NewState()
+   defer L.Close()
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 API
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -313,9 +328,9 @@ GopherLua has an option to use the Go regexp syntax as a pattern match format.
 
 .. code-block:: go
 
+   lua.LuaRegex = false
    L := lua.NewState()
    defer L.Close()
-   L.LuaRegex = false
 
 .. code-block:: lua
 
@@ -329,6 +344,7 @@ Unsupported functions
 - ``os.setlocale``
 - ``collectgarbage``
 - ``lua_Debug.namewhat``
+- ``package.loadlib``
 - debug hooks
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
