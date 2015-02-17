@@ -463,7 +463,7 @@ func loModule(L *LState) int {
 	loaded := L.GetField(L.Get(RegistryIndex), "_LOADED")
 	tb := L.GetField(loaded, name)
 	if _, ok := tb.(*LTable); !ok {
-		tb = L.FindTable(L.Get(GlobalsIndex), name, 1)
+		tb = L.FindTable(L.Get(GlobalsIndex).(*LTable), name, 1)
 		if tb == LNil {
 			L.RaiseError("name conflict for module: %v", name)
 		}
@@ -511,8 +511,8 @@ func loRequire(L *LState) int {
 		L.Push(lv)
 		return 1
 	}
-	loaders := L.GetField(L.Get(RegistryIndex), "_LOADERS")
-	if _, ok := loaders.(*LTable); !ok {
+	loaders, ok := L.GetField(L.Get(RegistryIndex), "_LOADERS").(*LTable)
+	if !ok {
 		L.RaiseError("package.loaders must be a table")
 	}
 	messages := []string{}

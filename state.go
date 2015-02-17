@@ -1231,21 +1231,11 @@ func (ls *LState) SetFEnv(obj LValue, env LValue) {
 
 /* table operations {{{ */
 
-func (ls *LState) RawGet(obj LValue, key LValue) LValue {
-	tb, ok := obj.(*LTable)
-	if !ok {
-		ls.TypeError(1, LTTable)
-		return nil
-	}
+func (ls *LState) RawGet(tb *LTable, key LValue) LValue {
 	return tb.RawGet(key)
 }
 
-func (ls *LState) RawGetInt(obj LValue, key int) LValue {
-	tb, ok := obj.(*LTable)
-	if !ok {
-		ls.TypeError(1, LTTable)
-		return nil
-	}
+func (ls *LState) RawGetInt(tb *LTable, key int) LValue {
 	return tb.RawGetInt(key)
 }
 
@@ -1253,32 +1243,20 @@ func (ls *LState) GetField(obj LValue, skey string) LValue {
 	return ls.getField(obj, LString(skey))
 }
 
-func (ls *LState) RawSet(obj LValue, key LValue, value LValue) {
-	if tb, ok := obj.(*LTable); !ok {
-		ls.TypeError(1, LTTable)
-	} else {
-		tb.RawSet(key, value)
-	}
+func (ls *LState) RawSet(tb *LTable, key LValue, value LValue) {
+	tb.RawSet(key, value)
 }
 
-func (ls *LState) RawSetInt(obj LValue, key int, value LValue) {
-	if tb, ok := obj.(*LTable); !ok {
-		ls.TypeError(1, LTTable)
-	} else {
-		tb.RawSetInt(key, value)
-	}
+func (ls *LState) RawSetInt(tb *LTable, key int, value LValue) {
+	tb.RawSetInt(key, value)
 }
 
 func (ls *LState) SetField(obj LValue, key string, value LValue) {
 	ls.setField(obj, LString(key), value)
 }
 
-func (ls *LState) TableForEach(obj LValue, cb func(LValue, LValue)) {
-	if tb, ok := obj.(*LTable); !ok {
-		ls.TypeError(1, LTTable)
-	} else {
-		tb.ForEach(cb)
-	}
+func (ls *LState) ForEach(tb *LTable, cb func(LValue, LValue)) {
+	tb.ForEach(cb)
 }
 
 func (ls *LState) GetGlobal(name string) LValue {
@@ -1289,12 +1267,7 @@ func (ls *LState) SetGlobal(name string, value LValue) {
 	ls.SetField(ls.Get(GlobalsIndex), name, value)
 }
 
-func (ls *LState) Next(obj LValue, key LValue) (LValue, LValue) {
-	tb, ok := obj.(*LTable)
-	if !ok {
-		ls.TypeError(1, LTTable)
-		return nil, nil
-	}
+func (ls *LState) Next(tb *LTable, key LValue) (LValue, LValue) {
 	return tb.Next(key)
 }
 

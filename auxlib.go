@@ -268,7 +268,7 @@ func (ls *LState) Where(level int) string {
 
 /* table operations {{{ */
 
-func (ls *LState) FindTable(obj LValue, n string, size int) LValue {
+func (ls *LState) FindTable(obj *LTable, n string, size int) LValue {
 	names := strings.Split(n, ".")
 	curobj := obj
 	for _, name := range names {
@@ -283,7 +283,7 @@ func (ls *LState) FindTable(obj LValue, n string, size int) LValue {
 		} else if nextobj.Type() != LTTable {
 			return LNil
 		} else {
-			curobj = nextobj
+			curobj = nextobj.(*LTable)
 		}
 	}
 	return curobj
@@ -294,10 +294,10 @@ func (ls *LState) FindTable(obj LValue, n string, size int) LValue {
 /* register operations {{{ */
 
 func (ls *LState) RegisterModule(name string, funcs map[string]LGFunction) LValue {
-	tb := ls.FindTable(ls.Get(RegistryIndex), "_LOADED", 1)
+	tb := ls.FindTable(ls.Get(RegistryIndex).(*LTable), "_LOADED", 1)
 	mod := ls.GetField(tb, name)
 	if mod.Type() != LTTable {
-		newmod := ls.FindTable(ls.Get(GlobalsIndex), name, len(funcs))
+		newmod := ls.FindTable(ls.Get(GlobalsIndex).(*LTable), name, len(funcs))
 		if newmodtb, ok := newmod.(*LTable); !ok {
 			ls.RaiseError("name conflict for module(%v)", name)
 		} else {
@@ -311,11 +311,7 @@ func (ls *LState) RegisterModule(name string, funcs map[string]LGFunction) LValu
 	return mod
 }
 
-func (ls *LState) RegisterModuleToTable(tbl LValue, funcs map[string]LGFunction) LValue {
-	tb, ok := tbl.(*LTable)
-	if !ok {
-		ls.TypeError(1, LTTable)
-	}
+func (ls *LState) RegisterModuleToTable(tb *LTable, funcs map[string]LGFunction) LValue {
 	for fname, fn := range funcs {
 		tb.RawSetH(LString(fname), ls.NewFunction(fn))
 	}
