@@ -409,3 +409,17 @@ func (ls *LState) OpenLibs() {
 }
 
 /* }}} */
+
+/* GopherLua original APIs {{{ */
+
+func (ls *LState) PreloadModule(name string, loader LGFunction) {
+	preload := ls.GetField(ls.GetField(ls.Get(EnvironIndex), "package"), "preload")
+	if _, ok := preload.(*LTable); !ok {
+		ls.RaiseError("package.preload must be a table")
+	}
+	ls.SetField(preload, name, ls.NewFunction(loader))
+}
+
+/* }}} */
+
+//

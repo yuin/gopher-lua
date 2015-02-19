@@ -13,6 +13,18 @@ Go APIs that allow you to easily embed a scripting language to your Go host
 programs.
 
 ----------------------------------------------------------------
+Design principle
+----------------------------------------------------------------
+
+- Be a scripting language with extensible semantics.
+- User-friendly Go API
+    - The stack besed API like the one used in the original Lua 
+      implementation will cause a performance improvements in GopherLua
+      (It will reduce memory allocations and concrete type <-> interface conversions).
+      GopherLua API is **not** the stack based API.
+      GopherLua give preference to the user-friendliness over the performance.
+
+----------------------------------------------------------------
 Performance (fib(30))
 ----------------------------------------------------------------
 Performance measurements in script languages on Go.
@@ -287,6 +299,69 @@ Working with coroutines.
            break
        }
    }
+
++++++++++++++++++++++++++++++++++++++++++
+Creating a module by Go
++++++++++++++++++++++++++++++++++++++++++
+
+mymodule.go
+
+.. code-block:: go
+
+    package mymodule
+    
+    import (
+    	"github.com/yuin/gopher-lua"
+    	"os"
+    )
+    
+    func Loader(L *lua.LState) int {
+    	// register functions to the table
+    	mod := L.RegisterModuleToTable(L.NewTable(), exports)
+    	// register other stuff
+    	L.SetField(mod, "name", lua.LString("value"))
+    
+    	// returns the module
+    	L.Push(mod)
+    	return 1
+    }
+    
+    var exports = map[string]lua.LGFunction{
+    	"myfunc": myfunc,
+    }
+    
+    func myfunc(L *lua.LState) int {
+    	return 0
+    }
+
+mymain.go
+
+.. code-block:: go
+
+    package main
+    
+    import (
+    	"./mymodule"
+    	"github.com/yuin/gopher-lua"
+    )
+    
+    func main() {
+    	L := lua.NewState()
+    	defer L.Close()
+    	L.PreloadModule("mymodule", mymodule.Loader)
+    	if err := L.DoFile("main.lua"); err != nil {
+    		panic(err)
+    	}
+    }
+
+main.lua
+
+.. code-block:: lua
+
+    local m = require("mymodule")
+    m.myfunc()
+    print(m.name)
+
 
 +++++++++++++++++++++++++++++++++++++++++
 Calling Lua from Go
