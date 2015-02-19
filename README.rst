@@ -312,7 +312,6 @@ mymodule.go
     
     import (
     	"github.com/yuin/gopher-lua"
-    	"os"
     )
     
     func Loader(L *lua.LState) int {
