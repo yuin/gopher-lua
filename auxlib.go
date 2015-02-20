@@ -311,9 +311,9 @@ func (ls *LState) RegisterModule(name string, funcs map[string]LGFunction) LValu
 	return mod
 }
 
-func (ls *LState) RegisterModuleToTable(tb *LTable, funcs map[string]LGFunction) LValue {
+func (ls *LState) SetFuncs(tb *LTable, funcs map[string]LGFunction, upvalues ...LValue) LValue {
 	for fname, fn := range funcs {
-		tb.RawSetH(LString(fname), ls.NewFunction(fn))
+		tb.RawSetH(LString(fname), ls.NewClosure(fn, upvalues...))
 	}
 	return tb
 }

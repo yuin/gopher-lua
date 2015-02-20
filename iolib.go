@@ -168,7 +168,7 @@ func ioOpen(L *LState) {
 	mod := L.RegisterModule("io", map[string]LGFunction{}).(*LTable)
 	mt := L.NewTypeMetatable(lFileClass)
 	mt.RawSetH(LString("__index"), mt)
-	L.RegisterModuleToTable(mt, fileMethods)
+	L.SetFuncs(mt, fileMethods)
 	mt.RawSetH(LString("lines"), L.NewClosure(fileLines, L.NewFunction(fileLinesIter)))
 
 	for _, finfo := range stdFiles {

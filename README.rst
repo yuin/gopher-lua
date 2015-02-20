@@ -285,8 +285,8 @@ Working with coroutines.
    for {
        st, err, values := L.Resume(co, fn)
        if st == lua.ResumeError {
-           println("yield break(error)")
-           println(err.Error())
+           fmt.Println("yield break(error)")
+           fmt.Println(err.Error())
            break
        }
     
@@ -295,7 +295,7 @@ Working with coroutines.
        }
     
        if st == lua.ResumeOK {
-           println("yield break(ok)")
+           fmt.Println("yield break(ok)")
            break
        }
    }
@@ -316,7 +316,7 @@ mymodule.go
     
     func Loader(L *lua.LState) int {
     	// register functions to the table
-    	mod := L.RegisterModuleToTable(L.NewTable(), exports)
+    	mod := L.SetFuncs(L.NewTable(), exports)
     	// register other stuff
     	L.SetField(mod, "name", lua.LString("value"))
     
