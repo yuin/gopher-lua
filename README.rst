@@ -254,7 +254,7 @@ Calling Go from Lua
 
 .. code-block:: go
 
-   func Double(L lua.LState) int {
+   func Double(L *lua.LState) int {
        lv := L.ToInt(1)             /* get argument */
        L.Push(lua.LNumber(lv * 2)) /* push result */
        return 1                     /* number of results */
