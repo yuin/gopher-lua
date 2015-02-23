@@ -248,7 +248,11 @@ func basePCall(L *LState) int {
 	nargs := L.GetTop() - 1
 	if err := L.PCall(nargs, MultRet, nil); err != nil {
 		L.Push(LFalse)
-		L.Push(err.Object)
+		if aerr, ok := err.(*ApiError); ok {
+			L.Push(aerr.Object)
+		} else {
+			L.Push(LString(err.Error()))
+		}
 		return 2
 	} else {
 		L.Insert(LTrue, 1)
@@ -446,7 +450,11 @@ func baseXPCall(L *LState) int {
 	L.Push(fn)
 	if err := L.PCall(0, MultRet, errfunc); err != nil {
 		L.Push(LFalse)
-		L.Push(err.Object)
+		if aerr, ok := err.(*ApiError); ok {
+			L.Push(aerr.Object)
+		} else {
+			L.Push(LString(err.Error()))
+		}
 		return 2
 	} else {
 		L.Insert(LTrue, 1)

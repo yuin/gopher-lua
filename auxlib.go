@@ -356,7 +356,7 @@ func (ls *LState) CallMeta(obj LValue, event string) LValue {
 
 /* load and function call operations {{{ */
 
-func (ls *LState) LoadFile(path string) (*LFunction, *ApiError) {
+func (ls *LState) LoadFile(path string) (*LFunction, error) {
 	var file *os.File
 	var reader io.Reader
 	var err error
@@ -373,11 +373,11 @@ func (ls *LState) LoadFile(path string) (*LFunction, *ApiError) {
 	return ls.Load(reader, filepath.Base(path))
 }
 
-func (ls *LState) LoadString(source string) (*LFunction, *ApiError) {
+func (ls *LState) LoadString(source string) (*LFunction, error) {
 	return ls.Load(strings.NewReader(source), "<string>")
 }
 
-func (ls *LState) DoFile(path string) *ApiError {
+func (ls *LState) DoFile(path string) error {
 	if fn, err := ls.LoadFile(path); err != nil {
 		return err
 	} else {
@@ -386,7 +386,7 @@ func (ls *LState) DoFile(path string) *ApiError {
 	}
 }
 
-func (ls *LState) DoString(source string) *ApiError {
+func (ls *LState) DoString(source string) error {
 	if fn, err := ls.LoadString(source); err != nil {
 		return err
 	} else {

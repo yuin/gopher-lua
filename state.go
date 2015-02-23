@@ -1333,7 +1333,7 @@ func (ls *LState) Register(name string, fn LGFunction) {
 
 /* load and function call operations {{{ */
 
-func (ls *LState) Load(reader io.Reader, name string) (*LFunction, *ApiError) {
+func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 	chunk, err := parse.Parse(reader, name)
 	if err != nil {
 		return nil, newApiError(ApiErrorSyntax, err.Error(), LNil)
@@ -1349,7 +1349,7 @@ func (ls *LState) Call(nargs, nret int) {
 	ls.callR(nargs, nret, -1)
 }
 
-func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err *ApiError) {
+func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 	err = nil
 	sp := ls.stack.Sp()
 	base := ls.reg.Top() - nargs - 1
@@ -1370,7 +1370,7 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err *ApiError) {
 			}
 			if errfunc != nil {
 				ls.Push(errfunc)
-				ls.Push(err.Object)
+				ls.Push(err.(*ApiError).Object)
 				ls.Panic = func(L *LState) {
 					panic(newApiError(ApiErrorError, "", L.Get(-1)))
 				}
@@ -1399,13 +1399,13 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err *ApiError) {
 	return
 }
 
-func (ls *LState) GPCall(fn LGFunction, data LValue) *ApiError {
+func (ls *LState) GPCall(fn LGFunction, data LValue) error {
 	ls.Push(newLFunctionG(fn, ls.currentEnv(), 0))
 	ls.Push(data)
 	return ls.PCall(1, MultRet, nil)
 }
 
-func (ls *LState) CallByParam(cp P, args ...LValue) *ApiError {
+func (ls *LState) CallByParam(cp P, args ...LValue) error {
 	ls.Push(cp.Fn)
 	for _, arg := range args {
 		ls.Push(arg)
@@ -1459,7 +1459,7 @@ func (ls *LState) Status(th *LState) string {
 	return status
 }
 
-func (ls *LState) Resume(th *LState, fn *LFunction, args ...LValue) (ResumeState, *ApiError, []LValue) {
+func (ls *LState) Resume(th *LState, fn *LFunction, args ...LValue) (ResumeState, error, []LValue) {
 	isstarted := th.isStarted()
 	if !isstarted {
 		base := 0
