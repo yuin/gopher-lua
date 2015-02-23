@@ -42,6 +42,7 @@ const (
 	ApiErrorFile
 	ApiErrorRun
 	ApiErrorError
+	ApiErrorPanic
 )
 
 /* }}} */
@@ -1361,9 +1362,12 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err *ApiError) {
 		rcv := recover()
 		if rcv != nil {
 			if _, ok := rcv.(*ApiError); !ok {
-				panic(rcv)
+				buf := make([]byte, 4096)
+				runtime.Stack(buf, false)
+				err = newApiError(ApiErrorPanic, fmt.Sprintf("%v\n%v", rcv, strings.Trim(string(buf), "\000")), LNil)
+			} else {
+				err = rcv.(*ApiError)
 			}
-			err = rcv.(*ApiError)
 			if errfunc != nil {
 				ls.Push(errfunc)
 				ls.Push(err.Object)
@@ -1375,9 +1379,12 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err *ApiError) {
 					rcv := recover()
 					if rcv != nil {
 						if _, ok := rcv.(*ApiError); !ok {
-							panic(ok)
+							buf := make([]byte, 4096)
+							runtime.Stack(buf, false)
+							err = newApiError(ApiErrorPanic, fmt.Sprintf("%v\n%v", rcv, strings.Trim(string(buf), "\000")), LNil)
+						} else {
+							err = rcv.(*ApiError)
 						}
-						err = rcv.(*ApiError)
 					}
 				}()
 				ls.Call(1, 1)
