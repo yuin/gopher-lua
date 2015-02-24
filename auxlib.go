@@ -311,7 +311,7 @@ func (ls *LState) RegisterModule(name string, funcs map[string]LGFunction) LValu
 	return mod
 }
 
-func (ls *LState) SetFuncs(tb *LTable, funcs map[string]LGFunction, upvalues ...LValue) LValue {
+func (ls *LState) SetFuncs(tb *LTable, funcs map[string]LGFunction, upvalues ...LValue) *LTable {
 	for fname, fn := range funcs {
 		tb.RawSetH(LString(fname), ls.NewClosure(fn, upvalues...))
 	}
@@ -406,18 +406,43 @@ func (ls *LState) OpenLibs() {
 	mathOpen(ls)
 	osOpen(ls)
 	debugOpen(ls)
+	channelOpen(ls)
 }
 
 /* }}} */
 
 /* GopherLua original APIs {{{ */
 
+// Set a module loader to the package.preload table.
 func (ls *LState) PreloadModule(name string, loader LGFunction) {
 	preload := ls.GetField(ls.GetField(ls.Get(EnvironIndex), "package"), "preload")
 	if _, ok := preload.(*LTable); !ok {
 		ls.RaiseError("package.preload must be a table")
 	}
 	ls.SetField(preload, name, ls.NewFunction(loader))
+}
+
+// Checks whether the given index is an LChannel and returns this channel.
+func (ls *LState) CheckChannel(n int) chan LValue {
+	v := ls.Get(n)
+	if ch, ok := v.(LChannel); ok {
+		return (chan LValue)(ch)
+	}
+	ls.TypeError(n, LTChannel)
+	return nil
+}
+
+// If the given index is a LChannel, returns this channel. If this argument is absent or is nil, returns ch. Otherwise, raises an error.
+func (ls *LState) OptChannel(n int, ch chan LValue) chan LValue {
+	v := ls.Get(n)
+	if v == LNil {
+		return ch
+	}
+	if ch, ok := v.(LChannel); ok {
+		return (chan LValue)(ch)
+	}
+	ls.TypeError(n, LTChannel)
+	return nil
 }
 
 /* }}} */

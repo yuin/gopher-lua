@@ -1545,6 +1545,7 @@ func (ls *LState) XMoveTo(other *LState, n int) {
 
 /* GopherLua original APIs {{{ */
 
+// Set maximum memory size. This function can only be called from the main thread.
 func (ls *LState) SetMx(mx int) {
 	if ls.Parent != nil {
 		ls.RaiseError("sub threads are not allowed to set a memory limit")
@@ -1561,6 +1562,14 @@ func (ls *LState) SetMx(mx int) {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()
+}
+
+// Converts the Lua value at the given acceptable index to the chan LValue.
+func (ls *LState) ToChannel(n int) chan LValue {
+	if lv, ok := ls.Get(n).(LChannel); ok {
+		return (chan LValue)(lv)
+	}
+	return nil
 }
 
 /* }}} */

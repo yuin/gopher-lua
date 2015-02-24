@@ -16,9 +16,10 @@ const (
 	LTUserData
 	LTThread
 	LTTable
+	LTChannel
 )
 
-var lValueNames = [8]string{"nil", "boolean", "number", "string", "function", "userdata", "thread", "table"}
+var lValueNames = [9]string{"nil", "boolean", "number", "string", "function", "userdata", "thread", "table", "channel"}
 
 func (vt LValueType) String() string {
 	return lValueNames[int(vt)]
@@ -190,3 +191,8 @@ type LUserData struct {
 
 func (ud *LUserData) String() string   { return fmt.Sprintf("userdata: %p", ud) }
 func (ud *LUserData) Type() LValueType { return LTUserData }
+
+type LChannel chan LValue
+
+func (ch LChannel) String() string   { return fmt.Sprintf("channel: %p", ch) }
+func (ch LChannel) Type() LValueType { return LTChannel }

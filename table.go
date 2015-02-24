@@ -163,7 +163,7 @@ func (tb *LTable) RawGet(key LValue) LValue {
 
 func (tb *LTable) RawGetInt(key int) LValue {
 	index := int(key) - 1
-	if index >= len(tb.array) {
+	if index >= len(tb.array) || index < 0 {
 		return LNil
 	}
 	return tb.array[index]

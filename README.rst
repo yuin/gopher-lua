@@ -122,6 +122,8 @@ Usage
 GopherLua APIs perform in much the same way as Lua, **but the stack is used only 
 for passing arguments and receiving returned values.**
 
+GopherLua supports channel operations. See **"Goroutines"** section.
+
 Import a package.
 
 .. code-block:: go
@@ -173,6 +175,7 @@ Objects implement a LValue interface are
  ``LUserData``      struct pointer          ``LTUserData``     ``-``
  ``LState``         struct pointer          ``LTThread``       ``-``
  ``LTable``         struct pointer          ``LTTable``        ``-``
+ ``LChannel``       chan LValue             ``LTChannel``      ``-``
 ================ ========================= ================== =======================
 
 You can test an object type in Go way(type assertion) or using a ``Type()`` value.
@@ -385,10 +388,137 @@ Calling Lua from Go
 
 If ``Protect`` is false, GopherLua will panic instead of returning an ``error`` value.
 
++++++++++++++++++++++++++++++++++++++++++
+Goroutines
++++++++++++++++++++++++++++++++++++++++++
+ The ``LState`` is not goroutine-safe. It is recommended to use one LState per goroutine and communicate between goroutines by using channels.
+
+Channels are represented by ``channel`` objects in GopherLua. And a ``channel`` table provides functions for performing channel operations.
+
+.. code-block:: go
+
+    func receiver(ch, quit chan lua.LValue) {
+        L := lua.NewState()
+        defer L.Close()
+        L.SetGlobal("ch", lua.LChannel(ch))
+        L.SetGlobal("quit", lua.LChannel(quit))
+        if err := L.DoString(`
+        local exit = false
+        while not exit do
+          channel.select(
+            {"|<-", ch, function(ok, v)
+              if not ok then
+                print("channel closed")
+                exit = true
+              else
+                print("received:", v)
+              end
+            end},
+            {"|<-", quit, function(ok, v)
+                print("quit")
+                exit = true
+            end}
+          )
+        end
+      `); err != nil {
+            panic(err)
+        }
+    }
+    
+    func sender(ch, quit chan lua.LValue) {
+        L := lua.NewState()
+        defer L.Close()
+        L.SetGlobal("ch", lua.LChannel(ch))
+        L.SetGlobal("quit", lua.LChannel(quit))
+        if err := L.DoString(`
+        ch:send("1")
+        ch:send("2")
+      `); err != nil {
+            panic(err)
+        }
+        ch <- lua.LString("3")
+        quit <- lua.LTrue
+    }
+    
+    func main() {
+        ch := make(chan lua.LValue)
+        quit := make(chan lua.LValue)
+        go receiver(ch, quit)
+        go sender(ch, quit)
+        time.Sleep(3 * time.Second)
+    }
+
+'''''''''''''''
+Go API
+'''''''''''''''
+
+``ToChannel``, ``CheckChannel``, ``OptChannel`` are available.
+
+Refer to `Go doc(LState methods) <http://godoc.org/github.com/yuin/gopher-lua>`_ for further information.
+
+'''''''''''''''
+Lua API
+'''''''''''''''
+
+- **channel.make([buf:int]) -> ch:channel**
+    - Create new channel that has a buffer size of ``buf``. By default, ``buf`` is 0.
+
+- **channel.select(case:table [, case:table, case:table ...]) -> {index:int, recv:any, closed:bool}**
+    - Same as the ``select`` statement in Go. It returns the index of the chosen case and, if that 
+      case was a receive operation, the value received and a boolean indicating whether the channel has been closed. 
+    - ``case`` is a table that outlined below.
+        - receiving: `{"|<-", ch:channel [, handler:func(closed, data)]}`
+        - sending: `{"<-|", ch:channel, data:any [, handler:func(data)]}`
+        - default: `{"default" [, handler:func()]}`
+
+``channel.select`` examples:
+
+.. code-block:: lua
+
+    local idx, recv, closed = channel.select(
+      {"|<-", ch1},
+      {"|<-", ch2}
+    )
+    if closed then
+        print("closed")
+    elseif idx == 1 then -- received from ch1
+        print(recv)
+    elseif idx == 2 then -- received from ch2
+        print(recv)
+    end
+
+.. code-block:: lua
+
+    channel.select(
+      {"|<-", ch1, function(closed, data)
+        print(closed, data)
+      end},
+      {"<-|", ch2, "value", function(data)
+        print(data)
+      end},
+      {"default", function()
+        print("default action")
+      end}
+    )
+
+- **channel:send(data:any)**
+    - Send ``data`` over the channel.
+- **channel:receive() -> closed:bool, data:any**
+    - Receive some data over the channel.
+- **channel:close()**
+    - Close the channel.
 
 ----------------------------------------------------------------
 Differences between Lua and GopherLua
 ----------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Goroutines
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- GopherLua supports channel operations.
+    - GopherLua has a type named "channel".
+    - The ``channel`` table provides functions for performing channel operations.
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Pattern match
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
