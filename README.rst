@@ -391,7 +391,7 @@ If ``Protect`` is false, GopherLua will panic instead of returning an ``error`` 
 +++++++++++++++++++++++++++++++++++++++++
 Goroutines
 +++++++++++++++++++++++++++++++++++++++++
- The ``LState`` is not goroutine-safe. It is recommended to use one LState per goroutine and communicate between goroutines by using channels.
+The ``LState`` is not goroutine-safe. It is recommended to use one LState per goroutine and communicate between goroutines by using channels.
 
 Channels are represented by ``channel`` objects in GopherLua. And a ``channel`` table provides functions for performing channel operations.
 
@@ -467,8 +467,8 @@ Lua API
     - Same as the ``select`` statement in Go. It returns the index of the chosen case and, if that 
       case was a receive operation, the value received and a boolean indicating whether the channel has been closed. 
     - ``case`` is a table that outlined below.
-        - receiving: `{"|<-", ch:channel [, handler:func(closed, data)]}`
-        - sending: `{"<-|", ch:channel, data:any [, handler:func(data)]}`
+        - receiving: `{"|<-", ch:channel [, handler:func(closed:bool, data:any)]}`
+        - sending: `{"<-|", ch:channel, data:any [, handler:func(data:any)]}`
         - default: `{"default" [, handler:func()]}`
 
 ``channel.select`` examples:
@@ -516,7 +516,7 @@ Goroutines
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - GopherLua supports channel operations.
-    - GopherLua has a type named "channel".
+    - GopherLua has a type named ``channel``.
     - The ``channel`` table provides functions for performing channel operations.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
