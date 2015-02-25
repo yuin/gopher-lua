@@ -193,7 +193,7 @@ func baseLoadFile(L *LState) int {
 		reader, err = os.Open(chunkname)
 		if err != nil {
 			L.Push(LNil)
-			L.Push(LString(fmt.Sprint("can not open file: %v", chunkname)))
+			L.Push(LString(fmt.Sprintf("can not open file: %v", chunkname)))
 			return 2
 		}
 		defer reader.(*os.File).Close()
