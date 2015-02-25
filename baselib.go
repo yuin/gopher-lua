@@ -263,7 +263,7 @@ func basePCall(L *LState) int {
 func basePrint(L *LState) int {
 	top := L.GetTop()
 	for i := 1; i <= top; i++ {
-		fmt.Print(L.Get(i).String())
+		fmt.Print(tostring(L, L.Get(i)).String())
 		if i != top {
 			fmt.Print("\t")
 		}
@@ -412,14 +412,7 @@ func baseToNumber(L *LState) int {
 
 func baseToString(L *LState) int {
 	v1 := L.CheckAny(1)
-	metatostring := L.metaOp1(v1, "__tostring")
-	if metatostring.Type() == LTFunction {
-		L.Push(metatostring)
-		L.Push(v1)
-		L.Call(1, 1)
-	} else {
-		L.Push(LString(v1.String()))
-	}
+	L.Push(tostring(L, v1))
 	return 1
 }
 

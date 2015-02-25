@@ -682,6 +682,17 @@ func equals(L *LState, lhs, rhs LValue, raw bool) bool {
 	return ret
 }
 
+func tostring(L *LState, lv LValue) LValue {
+	if fn, ok := L.metaOp1(lv, "__tostring").(*LFunction); ok {
+		L.Push(fn)
+		L.Push(lv)
+		L.Call(1, 1)
+		return L.reg.Pop()
+	} else {
+		return LString(lv.String())
+	}
+}
+
 func objectRationalWithError(L *LState, lhs, rhs LValue, event string) bool {
 	switch objectRational(L, lhs, rhs, event) {
 	case 1:
