@@ -1456,7 +1456,11 @@ func compileLogicalOpExprAux(context *funcContext, reg int, expr ast.Expr, ec *e
 } // }}}
 
 func compileFuncCallExpr(context *funcContext, reg int, expr *ast.FuncCallExpr, ec *expcontext) int { // {{{
-	funcreg := savereg(ec, reg)
+	funcreg := reg
+	if ec.ctype == ecLocal && ec.reg <= reg+1 {
+		funcreg = ec.reg
+		reg = ec.reg
+	}
 	argc := len(expr.Args)
 	islastvararg := false
 	name := "(anonymous)"
