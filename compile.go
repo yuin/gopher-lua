@@ -1202,6 +1202,9 @@ func compileTableExpr(context *funcContext, reg int, ex *ast.TableExpr, ec *expc
 	}
 	code.SetB(tablepc, int2Fb(arraycount))
 	code.SetC(tablepc, int2Fb(len(ex.Fields)-arraycount))
+	if ec.ctype == ecLocal && ec.reg != tablereg {
+		code.AddABC(OP_MOVE, ec.reg, tablereg, 0, sline(ex))
+	}
 } // }}}
 
 func compileArithmeticOpExpr(context *funcContext, reg int, expr *ast.ArithmeticOpExpr, ec *expcontext) { // {{{
