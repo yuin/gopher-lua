@@ -252,6 +252,8 @@ func compileLuaRegex(pattern string) (*regexp.Regexp, error) {
 					sc.AppendString("\\$")
 				} else if c == '^' && sc.Pos != 1 && !inset {
 					sc.AppendString("\\^")
+				} else if c == '\\' {
+					sc.AppendString("\\\\")
 				} else {
 					b[0] = c
 					if utf8.Valid(b) {
