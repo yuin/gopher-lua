@@ -237,26 +237,26 @@ mymodule.go
     package mymodule
     
     import (
-    	"github.com/yuin/gopher-lua"
+        "github.com/yuin/gopher-lua"
     )
     
     func Loader(L *lua.LState) int {
-    	// register functions to the table
-    	mod := L.SetFuncs(L.NewTable(), exports)
-    	// register other stuff
-    	L.SetField(mod, "name", lua.LString("value"))
+        // register functions to the table
+        mod := L.SetFuncs(L.NewTable(), exports)
+        // register other stuff
+        L.SetField(mod, "name", lua.LString("value"))
     
-    	// returns the module
-    	L.Push(mod)
-    	return 1
+        // returns the module
+        L.Push(mod)
+        return 1
     }
     
     var exports = map[string]lua.LGFunction{
-    	"myfunc": myfunc,
+        "myfunc": myfunc,
     }
     
     func myfunc(L *lua.LState) int {
-    	return 0
+        return 0
     }
 
 mymain.go
@@ -266,17 +266,17 @@ mymain.go
     package main
     
     import (
-    	"./mymodule"
-    	"github.com/yuin/gopher-lua"
+        "./mymodule"
+        "github.com/yuin/gopher-lua"
     )
     
     func main() {
-    	L := lua.NewState()
-    	defer L.Close()
-    	L.PreloadModule("mymodule", mymodule.Loader)
-    	if err := L.DoFile("main.lua"); err != nil {
-    		panic(err)
-    	}
+        L := lua.NewState()
+        defer L.Close()
+        L.PreloadModule("mymodule", mymodule.Loader)
+        if err := L.DoFile("main.lua"); err != nil {
+            panic(err)
+        }
     }
 
 main.lua
@@ -431,6 +431,72 @@ Lua API
 - **channel:close()**
     - Close the channel.
 
+''''''''''''''''''''''''''''''
+The LState pool pattern
+''''''''''''''''''''''''''''''
+To create per-thread LState instances, You can use the ``sync.Pool`` like mechanism.
+
+.. code-block:: go
+    
+    type lStatePool struct {
+        m     sync.Mutex
+        saved []*lua.LState
+    }
+    
+    func (pl *lStatePool) Get() *lua.LState {
+        pl.m.Lock()
+        defer pl.m.Unlock()
+        n := len(pl.saved)
+        if n == 0 {
+            return pl.New()
+        }
+        x := pl.saved[n-1]
+        pl.saved = pl.saved[0 : n-1]
+        return x
+    }
+    
+    func (pl *lStatePool) New() *lua.LState {
+        L := lua.NewState()
+        // setting the L up here.
+        // load scripts, set global variables, share channels, etc...
+        return L
+    }
+    
+    func (pl *lStatePool) Put(L *lua.LState) {
+        pl.m.Lock()
+        defer pl.m.Unlock()
+        pl.saved = append(pl.saved, L)
+    }
+    
+    func (pl *lStatePool) Shutdown() {
+        for _, L := range pl.saved {
+            L.Close()
+        }
+    }
+    
+    // Global LState pool
+    var luaPool = &lStatePool{
+        saved: make([]*lua.LState, 0, 4),
+    }
+
+Now, you can get per-thread LState objects from the ``luaPool`` .
+
+.. code-block:: go
+    
+    func MyWorker() {
+       L := luaPool.Get()
+       defer luaPool.Put(L)
+       /* your code here */
+    }
+
+    func main() {
+        defer luaPool.Shutdown()
+        go MyWorker()
+        go MyWorker()
+        /* etc... */
+    }
+
+
 ----------------------------------------------------------------
 Differences between Lua and GopherLua
 ----------------------------------------------------------------
@@ -495,6 +561,12 @@ Lua has an interpreter called ``lua`` . GopherLua has an interpreter called ``gl
 License
 ----------------------------------------------------------------
 MIT
+
+----------------------------------------------------------------
+Libraries for GopherLua
+----------------------------------------------------------------
+
+- `gopher-luar <https://github.com/layeh/gopher-luar>`_ : Custom type reflection for gopher-lua
 
 ----------------------------------------------------------------
 Author
