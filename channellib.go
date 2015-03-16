@@ -12,7 +12,7 @@ func checkChannel(L *LState, idx int) reflect.Value {
 func checkGoroutineSafe(L *LState, idx int) LValue {
 	v := L.CheckAny(2)
 	if !isGoroutineSafe(v) {
-		L.ArgError(2, "can not send a function, userdata or table that has a metatable")
+		L.ArgError(2, "can not send a function, userdata, thread or table that has a metatable")
 	}
 	return v
 }
@@ -58,7 +58,7 @@ func channelSelect(L *LState) int {
 			cas.Chan = reflect.ValueOf((chan LValue)(ch))
 			v := tbl.RawGetInt(3)
 			if !isGoroutineSafe(v) {
-				L.ArgError(i+1, "can not send a function, userdata or table that has a metatable")
+				L.ArgError(i+1, "can not send a function, userdata, thread or table that has a metatable")
 			}
 			cas.Send = reflect.ValueOf(v)
 		case "|<-":

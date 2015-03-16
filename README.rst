@@ -320,6 +320,7 @@ Channels are represented by ``channel`` objects in GopherLua. And a ``channel`` 
 
 Some objects can not be sent over channels due to having non-goroutine-safe objects inside itself.
 
+- a thread(state)
 - a function
 - an userdata
 - a table with a metatable

@@ -296,7 +296,7 @@ func parseNumber(number string) (LNumber, error) {
 
 func isGoroutineSafe(lv LValue) bool {
 	switch v := lv.(type) {
-	case *LFunction, *LUserData:
+	case *LFunction, *LUserData, *LState:
 		return false
 	case *LTable:
 		return v.Metatable == LNil
