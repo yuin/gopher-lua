@@ -8,7 +8,7 @@ GopherLua: VM and compiler for Lua in Go.
 |
 
 GopherLua is a Lua5.1 VM and compiler written in Go. GopherLua has a same goal
-with Lua: **Be a scripting language with extensible semantics** . It provides a
+with Lua: **Be a scripting language with extensible semantics** . It provides
 Go APIs that allow you to easily embed a scripting language to your Go host 
 programs.
 
@@ -78,14 +78,14 @@ Refer to `Lua Reference Manual <http://www.lua.org/manual/5.1/>`_ and `Go doc <h
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Data model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-All data in a GopherLua program is a ``LValue`` . ``LValue`` is an interface 
+All data in a GopherLua program is an ``LValue`` . ``LValue`` is an interface 
 type that has following methods.
 
 - ``String() string``
 - ``Type() LValueType``
 
 
-Objects implement a LValue interface are
+Objects implement an LValue interface are
 
 ================ ========================= ================== =======================
  Type name        Go type                   Type() value       Constants
@@ -556,6 +556,7 @@ Miscellaneous notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - ``file:setvbuf`` does not support a line bufferring.
+- Daylight saving time is not supported.
 
 ----------------------------------------------------------------
 Standalone interpreter
