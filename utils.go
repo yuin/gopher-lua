@@ -294,6 +294,17 @@ func parseNumber(number string) (LNumber, error) {
 	return value, nil
 }
 
+func isGoroutineSafe(lv LValue) bool {
+	switch v := lv.(type) {
+	case *LFunction, *LUserData:
+		return false
+	case *LTable:
+		return v.Metatable == LNil
+	default:
+		return true
+	}
+}
+
 func readBufioSize(reader *bufio.Reader, size int64) ([]byte, error, bool) {
 	result := []byte{}
 	read := int64(0)

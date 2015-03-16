@@ -318,6 +318,16 @@ The ``LState`` is not goroutine-safe. It is recommended to use one LState per go
 
 Channels are represented by ``channel`` objects in GopherLua. And a ``channel`` table provides functions for performing channel operations.
 
+Some objects can not be sent over channels due to having non-goroutine-safe objects inside itself.
+
+- a function
+- an userdata
+- a table with a metatable
+
+You **must not** send these objects from Go APIs to channels.
+
+
+
 .. code-block:: go
 
     func receiver(ch, quit chan lua.LValue) {

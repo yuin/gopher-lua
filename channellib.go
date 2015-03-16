@@ -9,6 +9,14 @@ func checkChannel(L *LState, idx int) reflect.Value {
 	return reflect.ValueOf(ch)
 }
 
+func checkGoroutineSafe(L *LState, idx int) LValue {
+	v := L.CheckAny(2)
+	if !isGoroutineSafe(v) {
+		L.ArgError(2, "can not send a function, userdata or table that has a metatable")
+	}
+	return v
+}
+
 func channelOpen(L *LState) {
 	_, ok := L.G.builtinMts[int(LTChannel)]
 	if !ok {
@@ -48,7 +56,11 @@ func channelSelect(L *LState) int {
 				L.ArgError(i+1, "invalid select case")
 			}
 			cas.Chan = reflect.ValueOf((chan LValue)(ch))
-			cas.Send = reflect.ValueOf(tbl.RawGetInt(3))
+			v := tbl.RawGetInt(3)
+			if !isGoroutineSafe(v) {
+				L.ArgError(i+1, "can not send a function, userdata or table that has a metatable")
+			}
+			cas.Send = reflect.ValueOf(v)
 		case "|<-":
 			ch, ok := tbl.RawGetInt(2).(LChannel)
 			if !ok {
@@ -125,7 +137,7 @@ func channelReceive(L *LState) int {
 
 func channelSend(L *LState) int {
 	rch := checkChannel(L, 1)
-	v := L.CheckAny(2)
+	v := checkGoroutineSafe(L, 2)
 	if rch.Type().ChanDir() == reflect.RecvDir {
 		L.RaiseError("#1 is a receive-only channel")
 	}
@@ -136,7 +148,7 @@ func channelSend(L *LState) int {
 func channelClose(L *LState) int {
 	rch := checkChannel(L, 1)
 	rch.Close()
-    return 0
+	return 0
 }
 
 //
