@@ -579,6 +579,7 @@ Libraries for GopherLua
 ----------------------------------------------------------------
 
 - `gopher-luar <https://github.com/layeh/gopher-luar>`_ : Custom type reflection for gopher-lua
+- `gluamapper <https://github.com/yuin/gluamapper>`_ : Mapping a Lua table to a Go struct
 
 ----------------------------------------------------------------
 Author
