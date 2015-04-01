@@ -626,7 +626,7 @@ func ioOpenFile(L *LState) int {
 		mode = os.O_WRONLY | os.O_CREATE
 		readable = false
 	case "a", "ab":
-		mode = os.O_APPEND | os.O_CREATE
+		mode = os.O_WRONLY | os.O_APPEND | os.O_CREATE
 	case "r+", "rb+":
 		mode = os.O_RDWR
 	case "w+", "wb+":
