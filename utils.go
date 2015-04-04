@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -292,6 +293,22 @@ func parseNumber(number string) (LNumber, error) {
 		value = LNumber(v)
 	}
 	return value, nil
+}
+
+func popenArgs(arg string) (string, []string) {
+	cmd := "/bin/sh"
+	args := []string{"-c"}
+	if LuaOS == "windows" {
+		cmd = "C:\\Windows\\system32\\cmd.exe"
+		args = []string{"/c"}
+	} else {
+		envsh := os.Getenv("SHELL")
+		if len(envsh) > 0 {
+			cmd = envsh
+		}
+	}
+	args = append(args, arg)
+	return cmd, args
 }
 
 func isGoroutineSafe(lv LValue) bool {

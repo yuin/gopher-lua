@@ -61,18 +61,7 @@ func osDiffTime(L *LState) int {
 func osExecute(L *LState) int {
 	var procAttr os.ProcAttr
 	procAttr.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr}
-	cmd := "/bin/sh"
-	args := []string{"-c"}
-	if LuaOS == "windows" {
-		cmd = "C:\\Windows\\system32\\cmd.exe"
-		args = []string{"/c"}
-	} else {
-		envsh := os.Getenv("SHELL")
-		if len(envsh) > 0 {
-			cmd = envsh
-		}
-	}
-	args = append(args, L.CheckString(1))
+	cmd, args := popenArgs(L.CheckString(1))
 	process, err := os.StartProcess(cmd, args, &procAttr)
 	if err != nil {
 		L.Push(LNumber(1))
