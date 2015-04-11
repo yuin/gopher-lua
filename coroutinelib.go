@@ -17,7 +17,7 @@ func coCreate(L *LState) int {
 	fn := L.CheckFunction(1)
 	newthread := L.NewThread()
 	base := 0
-    err := newthread.stack.Push(callFrame{
+	err := newthread.stack.Push(callFrame{
 		Fn:         fn,
 		Pc:         0,
 		Base:       base,
@@ -28,9 +28,9 @@ func coCreate(L *LState) int {
 		Parent:     nil,
 		TailCall:   0,
 	})
-    if err != nil {
-      L.RaiseError(err.Error())
-    }
+	if err != nil {
+		L.RaiseError(err.Error())
+	}
 	L.Push(newthread)
 	return 1
 }

@@ -72,7 +72,7 @@ func newFile(L *LState, file *os.File, path string, flag int, perm os.FileMode, 
 
 func newProcess(L *LState, cmd string, writable, readable bool) (*LUserData, error) {
 	ud := L.NewUserData()
-    c, args := popenArgs(cmd)
+	c, args := popenArgs(cmd)
 	pp := exec.Command(c, args...)
 	lfile := &lFile{fp: nil, pp: pp, writer: nil, reader: nil, closed: false}
 	ud.Value = lfile

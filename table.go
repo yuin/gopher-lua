@@ -76,7 +76,7 @@ func (tb *LTable) Insert(i int, value LValue) {
 func (tb *LTable) MaxN() int {
 	for i := len(tb.array) - 1; i >= 0; i-- {
 		if tb.array[i] != LNil {
-			return i+1
+			return i + 1
 		}
 	}
 	return 0
