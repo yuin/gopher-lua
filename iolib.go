@@ -263,7 +263,7 @@ func fileCloseAux(L *LState, file *lFile) int {
 		return 1
 	case lFileProcess:
 		err = file.pp.Wait()
-		var exitStatus int = 0
+		var exitStatus int
 		if err != nil {
 			if e2, ok := err.(*exec.ExitError); ok {
 				if s, ok := e2.Sys().(syscall.WaitStatus); ok {

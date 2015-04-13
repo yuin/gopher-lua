@@ -554,7 +554,7 @@ func compileAssignStmtRight(context *funcContext, stmt *ast.AssignStmt, reg int,
 	for namesassigned < lennames {
 		ac := acs[namesassigned]
 		ec := ac.ec
-		var expr ast.Expr = nil
+		var expr ast.Expr
 		if namesassigned >= lenexprs {
 			expr = &ast.NilExpr{}
 			expr.SetLine(sline(stmt.Lhs[namesassigned]))
@@ -590,7 +590,7 @@ func compileAssignStmtRight(context *funcContext, stmt *ast.AssignStmt, reg int,
 			ac.needmove = reginc != 0
 			reg += reginc
 		}
-		namesassigned += 1
+		namesassigned++
 	}
 
 	rightreg := reg - 1
@@ -618,18 +618,18 @@ func compileAssignStmt(context *funcContext, stmt *ast.AssignStmt) { // {{{
 		case ecLocal:
 			if acs[i].needmove {
 				code.AddABC(OP_MOVE, context.FindLocalVar(ex.(*ast.IdentExpr).Value), reg, 0, sline(ex))
-				reg -= 1
+				reg--
 			}
 		case ecGlobal:
 			code.AddABx(OP_SETGLOBAL, reg, context.ConstIndex(LString(ex.(*ast.IdentExpr).Value)), sline(ex))
-			reg -= 1
+			reg--
 		case ecUpvalue:
 			code.AddABC(OP_SETUPVAL, reg, context.Upvalues.RegisterUnique(ex.(*ast.IdentExpr).Value), 0, sline(ex))
-			reg -= 1
+			reg--
 		case ecTable:
 			code.AddABC(OP_SETTABLE, acs[i].ec.reg, acs[i].keyrk, acs[i].valuerk, sline(ex))
 			if !opIsK(acs[i].valuerk) {
-				reg -= 1
+				reg--
 			}
 		}
 	}
@@ -652,8 +652,8 @@ func compileRegAssignment(context *funcContext, names []string, exprs []ast.Expr
 		} else {
 			ecupdate(ec, ecLocal, reg, 0)
 			compileExpr(context, reg, exprs[namesassigned], ec)
-			reg += 1
-			namesassigned += 1
+			reg++
+			namesassigned++
 		}
 	}
 
@@ -1108,7 +1108,7 @@ func compileFunctionExpr(context *funcContext, funcexpr *ast.FunctionExpr, ec *e
 	}
 	context.Proto.NumParameters = uint8(len(funcexpr.ParList.Names))
 	if ec.ctype == ecMethod {
-		context.Proto.NumParameters += 1
+		context.Proto.NumParameters++
 		context.RegisterLocalVar("self")
 	}
 	for _, name := range funcexpr.ParList.Names {
@@ -1159,7 +1159,7 @@ func compileTableExpr(context *funcContext, reg int, ex *ast.TableExpr, ec *expc
 				lastvararg = true
 			} else {
 				reg += compileExpr(context, reg, field.Value, ecnone(0))
-				arraycount += 1
+				arraycount++
 			}
 		} else {
 			regorg := reg
@@ -1239,7 +1239,7 @@ func compileStringConcatOpExpr(context *funcContext, reg int, expr *ast.StringCo
 	crange := 1
 	for current := expr.Rhs; current != nil; {
 		if ex, ok := current.(*ast.StringConcatOpExpr); ok {
-			crange += 1
+			crange++
 			current = ex.Rhs
 		} else {
 			current = nil
@@ -1474,7 +1474,7 @@ func compileFuncCallExpr(context *funcContext, reg int, expr *ast.FuncCallExpr, 
 		if reg2 > reg {
 			reg = reg2
 		}
-		argc += 1
+		argc++
 		name = string(expr.Method)
 	}
 
@@ -1503,12 +1503,11 @@ func loadRk(context *funcContext, reg *int, expr ast.Expr, cnst LValue) int { //
 	cindex := context.ConstIndex(cnst)
 	if cindex <= opMaxIndexRk {
 		return opRkAsk(cindex)
-	} else {
-		ret := *reg
-		*reg++
-		context.Code.AddABx(OP_LOADK, ret, cindex, sline(expr))
-		return ret
 	}
+	ret := *reg
+	*reg++
+	context.Code.AddABx(OP_LOADK, ret, cindex, sline(expr))
+	return ret
 } // }}}
 
 func getIdentRefType(context *funcContext, current *funcContext, expr *ast.IdentExpr) expContextType { // {{{

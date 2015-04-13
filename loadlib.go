@@ -37,11 +37,11 @@ func loFindFile(L *LState, name, pname string) (string, string) {
 	messages := []string{}
 	for _, pattern := range strings.Split(string(path), ";") {
 		luapath := strings.Replace(pattern, "?", name, -1)
-		if _, err := os.Stat(luapath); err == nil {
+		_, err := os.Stat(luapath)
+		if err == nil {
 			return luapath, ""
-		} else {
-			messages = append(messages, err.Error())
 		}
+		messages = append(messages, err.Error())
 	}
 	return "", strings.Join(messages, "\n\t")
 }

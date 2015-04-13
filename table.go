@@ -67,7 +67,7 @@ func (tb *LTable) Insert(i int, value LValue) {
 		tb.RawSet(LNumber(i), value)
 		return
 	}
-	i -= 1
+	i--
 	tb.array = append(tb.array, LNil)
 	copy(tb.array[i+1:], tb.array[i:])
 	tb.array[i] = value
@@ -205,7 +205,7 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 		tb.keys = make([]LValue, len(tb.dict))
 		tb.k2i = make(map[LValue]int)
 		i := 0
-		for k, _ := range tb.dict {
+		for k := range tb.dict {
 			tb.keys[i] = k
 			tb.k2i[k] = i
 			i++

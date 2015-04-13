@@ -929,9 +929,8 @@ func tostring(L *LState, lv LValue) LValue {
 		L.Push(lv)
 		L.Call(1, 1)
 		return L.reg.Pop()
-	} else {
-		return LString(lv.String())
 	}
+	return LString(lv.String())
 }
 
 func objectRationalWithError(L *LState, lhs, rhs LValue, event string) bool {

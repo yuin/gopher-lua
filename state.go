@@ -418,9 +418,8 @@ func (ls *LState) frameFuncName(fr *callFrame) string {
 	if frame == nil {
 		if ls.Parent == nil {
 			return "main chunk"
-		} else {
-			return "corountine"
 		}
+		return "corountine"
 	}
 	if !frame.Fn.IsG {
 		pc := frame.Pc - 1
@@ -741,9 +740,8 @@ func (ls *LState) getField(obj LValue, key LValue) LValue {
 			ls.reg.Push(key)
 			ls.Call(2, 1)
 			return ls.reg.Pop()
-		} else {
-			curobj = metaindex
 		}
+		curobj = metaindex
 	}
 	ls.RaiseError("too many recursions in gettable")
 	return nil
@@ -780,9 +778,8 @@ func (ls *LState) setField(obj LValue, key LValue, value LValue) {
 			ls.reg.Push(value)
 			ls.Call(3, 0)
 			return
-		} else {
-			curobj = metaindex
 		}
+		curobj = metaindex
 	}
 	ls.RaiseError("too many recursions in settable")
 }
@@ -875,33 +872,34 @@ func (ls *LState) Get(idx int) LValue {
 			return ls.reg.Get(reg)
 		}
 		return LNil
-	} else if idx == 0 {
+	}
+	if idx == 0 {
 		return LNil
-	} else if idx > RegistryIndex {
+	}
+	if idx > RegistryIndex {
 		tidx := ls.reg.Top() + idx
 		if tidx < base {
 			return LNil
 		}
 		return ls.reg.Get(tidx)
-	} else {
-		switch idx {
-		case RegistryIndex:
-			return ls.G.Registry
-		case EnvironIndex:
-			if ls.currentFrame == nil {
-				return ls.Env
-			}
-			return ls.currentFrame.Fn.Env
-		case GlobalsIndex:
-			return ls.G.Global
-		default:
-			fn := ls.currentFrame.Fn
-			index := GlobalsIndex - idx - 1
-			if index < len(fn.Upvalues) {
-				return fn.Upvalues[index].Value()
-			}
-			return LNil
+	}
+	switch idx {
+	case RegistryIndex:
+		return ls.G.Registry
+	case EnvironIndex:
+		if ls.currentFrame == nil {
+			return ls.Env
 		}
+		return ls.currentFrame.Fn.Env
+	case GlobalsIndex:
+		return ls.G.Global
+	default:
+		fn := ls.currentFrame.Fn
+		index := GlobalsIndex - idx - 1
+		if index < len(fn.Upvalues) {
+			return fn.Upvalues[index].Value()
+		}
+		return LNil
 	}
 }
 
