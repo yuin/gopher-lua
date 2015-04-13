@@ -37,7 +37,7 @@ var baseFuncs = map[string]LGFunction{
 	"rawget":         baseRawGet,
 	"rawset":         baseRawSet,
 	"select":         baseSelect,
-	"_printregs":     base_PrintRegs,
+	"_printregs":     basePrintRegs,
 	"setfenv":        baseSetFEnv,
 	"setmetatable":   baseSetMetatable,
 	"tonumber":       baseToNumber,
@@ -128,13 +128,12 @@ func ipairsaux(L *LState) int {
 	v := tb.RawGetInt(i)
 	if v == LNil {
 		return 0
-	} else {
-		L.Pop(1)
-		L.Push(LNumber(i))
-		L.Push(LNumber(i))
-		L.Push(v)
-		return 2
 	}
+	L.Pop(1)
+	L.Push(LNumber(i))
+	L.Push(LNumber(i))
+	L.Push(v)
+	return 2
 }
 
 func baseIpairs(L *LState) int {
@@ -146,14 +145,14 @@ func baseIpairs(L *LState) int {
 }
 
 func loadaux(L *LState, reader io.Reader, chunkname string) int {
-	if fn, err := L.Load(reader, chunkname); err != nil {
+	fn, err := L.Load(reader, chunkname)
+	if err != nil {
 		L.Push(LNil)
 		L.Push(LString(err.Error()))
 		return 2
-	} else {
-		L.Push(fn)
-		return 1
 	}
+	L.Push(fn)
+	return 1
 }
 
 func baseLoad(L *LState) int {
@@ -226,13 +225,12 @@ func pairsaux(L *LState) int {
 	key, value := tb.Next(L.Get(2))
 	if key == LNil {
 		return 0
-	} else {
-		L.Pop(1)
-		L.Push(key)
-		L.Push(key)
-		L.Push(value)
-		return 2
 	}
+	L.Pop(1)
+	L.Push(key)
+	L.Push(key)
+	L.Push(value)
+	return 2
 }
 
 func basePairs(L *LState) int {
@@ -246,7 +244,8 @@ func basePairs(L *LState) int {
 func basePCall(L *LState) int {
 	L.CheckFunction(1)
 	nargs := L.GetTop() - 1
-	if err := L.PCall(nargs, MultRet, nil); err != nil {
+	err := L.PCall(nargs, MultRet, nil)
+	if err != nil {
 		L.Push(LFalse)
 		if aerr, ok := err.(*ApiError); ok {
 			L.Push(aerr.Object)
@@ -254,10 +253,9 @@ func basePCall(L *LState) int {
 			L.Push(LString(err.Error()))
 		}
 		return 2
-	} else {
-		L.Insert(LTrue, 1)
-		return L.GetTop()
 	}
+	L.Insert(LTrue, 1)
+	return L.GetTop()
 }
 
 func basePrint(L *LState) int {
@@ -272,7 +270,7 @@ func basePrint(L *LState) int {
 	return 0
 }
 
-func base_PrintRegs(L *LState) int {
+func basePrintRegs(L *LState) int {
 	L.printReg()
 	return 0
 }
@@ -441,7 +439,8 @@ func baseXPCall(L *LState) int {
 
 	top := L.GetTop()
 	L.Push(fn)
-	if err := L.PCall(0, MultRet, errfunc); err != nil {
+	err := L.PCall(0, MultRet, errfunc)
+	if err != nil {
 		L.Push(LFalse)
 		if aerr, ok := err.(*ApiError); ok {
 			L.Push(aerr.Object)
@@ -449,10 +448,9 @@ func baseXPCall(L *LState) int {
 			L.Push(LString(err.Error()))
 		}
 		return 2
-	} else {
-		L.Insert(LTrue, 1)
-		return L.GetTop() - top - 1
 	}
+	L.Insert(LTrue, 1)
+	return L.GetTop() - top - 1
 }
 
 /* }}} */

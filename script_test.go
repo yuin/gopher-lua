@@ -8,11 +8,11 @@ import (
 
 const maxMemory = 40
 
-var gluaTests []string = []string{
+var gluaTests = []string{
 	"bugs.lua",
 }
 
-var luaTests []string = []string{
+var luaTests = []string{
 	"attrib.lua",
 	"calls.lua",
 	"closure.lua",

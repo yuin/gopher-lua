@@ -213,7 +213,7 @@ func opSetArgSbx(inst *uint32, arg int) {
 }
 
 func opCreateABC(op int, a int, b int, c int) uint32 {
-	var inst uint32 = 0
+	var inst uint32
 	opSetOpCode(&inst, op)
 	opSetArgA(&inst, a)
 	opSetArgB(&inst, b)
@@ -222,7 +222,7 @@ func opCreateABC(op int, a int, b int, c int) uint32 {
 }
 
 func opCreateABx(op int, a int, bx int) uint32 {
-	var inst uint32 = 0
+	var inst uint32
 	opSetOpCode(&inst, op)
 	opSetArgA(&inst, a)
 	opSetArgBx(&inst, bx)
@@ -230,7 +230,7 @@ func opCreateABx(op int, a int, bx int) uint32 {
 }
 
 func opCreateASbx(op int, a int, sbx int) uint32 {
-	var inst uint32 = 0
+	var inst uint32
 	opSetOpCode(&inst, op)
 	opSetArgA(&inst, a)
 	opSetArgSbx(&inst, sbx)

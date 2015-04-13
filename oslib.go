@@ -103,8 +103,8 @@ func osDate(L *LState) int {
 			ret.RawSetH(LString("min"), LNumber(t.Minute()))
 			ret.RawSetH(LString("sec"), LNumber(t.Second()))
 			ret.RawSetH(LString("wday"), LNumber(t.Weekday()))
-			// TODO yday & dst
-			ret.RawSetH(LString("yday"), LNumber(0))
+			ret.RawSetH(LString("yday"), LNumber(t.YearDay()))
+			// TODO dst
 			ret.RawSetH(LString("isdst"), LFalse)
 			L.Push(ret)
 			return 1
@@ -130,10 +130,9 @@ func osRemove(L *LState) int {
 		L.Push(LNil)
 		L.Push(LString(err.Error()))
 		return 2
-	} else {
-		L.Push(LTrue)
-		return 1
 	}
+	L.Push(LTrue)
+	return 1
 }
 
 func osRename(L *LState) int {
@@ -142,10 +141,9 @@ func osRename(L *LState) int {
 		L.Push(LNil)
 		L.Push(LString(err.Error()))
 		return 2
-	} else {
-		L.Push(LTrue)
-		return 1
 	}
+	L.Push(LTrue)
+	return 1
 }
 
 func osSetLocale(L *LState) int {
@@ -160,10 +158,9 @@ func osSetEnv(L *LState) int {
 		L.Push(LNil)
 		L.Push(LString(err.Error()))
 		return 2
-	} else {
-		L.Push(LTrue)
-		return 1
 	}
+	L.Push(LTrue)
+	return 1
 }
 
 func osTime(L *LState) int {

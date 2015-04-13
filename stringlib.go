@@ -268,7 +268,7 @@ func strGmatchIter(L *LState) int {
 	str := md.str
 	matches := md.matches
 	idx := md.pos
-	md.pos += 1
+	md.pos++
 	if idx == len(matches) {
 		return 0
 	}
@@ -385,7 +385,7 @@ func strUpper(L *LState) int {
 
 func luaIndex2StringIndex(str string, i int, start bool) int {
 	if start {
-		i -= 1
+		i--
 	}
 	l := len(str)
 	if i < 0 {

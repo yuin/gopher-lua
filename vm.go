@@ -544,9 +544,9 @@ func init() {
 				cf.Pc = 0
 				cf.Base = RA
 				cf.LocalBase = RA + 1
-				cf.ReturnBase = cf.ReturnBase
+				// cf.ReturnBase = cf.ReturnBase
 				cf.NArgs = nargs
-				cf.NRet = cf.NRet
+				// cf.NRet = cf.NRet
 				cf.TailCall++
 				lbase := cf.LocalBase
 				if meta {
@@ -784,9 +784,9 @@ func numberArith(L *LState, opcode int, lhs, rhs LNumber) LNumber {
 		flhs := float64(lhs)
 		frhs := float64(rhs)
 		return LNumber(math.Pow(flhs, frhs))
+	default:
+		panic("should not reach here")
 	}
-	panic("should not reach here")
-	return LNumber(0)
 }
 
 func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
@@ -929,9 +929,8 @@ func tostring(L *LState, lv LValue) LValue {
 		L.Push(lv)
 		L.Call(1, 1)
 		return L.reg.Pop()
-	} else {
-		return LString(lv.String())
 	}
+	return LString(lv.String())
 }
 
 func objectRationalWithError(L *LState, lhs, rhs LValue, event string) bool {
@@ -944,7 +943,6 @@ func objectRationalWithError(L *LState, lhs, rhs LValue, event string) bool {
 		L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
 		return false
 	}
-	return false
 }
 
 func objectRational(L *LState, lhs, rhs LValue, event string) int {

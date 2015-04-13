@@ -18,17 +18,15 @@ import (
 func intMin(a, b int) int {
 	if a < b {
 		return a
-	} else {
-		return b
 	}
+	return b
 }
 
 func intMax(a, b int) int {
 	if a > b {
 		return a
-	} else {
-		return b
 	}
+	return b
 }
 
 func defaultFormat(v interface{}, f fmt.State, c rune) {
@@ -81,22 +79,21 @@ func (fs *flagScanner) Next() (byte, bool) {
 			fs.AppendString(fs.end)
 		}
 		return c, true
-	} else {
-		c = fs.str[fs.Pos]
-		if c == fs.flag {
-			if fs.Pos < (fs.Length-1) && fs.str[fs.Pos+1] == fs.flag {
-				fs.HasFlag = false
-				fs.AppendChar(fs.flag)
-				fs.Pos += 2
-				return fs.Next()
-			} else if fs.Pos != fs.Length-1 {
-				if fs.HasFlag {
-					fs.AppendString(fs.end)
-				}
-				fs.AppendString(fs.start)
-				fs.ChangeFlag = true
-				fs.HasFlag = true
+	}
+	c = fs.str[fs.Pos]
+	if c == fs.flag {
+		if fs.Pos < (fs.Length-1) && fs.str[fs.Pos+1] == fs.flag {
+			fs.HasFlag = false
+			fs.AppendChar(fs.flag)
+			fs.Pos += 2
+			return fs.Next()
+		} else if fs.Pos != fs.Length-1 {
+			if fs.HasFlag {
+				fs.AppendString(fs.end)
 			}
+			fs.AppendString(fs.start)
+			fs.ChangeFlag = true
+			fs.HasFlag = true
 		}
 	}
 	fs.Pos++
@@ -284,11 +281,11 @@ func parseNumber(number string) (LNumber, error) {
 	var value LNumber
 	number = strings.Trim(number, " \t\n")
 	if v, err := strconv.ParseInt(number, 0, LNumberBit); err != nil {
-		if v2, err2 := strconv.ParseFloat(number, LNumberBit); err2 != nil {
+		v2, err2 := strconv.ParseFloat(number, LNumberBit)
+		if err2 != nil {
 			return LNumber(0), err2
-		} else {
-			value = LNumber(v2)
 		}
+		value = LNumber(v2)
 	} else {
 		value = LNumber(v)
 	}
@@ -348,7 +345,7 @@ func readBufioLine(reader *bufio.Reader) ([]byte, error, bool) {
 	result := []byte{}
 	var buf []byte
 	var err error
-	var isprefix bool = true
+	isprefix := true
 	for isprefix {
 		buf, isprefix, err = reader.ReadLine()
 		if err != nil {

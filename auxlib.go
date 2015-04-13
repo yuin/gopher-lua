@@ -378,21 +378,21 @@ func (ls *LState) LoadString(source string) (*LFunction, error) {
 }
 
 func (ls *LState) DoFile(path string) error {
-	if fn, err := ls.LoadFile(path); err != nil {
+	fn, err := ls.LoadFile(path)
+	if err != nil {
 		return err
-	} else {
-		ls.Push(fn)
-		return ls.PCall(0, MultRet, nil)
 	}
+	ls.Push(fn)
+	return ls.PCall(0, MultRet, nil)
 }
 
 func (ls *LState) DoString(source string) error {
-	if fn, err := ls.LoadString(source); err != nil {
+	fn, err := ls.LoadString(source)
+	if err != nil {
 		return err
-	} else {
-		ls.Push(fn)
-		return ls.PCall(0, MultRet, nil)
 	}
+	ls.Push(fn)
+	return ls.PCall(0, MultRet, nil)
 }
 
 func (ls *LState) OpenLibs() {
