@@ -117,12 +117,12 @@ func (tb *LTable) RawSet(key LValue, value LValue) {
 			return
 		}
 	}
-	tb.dict[key] = value
+	tb.RawSetH(key, value)
 }
 
 func (tb *LTable) RawSetInt(key int, value LValue) {
 	if key < 1 || key >= MaxArrayIndex {
-		tb.dict[LNumber(key)] = value
+		tb.RawSetH(LNumber(key), value)
 		return
 	}
 	index := key - 1
@@ -141,7 +141,11 @@ func (tb *LTable) RawSetInt(key int, value LValue) {
 }
 
 func (tb *LTable) RawSetH(key LValue, value LValue) {
-	tb.dict[key] = value
+	if value == LNil {
+		delete(tb.dict, key)
+	} else {
+		tb.dict[key] = value
+	}
 }
 
 func (tb *LTable) RawGet(key LValue) LValue {
