@@ -88,7 +88,7 @@ func UpvalueIndex(i int) int {
 func newFunctionProto(name string) *FunctionProto {
 	return &FunctionProto{
 		SourceName:         name,
-		LineDefined :       0,
+		LineDefined:        0,
 		LastLineDefined:    0,
 		NumUpvalues:        0,
 		NumParameters:      0,
