@@ -560,6 +560,7 @@ Miscellaneous notes
 
 - ``file:setvbuf`` does not support a line bufferring.
 - Daylight saving time is not supported.
+- GopherLua has a function to set an environment variable : ``os.setenv(name, value)``
 
 ----------------------------------------------------------------
 Standalone interpreter
@@ -571,6 +572,30 @@ Lua has an interpreter called ``lua`` . GopherLua has an interpreter called ``gl
    go get github.com/yuin/gopher-lua/cmd/glua
 
 ``glua`` has same options as ``lua`` .
+
+----------------------------------------------------------------
+How to Contribute
+----------------------------------------------------------------
+Any kind of contributions are wellcome.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Pull requests
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Our workflow is based on the `github-flow <https://guides.github.com/introduction/flow/>`_ .
+
+1. Create a new issue.
+2. Fork the project.
+3. Pull new changes from the upstream.
+    - ``git checkout master``
+    - ``git fetch upstream``
+    - ``git merge upstream/master``
+4. Create a feature branch
+    - ``git checkout -b <branch-name>``
+5. Commit your changes and reference the issue number in your comment.
+    - ``git commit -m "Issue #<issue-ref> : <your message>``
+6. Push the feature branch to your remote repository.
+    - ``git push origin <branch-name>``
+7. Open new pull request.
 
 ----------------------------------------------------------------
 License
