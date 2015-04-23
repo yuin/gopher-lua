@@ -82,19 +82,23 @@ func (tb *LTable) MaxN() int {
 	return 0
 }
 
-func (tb *LTable) Remove(pos int) {
+func (tb *LTable) Remove(pos int) LValue {
 	i := pos - 1
 	larray := len(tb.array)
+	oldval := LNil
 	switch {
 	case i >= larray:
-		return
+		// nothing to do
 	case i == larray-1 || i < 0:
+		oldval = tb.array[larray-1]
 		tb.array = tb.array[:larray-1]
 	default:
+		oldval = tb.array[i]
 		copy(tb.array[i:], tb.array[i+1:])
 		tb.array[larray-1] = nil
 		tb.array = tb.array[:larray-1]
 	}
+	return oldval
 }
 
 func (tb *LTable) RawSet(key LValue, value LValue) {
