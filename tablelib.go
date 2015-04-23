@@ -40,11 +40,11 @@ func tableMaxN(L *LState) int {
 func tableRemove(L *LState) int {
 	tbl := L.CheckTable(1)
 	if L.GetTop() == 1 {
-		tbl.Remove(-1)
+		L.Push(tbl.Remove(-1))
 	} else {
-		tbl.Remove(L.CheckInt(2))
+		L.Push(tbl.Remove(L.CheckInt(2)))
 	}
-	return 0
+	return 1
 }
 
 func tableConcat(L *LState) int {
