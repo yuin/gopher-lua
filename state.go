@@ -755,10 +755,7 @@ func (ls *LState) setField(obj LValue, key LValue, value LValue) {
 		tb, istable := curobj.(*LTable)
 		if istable {
 			if tb.RawGet(key) != LNil {
-				if n, ok := key.(LNumber); ok && math.IsNaN(float64(n)) {
-					ls.RaiseError("table index is NaN")
-				}
-				tb.RawSet(key, value)
+				ls.RawSet(tb, key, value)
 				return
 			}
 		}
@@ -767,10 +764,7 @@ func (ls *LState) setField(obj LValue, key LValue, value LValue) {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v)", curobj.Type().String())
 			}
-			if n, ok := key.(LNumber); ok && math.IsNaN(float64(n)) {
-				ls.RaiseError("table index is NaN")
-			}
-			tb.RawSet(key, value)
+			ls.RawSet(tb, key, value)
 			return
 		}
 		if metaindex.Type() == LTFunction {
@@ -1245,6 +1239,11 @@ func (ls *LState) GetField(obj LValue, skey string) LValue {
 }
 
 func (ls *LState) RawSet(tb *LTable, key LValue, value LValue) {
+	if n, ok := key.(LNumber); ok && math.IsNaN(float64(n)) {
+		ls.RaiseError("table index is NaN")
+	} else if key == LNil {
+		ls.RaiseError("table index is nil")
+	}
 	tb.RawSet(key, value)
 }
 

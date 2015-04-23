@@ -9,7 +9,7 @@ import (
 const maxMemory = 40
 
 var gluaTests []string = []string{
-	"bugs.lua",
+	"issues.lua",
 }
 
 var luaTests []string = []string{
