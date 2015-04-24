@@ -8,6 +8,10 @@ GopherLua: VM and compiler for Lua in Go.
 .. image:: https://travis-ci.org/yuin/gopher-lua.svg
     :target: https://travis-ci.org/yuin/gopher-lua
 
+.. image:: https://badges.gitter.im/Join%20Chat.svg
+    :alt: Join the chat at https://gitter.im/yuin/gopher-lua
+    :target: https://gitter.im/yuin/gopher-lua?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+
 |
 
 GopherLua is a Lua5.1 VM and compiler written in Go. GopherLua has a same goal
@@ -585,17 +589,34 @@ Our workflow is based on the `github-flow <https://guides.github.com/introductio
 
 1. Create a new issue.
 2. Fork the project.
-3. Pull new changes from the upstream.
-    - ``git checkout master``
-    - ``git fetch upstream``
-    - ``git merge upstream/master``
-4. Create a feature branch
-    - ``git checkout -b <branch-name>``
-5. Commit your changes and reference the issue number in your comment.
-    - ``git commit -m "Issue #<issue-ref> : <your message>``
-6. Push the feature branch to your remote repository.
-    - ``git push origin <branch-name>``
-7. Open new pull request.
+3. Clone your fork and add the upstream.
+   ::
+
+        git remote add upstream https://github.com/yuin/gopher-lua.git
+
+4. Pull new changes from the upstream.
+   ::
+        
+        git checkout master
+        git fetch upstream
+        git merge upstream/master
+
+5. Create a feature branch
+   ::
+        
+        git checkout -b <branch-name>
+
+6. Commit your changes and reference the issue number in your comment.
+   ::
+        
+        git commit -m "Issue #<issue-ref> : <your message>
+
+7. Push the feature branch to your remote repository.
+   ::
+        
+        git commit -m "Issue #<issue-ref> : <your message>
+
+8. Open new pull request.
 
 ----------------------------------------------------------------
 License
