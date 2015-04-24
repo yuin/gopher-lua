@@ -20,7 +20,7 @@ Go APIs that allow you to easily embed a scripting language to your Go host
 programs.
 
 .. contents::
-   :depth: 2
+   :depth: 1
 
 ----------------------------------------------------------------
 Design principle
