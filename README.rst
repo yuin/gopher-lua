@@ -19,6 +19,9 @@ with Lua: **Be a scripting language with extensible semantics** . It provides
 Go APIs that allow you to easily embed a scripting language to your Go host 
 programs.
 
+.. contents::
+   :depth: 2
+
 ----------------------------------------------------------------
 Design principle
 ----------------------------------------------------------------
@@ -609,19 +612,14 @@ Our workflow is based on the `github-flow <https://guides.github.com/introductio
 6. Commit your changes and reference the issue number in your comment.
    ::
         
-        git commit -m "Issue #<issue-ref> : <your message>
+        git commit -m "Issue #<issue-ref> : <your message>"
 
 7. Push the feature branch to your remote repository.
    ::
         
-        git commit -m "Issue #<issue-ref> : <your message>
+        git push origin <branch-name>
 
 8. Open new pull request.
-
-----------------------------------------------------------------
-License
-----------------------------------------------------------------
-MIT
 
 ----------------------------------------------------------------
 Libraries for GopherLua
@@ -629,6 +627,11 @@ Libraries for GopherLua
 
 - `gopher-luar <https://github.com/layeh/gopher-luar>`_ : Custom type reflection for gopher-lua
 - `gluamapper <https://github.com/yuin/gluamapper>`_ : Mapping a Lua table to a Go struct
+
+----------------------------------------------------------------
+License
+----------------------------------------------------------------
+MIT
 
 ----------------------------------------------------------------
 Author
