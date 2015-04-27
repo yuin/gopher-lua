@@ -1391,7 +1391,9 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 			ls.reg.SetTop(base)
 		}
 		ls.stack.SetSp(sp)
-		ls.currentFrame = nil
+		if sp == 0 {
+			ls.currentFrame = nil
+		}
 	}()
 
 	ls.Call(nargs, nret)
