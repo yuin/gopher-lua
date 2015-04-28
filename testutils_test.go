@@ -29,6 +29,18 @@ func errorIfFalse(t *testing.T, cond bool, msg string, args ...interface{}) {
 	}
 }
 
+func errorIfNotNil(t *testing.T, v1 interface{}) {
+	if fmt.Sprint(v1) != "<nil>" {
+		t.Errorf("%v nil expected, but got '%v'", positionString(1), v1)
+	}
+}
+
+func errorIfNil(t *testing.T, v1 interface{}) {
+	if fmt.Sprint(v1) == "<nil>" {
+		t.Errorf("%v non-nil value expected, but got nil", positionString(1))
+	}
+}
+
 func errorIfScriptFail(t *testing.T, L *LState, script string) {
 	if err := L.DoString(script); err != nil {
 		t.Errorf("%v %v", positionString(1), err.Error())
