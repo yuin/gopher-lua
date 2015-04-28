@@ -31,7 +31,7 @@ func errorIfFalse(t *testing.T, cond bool, msg string, args ...interface{}) {
 
 func errorIfScriptFail(t *testing.T, L *LState, script string) {
 	if err := L.DoString(script); err != nil {
-		t.Error(err.Error())
+		t.Errorf("%v %v", positionString(1), err.Error())
 	}
 }
 
@@ -39,10 +39,10 @@ func errorIfScriptNotFail(t *testing.T, L *LState, script string, pattern string
 	if err := L.DoString(script); err != nil {
 		reg := regexp.MustCompile(pattern)
 		if len(reg.FindStringIndex(err.Error())) == 0 {
-			t.Errorf("error message '%v' does not contains given pattern string '%v'.", err.Error(), pattern)
+			t.Errorf("%v error message '%v' does not contains given pattern string '%v'.", positionString(1), err.Error(), pattern)
 			return
 		}
 		return
 	}
-	t.Errorf("script should fail")
+	t.Errorf("%v script should fail", positionString(1))
 }

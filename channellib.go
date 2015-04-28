@@ -122,25 +122,20 @@ var channelMethods = map[string]LGFunction{
 
 func channelReceive(L *LState) int {
 	rch := checkChannel(L, 1)
-	if rch.Type().ChanDir() == reflect.SendDir {
-		L.RaiseError("#1 is a send-only channel")
-	}
 	v, ok := rch.Recv()
 	if ok {
 		L.Push(LTrue)
+		L.Push(v.Interface().(LValue))
 	} else {
 		L.Push(LFalse)
+		L.Push(LNil)
 	}
-	L.Push(v.Interface().(LValue))
 	return 2
 }
 
 func channelSend(L *LState) int {
 	rch := checkChannel(L, 1)
 	v := checkGoroutineSafe(L, 2)
-	if rch.Type().ChanDir() == reflect.RecvDir {
-		L.RaiseError("#1 is a receive-only channel")
-	}
 	rch.Send(reflect.ValueOf(v))
 	return 0
 }

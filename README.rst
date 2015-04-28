@@ -407,11 +407,11 @@ Lua API
 - **channel.make([buf:int]) -> ch:channel**
     - Create new channel that has a buffer size of ``buf``. By default, ``buf`` is 0.
 
-- **channel.select(case:table [, case:table, case:table ...]) -> {index:int, recv:any, closed:bool}**
+- **channel.select(case:table [, case:table, case:table ...]) -> {index:int, recv:any, ok}**
     - Same as the ``select`` statement in Go. It returns the index of the chosen case and, if that 
       case was a receive operation, the value received and a boolean indicating whether the channel has been closed. 
     - ``case`` is a table that outlined below.
-        - receiving: `{"|<-", ch:channel [, handler:func(closed:bool, data:any)]}`
+        - receiving: `{"|<-", ch:channel [, handler:func(ok, data:any)]}`
         - sending: `{"<-|", ch:channel, data:any [, handler:func(data:any)]}`
         - default: `{"default" [, handler:func()]}`
 
@@ -419,11 +419,11 @@ Lua API
 
 .. code-block:: lua
 
-    local idx, recv, closed = channel.select(
+    local idx, recv, ok = channel.select(
       {"|<-", ch1},
       {"|<-", ch2}
     )
-    if closed then
+    if not ok then
         print("closed")
     elseif idx == 1 then -- received from ch1
         print(recv)
@@ -434,8 +434,8 @@ Lua API
 .. code-block:: lua
 
     channel.select(
-      {"|<-", ch1, function(closed, data)
-        print(closed, data)
+      {"|<-", ch1, function(ok, data)
+        print(ok, data)
       end},
       {"<-|", ch2, "value", function(data)
         print(data)
@@ -447,7 +447,7 @@ Lua API
 
 - **channel:send(data:any)**
     - Send ``data`` over the channel.
-- **channel:receive() -> closed:bool, data:any**
+- **channel:receive() -> ok:bool, data:any**
     - Receive some data over the channel.
 - **channel:close()**
     - Close the channel.
