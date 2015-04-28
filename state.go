@@ -1111,6 +1111,8 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 				if dbg.frame.Pc > 0 {
 					dbg.CurrentLine = f.Proto.DbgSourcePositions[dbg.frame.Pc-1]
 				}
+			} else {
+				dbg.CurrentLine = -1
 			}
 		case 'u':
 			dbg.NUpvalues = len(f.Upvalues)

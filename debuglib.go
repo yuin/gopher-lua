@@ -48,7 +48,11 @@ func debugGetInfo(L *LState) int {
 		return 1
 	}
 	tbl := L.NewTable()
-	tbl.RawSetH(LString("name"), LString(dbg.Name))
+	if len(dbg.Name) > 0 {
+		tbl.RawSetH(LString("name"), LString(dbg.Name))
+	} else {
+		tbl.RawSetH(LString("name"), LNil)
+	}
 	tbl.RawSetH(LString("what"), LString(dbg.What))
 	tbl.RawSetH(LString("source"), LString(dbg.Source))
 	tbl.RawSetH(LString("currentline"), LNumber(dbg.CurrentLine))
@@ -65,12 +69,16 @@ func debugGetLocal(L *LState) int {
 	idx := L.CheckInt(2)
 	dbg, ok := L.GetStack(level)
 	if !ok {
-		L.ArgError(1, "invalid level")
+		L.ArgError(1, "level out of range")
 	}
 	name, value := L.GetLocal(dbg, idx)
-	L.Push(LString(name))
-	L.Push(value)
-	return 2
+	if len(name) > 0 {
+		L.Push(LString(name))
+		L.Push(value)
+		return 2
+	}
+	L.Push(LNil)
+	return 1
 }
 
 func debugGetMetatable(L *LState) int {
@@ -102,7 +110,7 @@ func debugSetLocal(L *LState) int {
 	value := L.CheckAny(3)
 	dbg, ok := L.GetStack(level)
 	if !ok {
-		L.ArgError(1, "invalid level")
+		L.ArgError(1, "level out of range")
 	}
 	name := L.SetLocal(dbg, idx, value)
 	if len(name) > 0 {
