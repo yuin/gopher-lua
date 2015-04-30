@@ -4,5 +4,12 @@ go:
   - 1.3
   - 1.4
 
+before_install:
+  - go get github.com/axw/gocov/gocov
+  - go get github.com/mattn/goveralls
+  - if ! go get code.google.com/p/go.tools/cmd/cover; then go get golang.org/x/tools/cmd/cover; fi
 script:
-  - go test -cover
+    - $HOME/gopath/bin/goveralls -repotoken $COVERALLS_TOKEN
+env:
+  global:
+    secure: "QEMrswJs0PDGWqmyx6O+ZsLUrxK/ACyF13knQ70Kd3pawVued1KQ+7+elU5UL1EX19G66HPi0joBopXQAs6WO7iT3hmk/6ek2kSgVM8PYycLXDiOmdQlo2TB0nQQy4WHUhaPXDM7ds88GoZKD4Ut+tEOwe9+skB7v7bCMdRIISI="
