@@ -101,7 +101,7 @@ func (ls *LState) CheckThread(n int) *LState {
 func (ls *LState) CheckType(n int, typ LValueType) {
 	v := ls.Get(n)
 	if v.Type() != typ {
-		ls.ArgError(n, typ.String()+" expected")
+		ls.TypeError(n, typ)
 	}
 }
 
@@ -116,7 +116,7 @@ func (ls *LState) CheckTypes(n int, typs ...LValueType) {
 	for _, typ := range typs {
 		buf = append(buf, typ.String())
 	}
-	ls.ArgError(n, strings.Join(buf, " or ")+" expected")
+	ls.ArgError(n, strings.Join(buf, " or ")+" expected, got "+ls.Get(n).Type().String())
 }
 
 func (ls *LState) CheckOption(n int, options []string) int {
