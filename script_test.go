@@ -2,6 +2,7 @@ package lua
 
 import (
 	"fmt"
+	"github.com/yuin/gopher-lua/parse"
 	"os"
 	"testing"
 )
@@ -29,6 +30,26 @@ var luaTests []string = []string{
 	"files.lua",
 }
 
+func testScriptCompile(t *testing.T, script string) {
+	file, err := os.Open(script)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	chunk, err2 := parse.Parse(file, script)
+	if err2 != nil {
+		t.Fatal(err2)
+		return
+	}
+	parse.Dump(chunk)
+	proto, err3 := Compile(chunk, script)
+	if err3 != nil {
+		t.Fatal(err3)
+		return
+	}
+	proto.String()
+}
+
 func testScriptDir(t *testing.T, tests []string, directory string) {
 	if err := os.Chdir(directory); err != nil {
 		t.Error(err)
@@ -36,6 +57,7 @@ func testScriptDir(t *testing.T, tests []string, directory string) {
 	defer os.Chdir("..")
 	for _, script := range tests {
 		fmt.Printf("testing %s/%s\n", directory, script)
+		testScriptCompile(t, script)
 		L := NewState()
 		L.SetMx(maxMemory)
 		if err := L.DoFile(script); err != nil {
