@@ -287,20 +287,12 @@ func baseRawEqual(L *LState) int {
 }
 
 func baseRawGet(L *LState) int {
-	key := L.CheckAny(2)
-	if key == LNil {
-		L.ArgError(2, "index must not be nil")
-	}
-	L.Push(L.CheckTable(1).RawGet(key))
+	L.Push(L.RawGet(L.CheckTable(1), L.CheckAny(2)))
 	return 1
 }
 
 func baseRawSet(L *LState) int {
-	key := L.CheckAny(2)
-	if key == LNil {
-		L.ArgError(2, "index must not be nil")
-	}
-	L.CheckTable(1).RawSet(key, L.CheckAny(3))
+	L.RawSet(L.CheckTable(1), L.CheckAny(2), L.CheckAny(3))
 	return 0
 }
 
