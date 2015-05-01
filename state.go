@@ -1386,9 +1386,11 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 						} else {
 							err = rcv.(*ApiError)
 						}
+					} else {
 					}
 				}()
 				ls.Call(1, 1)
+				err = newApiError(ApiErrorError, "", ls.Get(-1))
 			}
 			ls.reg.SetTop(base)
 		}
