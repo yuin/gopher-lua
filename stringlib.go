@@ -384,7 +384,7 @@ func strUpper(L *LState) int {
 }
 
 func luaIndex2StringIndex(str string, i int, start bool) int {
-	if start {
+	if start && i != 0 {
 		i -= 1
 	}
 	l := len(str)
