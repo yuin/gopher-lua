@@ -26,3 +26,8 @@ assert(table.remove(tbl) == 5)
 assert(#tbl == 4)
 assert(table.remove(tbl, 3) == 3)
 assert(#tbl == 3)
+
+-- issue #24
+local tbl = {string.find('hello.world', '.', 0)}
+assert(tbl[1] == 1 and tbl[2] == 1)
+assert(string.sub('hello.world', 0, 2) == "he")
