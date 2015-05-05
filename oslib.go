@@ -68,13 +68,13 @@ func osExecute(L *LState) int {
 		return 1
 	}
 
-	_, err = process.Wait()
-	if err != nil {
+	ps, err := process.Wait()
+	if err != nil || !ps.Success() {
 		L.Push(LNumber(1))
 		return 1
 	}
 	L.Push(LNumber(0))
-	return 0
+	return 1
 }
 
 func osExit(L *LState) int {

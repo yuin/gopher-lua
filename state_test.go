@@ -33,6 +33,9 @@ func TestGetAndReplace(t *testing.T) {
 	L.Push(LString("a"))
 	L.Replace(1, LString("b"))
 	L.Replace(0, LString("c"))
+	errorIfNotEqual(t, LNil, L.Get(0))
+	errorIfNotEqual(t, LNil, L.Get(-10))
+	errorIfNotEqual(t, L.Env, L.Get(EnvironIndex))
 	errorIfNotEqual(t, LString("b"), L.Get(1))
 	L.Push(LString("c"))
 	L.Push(LString("d"))
@@ -77,6 +80,128 @@ func TestGetAndReplace(t *testing.T) {
 	errorIfScriptFail(t, L2, `clo()`)
 }
 
+func TestRemove(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	L.Push(LString("a"))
+	L.Push(LString("b"))
+	L.Push(LString("c"))
+
+	L.Remove(4)
+	errorIfNotEqual(t, LString("a"), L.Get(1))
+	errorIfNotEqual(t, LString("b"), L.Get(2))
+	errorIfNotEqual(t, LString("c"), L.Get(3))
+	errorIfNotEqual(t, 3, L.GetTop())
+
+	L.Remove(3)
+	errorIfNotEqual(t, LString("a"), L.Get(1))
+	errorIfNotEqual(t, LString("b"), L.Get(2))
+	errorIfNotEqual(t, LNil, L.Get(3))
+	errorIfNotEqual(t, 2, L.GetTop())
+	L.Push(LString("c"))
+
+	L.Remove(-10)
+	errorIfNotEqual(t, LString("a"), L.Get(1))
+	errorIfNotEqual(t, LString("b"), L.Get(2))
+	errorIfNotEqual(t, LString("c"), L.Get(3))
+	errorIfNotEqual(t, 3, L.GetTop())
+
+	L.Remove(2)
+	errorIfNotEqual(t, LString("a"), L.Get(1))
+	errorIfNotEqual(t, LString("c"), L.Get(2))
+	errorIfNotEqual(t, LNil, L.Get(3))
+	errorIfNotEqual(t, 2, L.GetTop())
+}
+
+func TestToInt(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	L.Push(LNumber(10))
+	L.Push(LString("99.9"))
+	L.Push(L.NewTable())
+	errorIfNotEqual(t, 10, L.ToInt(1))
+	errorIfNotEqual(t, 99, L.ToInt(2))
+	errorIfNotEqual(t, 0, L.ToInt(3))
+}
+
+func TestToInt64(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	L.Push(LNumber(10))
+	L.Push(LString("99.9"))
+	L.Push(L.NewTable())
+	errorIfNotEqual(t, int64(10), L.ToInt64(1))
+	errorIfNotEqual(t, int64(99), L.ToInt64(2))
+	errorIfNotEqual(t, int64(0), L.ToInt64(3))
+}
+
+func TestToNumber(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	L.Push(LNumber(10))
+	L.Push(LString("99.9"))
+	L.Push(L.NewTable())
+	errorIfNotEqual(t, LNumber(10), L.ToNumber(1))
+	errorIfNotEqual(t, LNumber(99.9), L.ToNumber(2))
+	errorIfNotEqual(t, LNumber(0), L.ToNumber(3))
+}
+
+func TestToString(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	L.Push(LNumber(10))
+	L.Push(LString("99.9"))
+	L.Push(L.NewTable())
+	errorIfNotEqual(t, "10", L.ToString(1))
+	errorIfNotEqual(t, "99.9", L.ToString(2))
+	errorIfNotEqual(t, "", L.ToString(3))
+}
+
+func TestToTable(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	L.Push(LNumber(10))
+	L.Push(LString("99.9"))
+	L.Push(L.NewTable())
+	errorIfFalse(t, L.ToTable(1) == nil, "index 1 must be nil")
+	errorIfFalse(t, L.ToTable(2) == nil, "index 2 must be nil")
+	errorIfNotEqual(t, L.Get(3), L.ToTable(3))
+}
+
+func TestToFunction(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	L.Push(LNumber(10))
+	L.Push(LString("99.9"))
+	L.Push(L.NewFunction(func(L *LState) int { return 0 }))
+	errorIfFalse(t, L.ToFunction(1) == nil, "index 1 must be nil")
+	errorIfFalse(t, L.ToFunction(2) == nil, "index 2 must be nil")
+	errorIfNotEqual(t, L.Get(3), L.ToFunction(3))
+}
+
+func TestToUserData(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	L.Push(LNumber(10))
+	L.Push(LString("99.9"))
+	L.Push(L.NewUserData())
+	errorIfFalse(t, L.ToUserData(1) == nil, "index 1 must be nil")
+	errorIfFalse(t, L.ToUserData(2) == nil, "index 2 must be nil")
+	errorIfNotEqual(t, L.Get(3), L.ToUserData(3))
+}
+
+func TestToChannel(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	L.Push(LNumber(10))
+	L.Push(LString("99.9"))
+	var ch chan LValue
+	L.Push(LChannel(ch))
+	errorIfFalse(t, L.ToChannel(1) == nil, "index 1 must be nil")
+	errorIfFalse(t, L.ToChannel(2) == nil, "index 2 must be nil")
+	errorIfNotEqual(t, ch, L.ToChannel(3))
+}
+
 func TestObjLen(t *testing.T) {
 	L := NewState()
 	defer L.Close()
@@ -93,6 +218,7 @@ func TestObjLen(t *testing.T) {
 	}))
 	L.SetMetatable(tbl, mt)
 	errorIfNotEqual(t, 3, L.ObjLen(tbl))
+	errorIfNotEqual(t, 0, L.ObjLen(LNumber(10)))
 }
 
 func TestConcat(t *testing.T) {

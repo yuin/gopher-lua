@@ -934,11 +934,11 @@ func (ls *LState) Remove(index int) {
 	reg := ls.indexToReg(index)
 	top := ls.reg.Top()
 	switch {
-	case reg > top:
+	case reg >= top:
 		return
 	case reg < ls.currentLocalBase():
 		return
-	case reg == top:
+	case reg == top-1:
 		ls.Pop(1)
 		return
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -301,11 +300,6 @@ func popenArgs(arg string) (string, []string) {
 	if LuaOS == "windows" {
 		cmd = "C:\\Windows\\system32\\cmd.exe"
 		args = []string{"/c"}
-	} else {
-		envsh := os.Getenv("SHELL")
-		if len(envsh) > 0 {
-			cmd = envsh
-		}
 	}
 	args = append(args, arg)
 	return cmd, args
