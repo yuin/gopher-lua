@@ -1,5 +1,5 @@
 local osname = "linux"
-if string.find(os.getenv("OS"), "Windows") then
+if string.find(os.getenv("OS") or "", "Windows") then
   osname = "windows"
 end
 
