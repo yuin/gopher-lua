@@ -347,7 +347,7 @@ func (ls *LState) raiseError(level int, format string, args ...interface{}) {
 		message = fmt.Sprintf(format, args...)
 	}
 	if level > 0 {
-		message = fmt.Sprintf("%v %v", ls.Where(level-1), message)
+		message = fmt.Sprintf("%v %v", ls.where(level-1, true), message)
 		message = ls.stackTrace(message, true)
 	}
 	ls.reg.Push(LString(message))
@@ -373,6 +373,26 @@ func (ls *LState) findLocal(frame *callFrame, no int) string {
 		return "(*temporary)"
 	}
 	return ""
+}
+
+func (ls *LState) where(level int, skipg bool) string {
+	dbg, ok := ls.GetStack(level)
+	if !ok {
+		return ""
+	}
+	cf := dbg.frame
+	proto := cf.Fn.Proto
+	sourcename := "[G]"
+	if proto != nil {
+		sourcename = proto.SourceName
+	} else if skipg {
+		return ls.where(level+1, skipg)
+	}
+	line := ""
+	if proto != nil {
+		line = fmt.Sprintf("%v:", proto.DbgSourcePositions[cf.Pc-1])
+	}
+	return fmt.Sprintf("%v:%v", sourcename, line)
 }
 
 func (ls *LState) stackTrace(message string, include bool) string {
@@ -1386,7 +1406,6 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 						} else {
 							err = rcv.(*ApiError)
 						}
-					} else {
 					}
 				}()
 				ls.Call(1, 1)

@@ -66,7 +66,9 @@ func baseCollectGarbage(L *LState) int {
 func baseDoFile(L *LState) int {
 	src := L.ToString(1)
 	top := L.GetTop()
-	L.DoFile(src)
+	if err := L.DoFile(src); err != nil {
+		L.RaiseError(err.Error())
+	}
 	return L.GetTop() - top
 }
 
@@ -168,14 +170,17 @@ func baseLoad(L *LState) int {
 		ret := L.reg.Pop()
 		if ret == LNil {
 			break
-		} else if str, ok := ret.(LString); ok {
+		} else if LVCanConvToString(ret) {
+			str := ret.String()
 			if len(str) > 0 {
 				buf = append(buf, string(str))
 			} else {
 				break
 			}
 		} else {
-			L.RaiseError("loader function must return a string or nil object.")
+			L.Push(LNil)
+			L.Push(LString("reader function must return a string"))
+			return 2
 		}
 	}
 	return loadaux(L, strings.NewReader(strings.Join(buf, "")), chunkname)
@@ -442,8 +447,8 @@ func baseXPCall(L *LState) int {
 		}
 		return 2
 	} else {
-		L.Insert(LTrue, 1)
-		return L.GetTop() - top - 1
+		L.Insert(LTrue, top+1)
+		return L.GetTop() - top
 	}
 }
 

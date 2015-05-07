@@ -247,21 +247,7 @@ func (ls *LState) TypeError(n int, typ LValueType) {
 /* debug operations {{{ */
 
 func (ls *LState) Where(level int) string {
-	dbg, ok := ls.GetStack(level)
-	if !ok {
-		return ""
-	}
-	cf := dbg.frame
-	proto := cf.Fn.Proto
-	sourcename := "[G]"
-	if proto != nil {
-		sourcename = proto.SourceName
-	}
-	line := ""
-	if proto != nil {
-		line = fmt.Sprintf("%v:", proto.DbgSourcePositions[cf.Pc-1])
-	}
-	return fmt.Sprintf("%v:%v", sourcename, line)
+	return ls.where(level, false)
 }
 
 /* }}} */
@@ -366,7 +352,7 @@ func (ls *LState) LoadFile(path string) (*LFunction, error) {
 		file, err = os.Open(path)
 		defer file.Close()
 		if err != nil {
-			return nil, newApiError(ApiErrorFile, fmt.Sprintf("can not read %v", path), LNil)
+			return nil, newApiError(ApiErrorFile, fmt.Sprintf("cannot open %v: %v", path, err.Error()), LNil)
 		}
 		reader = file
 	}
