@@ -1,5 +1,9 @@
 package lua
 
+import (
+  "fmt"
+)
+
 func debugOpen(L *LState) {
 	L.RegisterModule("debug", debugFuncs)
 }
@@ -145,6 +149,10 @@ func debugSetUpvalue(L *LState) int {
 
 func debugTraceback(L *LState) int {
 	msg := L.OptString(1, "")
-	L.Push(LString(L.stackTrace(msg, false)))
+	if len(msg) > 0 {
+		L.Push(LString(fmt.Sprintf("%s\n%s\n", msg, L.stackTrace(false))))
+	} else {
+		L.Push(LString(L.stackTrace(false)))
+	}
 	return 1
 }

@@ -99,11 +99,10 @@ func threadRun(L *LState) {
 	defer func() {
 		if rcv := recover(); rcv != nil {
 			var lv LValue
-			if v, ok := rcv.(LValue); ok {
-				lv = v
-			}
-			if lv == nil {
-				panic(rcv)
+			if v, ok := rcv.(*ApiError); ok {
+				lv = v.Object
+			} else {
+				lv = LString(fmt.Sprint(rcv))
 			}
 			if parent := L.Parent; parent != nil {
 				if L.wrapped {

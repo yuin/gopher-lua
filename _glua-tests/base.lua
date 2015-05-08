@@ -39,13 +39,10 @@ local ok, a, b = xpcall(function()
   end)
 assert(ok and a == "a" and b == "b")
 
---[[
 local ok, a, b = xpcall(function()
      error("error!")
   end, 
   function(err)
      return err .. "!", "b"
   end)
-print(ok, a, b)
 assert(not ok and string.find(a, "error!!") and b == nil)
---]]

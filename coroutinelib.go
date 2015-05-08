@@ -71,9 +71,7 @@ func coResume(L *LState) int {
 		L.XMoveTo(th, nargs)
 		cf.NArgs = nargs
 		th.initCallFrame(cf)
-		th.Panic = func(L *LState) {
-			panic(L.Get(-1))
-		}
+		th.Panic = panicWithoutTraceback
 	} else {
 		nargs := L.GetTop() - 1
 		L.XMoveTo(th, nargs)

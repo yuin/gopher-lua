@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -235,11 +234,11 @@ func (ls *LState) OptUserData(n int, d *LUserData) *LUserData {
 /* error operations {{{ */
 
 func (ls *LState) ArgError(n int, message string) {
-	ls.RaiseError("bad argument #%v to %v (%v)", n, ls.frameFuncName(ls.currentFrame), message)
+	ls.RaiseError("bad argument #%v to %v (%v)", n, ls.rawFrameFuncName(ls.currentFrame), message)
 }
 
 func (ls *LState) TypeError(n int, typ LValueType) {
-	ls.RaiseError("bad argument #%v to %v (%v expected, got %v)", n, ls.frameFuncName(ls.currentFrame), typ.String(), ls.Get(n).Type().String())
+	ls.RaiseError("bad argument #%v to %v (%v expected, got %v)", n, ls.rawFrameFuncName(ls.currentFrame), typ.String(), ls.Get(n).Type().String())
 }
 
 /* }}} */
@@ -352,11 +351,11 @@ func (ls *LState) LoadFile(path string) (*LFunction, error) {
 		file, err = os.Open(path)
 		defer file.Close()
 		if err != nil {
-			return nil, newApiError(ApiErrorFile, fmt.Sprintf("cannot open %v: %v", path, err.Error()), LNil)
+			return nil, newApiErrorS(ApiErrorFile, fmt.Sprintf("cannot open %v: %v", path, err.Error()))
 		}
 		reader = file
 	}
-	return ls.Load(reader, filepath.Base(path))
+	return ls.Load(reader, path)
 }
 
 func (ls *LState) LoadString(source string) (*LFunction, error) {

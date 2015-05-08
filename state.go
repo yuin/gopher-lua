@@ -20,18 +20,23 @@ const GlobalsIndex = -10002
 /* ApiError {{{ */
 
 type ApiError struct {
-	Type   ApiErrorType
-	Object LValue
+	Type       ApiErrorType
+	Object     LValue
+	StackTrace string
 }
 
-func newApiError(code ApiErrorType, message string, object LValue) *ApiError {
-	if len(message) > 0 {
-		object = LString(message)
-	}
-	return &ApiError{code, object}
+func newApiError(code ApiErrorType, object LValue) *ApiError {
+	return &ApiError{code, object, ""}
+}
+
+func newApiErrorS(code ApiErrorType, message string) *ApiError {
+	return newApiError(code, LString(message))
 }
 
 func (e *ApiError) Error() string {
+	if len(e.StackTrace) > 0 {
+		return fmt.Sprintf("%s\n%s", e.Object.String(), e.StackTrace)
+	}
 	return e.Object.String()
 }
 
@@ -120,7 +125,7 @@ func (cs *callFrameStack) Clear() {
 
 func (cs *callFrameStack) Push(v callFrame) error {
 	if cs.sp == CallStackSize {
-		return newApiError(ApiErrorRun, "stack overflow", LNil)
+		return newApiErrorS(ApiErrorRun, "stack overflow")
 	}
 	cs.array[cs.sp] = v
 	cs.array[cs.sp].Idx = cs.sp
@@ -277,14 +282,23 @@ func newGlobal() *Global {
 
 /* package local methods {{{ */
 
+func panicWithTraceback(L *LState) {
+	err := newApiError(ApiErrorRun, L.Get(-1))
+	err.StackTrace = L.stackTrace(true)
+	panic(err)
+}
+
+func panicWithoutTraceback(L *LState) {
+	err := newApiError(ApiErrorRun, L.Get(-1))
+	panic(err)
+}
+
 func newLState() *LState {
 	ls := &LState{
 		G:      newGlobal(),
 		Parent: nil,
-		Panic: func(L *LState) {
-			panic(L.Get(-1))
-		},
-		Dead: false,
+		Panic:  panicWithTraceback,
+		Dead:   false,
 
 		stop:         0,
 		reg:          newRegistry(RegistrySize),
@@ -348,7 +362,6 @@ func (ls *LState) raiseError(level int, format string, args ...interface{}) {
 	}
 	if level > 0 {
 		message = fmt.Sprintf("%v %v", ls.where(level-1, true), message)
-		message = ls.stackTrace(message, true)
 	}
 	ls.reg.Push(LString(message))
 	ls.Panic(ls)
@@ -395,11 +408,8 @@ func (ls *LState) where(level int, skipg bool) string {
 	return fmt.Sprintf("%v:%v", sourcename, line)
 }
 
-func (ls *LState) stackTrace(message string, include bool) string {
+func (ls *LState) stackTrace(include bool) string {
 	buf := []string{}
-	if len(message) > 0 {
-		buf = append(buf, message)
-	}
 	buf = append(buf, "stack traceback:")
 	if ls.currentFrame != nil {
 		i := 1
@@ -408,7 +418,7 @@ func (ls *LState) stackTrace(message string, include bool) string {
 		}
 		for dbg, ok := ls.GetStack(i); ok; dbg, ok = ls.GetStack(i) {
 			cf := dbg.frame
-			buf = append(buf, fmt.Sprintf("\t%v in %v", ls.Where(i), ls.frameFuncName(cf)))
+			buf = append(buf, fmt.Sprintf("\t%v in %v", ls.Where(i), ls.formattedFrameFuncName(cf)))
 			if !cf.Fn.IsG && cf.TailCall > 0 {
 				for tc := cf.TailCall; tc > 0; tc-- {
 					buf = append(buf, "\t(tailcall): ?")
@@ -427,19 +437,32 @@ func (ls *LState) stackTrace(message string, include bool) string {
 		buf = newbuf
 	}
 	ret := strings.Join(buf, "\n")
-	if len(buf) > 0 {
-		return "\n" + ret
-	}
 	return ret
 }
 
-func (ls *LState) frameFuncName(fr *callFrame) string {
+func (ls *LState) formattedFrameFuncName(fr *callFrame) string {
+	name, ischunk := ls.frameFuncName(fr)
+	if ischunk {
+		if name[0] != '(' && name[0] != '<' {
+			return fmt.Sprintf("function '%s'", name)
+		}
+		return fmt.Sprintf("function %s", name)
+	}
+	return name
+}
+
+func (ls *LState) rawFrameFuncName(fr *callFrame) string {
+	name, _ := ls.frameFuncName(fr)
+	return name
+}
+
+func (ls *LState) frameFuncName(fr *callFrame) (string, bool) {
 	frame := fr.Parent
 	if frame == nil {
 		if ls.Parent == nil {
-			return "main chunk"
+			return "main chunk", true
 		} else {
-			return "corountine"
+			return "corountine", true
 		}
 	}
 	if !frame.Fn.IsG {
@@ -450,11 +473,14 @@ func (ls *LState) frameFuncName(fr *callFrame) string {
 				if (name == "?" || fr.TailCall > 0) && !fr.Fn.IsG {
 					name = fmt.Sprintf("<%v:%v>", fr.Fn.Proto.SourceName, fr.Fn.Proto.LineDefined)
 				}
-				return name
+				return name, false
 			}
 		}
 	}
-	return "anonymous function"
+	if !fr.Fn.IsG {
+		return fmt.Sprintf("<%v:%v>", fr.Fn.Proto.SourceName, fr.Fn.Proto.LineDefined), false
+	}
+	return "(anonymous)", false
 }
 
 func (ls *LState) isStarted() bool {
@@ -1103,7 +1129,7 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 	}
 	f, ok := fn.(*LFunction)
 	if !ok {
-		return LNil, newApiError(ApiErrorRun, "can not get debug info(an object in not a function)", LNil)
+		return LNil, newApiErrorS(ApiErrorRun, "can not get debug info(an object in not a function)")
 	}
 
 	retfn := false
@@ -1138,10 +1164,10 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 			dbg.NUpvalues = len(f.Upvalues)
 		case 'n':
 			if dbg.frame != nil {
-				dbg.Name = ls.frameFuncName(dbg.frame)
+				dbg.Name = ls.rawFrameFuncName(dbg.frame)
 			}
 		default:
-			return LNil, newApiError(ApiErrorRun, "invalid what: "+string(c), LNil)
+			return LNil, newApiErrorS(ApiErrorRun, "invalid what: "+string(c))
 		}
 	}
 
@@ -1357,11 +1383,11 @@ func (ls *LState) Register(name string, fn LGFunction) {
 func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 	chunk, err := parse.Parse(reader, name)
 	if err != nil {
-		return nil, newApiError(ApiErrorSyntax, err.Error(), LNil)
+		return nil, newApiErrorS(ApiErrorSyntax, err.Error())
 	}
 	proto, err := Compile(chunk, name)
 	if err != nil {
-		return nil, newApiError(ApiErrorSyntax, err.Error(), LNil)
+		return nil, newApiErrorS(ApiErrorSyntax, err.Error())
 	}
 	return newLFunctionL(proto, ls.currentEnv(), 0), nil
 }
@@ -1375,9 +1401,7 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 	sp := ls.stack.Sp()
 	base := ls.reg.Top() - nargs - 1
 	oldpanic := ls.Panic
-	ls.Panic = func(L *LState) {
-		panic(newApiError(ApiErrorRun, "", L.Get(-1)))
-	}
+	ls.Panic = panicWithoutTraceback
 	defer func() {
 		ls.Panic = oldpanic
 		rcv := recover()
@@ -1385,16 +1409,15 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 			if _, ok := rcv.(*ApiError); !ok {
 				buf := make([]byte, 4096)
 				runtime.Stack(buf, false)
-				err = newApiError(ApiErrorPanic, fmt.Sprintf("%v\n%v", rcv, strings.Trim(string(buf), "\000")), LNil)
+				err = newApiErrorS(ApiErrorPanic, fmt.Sprint(rcv))
+				err.(*ApiError).StackTrace = strings.Trim(string(buf), "\000")
 			} else {
 				err = rcv.(*ApiError)
 			}
 			if errfunc != nil {
 				ls.Push(errfunc)
 				ls.Push(err.(*ApiError).Object)
-				ls.Panic = func(L *LState) {
-					panic(newApiError(ApiErrorError, "", L.Get(-1)))
-				}
+				ls.Panic = panicWithoutTraceback
 				defer func() {
 					ls.Panic = oldpanic
 					rcv := recover()
@@ -1402,14 +1425,18 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 						if _, ok := rcv.(*ApiError); !ok {
 							buf := make([]byte, 4096)
 							runtime.Stack(buf, false)
-							err = newApiError(ApiErrorPanic, fmt.Sprintf("%v\n%v", rcv, strings.Trim(string(buf), "\000")), LNil)
+							err = newApiErrorS(ApiErrorPanic, fmt.Sprint(rcv))
+							err.(*ApiError).StackTrace = strings.Trim(string(buf), "\000")
 						} else {
 							err = rcv.(*ApiError)
+							err.(*ApiError).StackTrace = ls.stackTrace(true)
 						}
 					}
 				}()
 				ls.Call(1, 1)
-				err = newApiError(ApiErrorError, "", ls.Get(-1))
+				err = newApiError(ApiErrorError, ls.Get(-1))
+			} else {
+				err.(*ApiError).StackTrace = ls.stackTrace(true)
 			}
 			ls.reg.SetTop(base)
 		}
@@ -1505,10 +1532,10 @@ func (ls *LState) Resume(th *LState, fn *LFunction, args ...LValue) (ResumeState
 	}
 
 	if ls.G.CurrentThread == th {
-		return ResumeError, newApiError(ApiErrorRun, "can not resume a running thread", LNil), nil
+		return ResumeError, newApiErrorS(ApiErrorRun, "can not resume a running thread"), nil
 	}
 	if th.Dead {
-		return ResumeError, newApiError(ApiErrorRun, "can not resume a dead thread", LNil), nil
+		return ResumeError, newApiErrorS(ApiErrorRun, "can not resume a dead thread"), nil
 	}
 	th.Parent = ls
 	ls.G.CurrentThread = th
@@ -1521,9 +1548,7 @@ func (ls *LState) Resume(th *LState, fn *LFunction, args ...LValue) (ResumeState
 		}
 		cf.NArgs = len(args)
 		th.initCallFrame(cf)
-		th.Panic = func(L *LState) {
-			panic(L.Get(-1))
-		}
+		th.Panic = panicWithoutTraceback
 	} else {
 		for _, arg := range args {
 			th.Push(arg)
@@ -1536,10 +1561,13 @@ func (ls *LState) Resume(th *LState, fn *LFunction, args ...LValue) (ResumeState
 	for idx := top + 2; idx <= ls.GetTop(); idx++ {
 		ret = append(ret, ls.Get(idx))
 	}
+	if len(ret) == 0 {
+		ret = append(ret, LNil)
+	}
 	ls.SetTop(top)
 
 	if haserror {
-		return ResumeError, newApiError(ApiErrorRun, fmt.Sprint(ret[0]), LNil), nil
+		return ResumeError, newApiError(ApiErrorRun, ret[0]), nil
 	} else if th.stack.IsEmpty() {
 		return ResumeOK, nil, ret
 	}
