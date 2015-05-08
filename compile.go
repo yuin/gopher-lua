@@ -101,14 +101,6 @@ func raiseCompileError(context *funcContext, line int, format string, args ...in
 	panic(&CompileError{Context: context, Line: line, Message: msg})
 }
 
-func isConstFoldableExpr(ex ast.Expr) bool {
-	switch ex.(type) {
-	case *ast.NumberExpr, *constLValueExpr:
-		return true
-	}
-	return false
-}
-
 func isVarArgReturnExpr(expr ast.Expr) bool {
 	switch ex := expr.(type) {
 	case *ast.FuncCallExpr:
@@ -1347,11 +1339,6 @@ func compileLogicalOpExpr(context *funcContext, reg int, expr *ast.LogicalOpExpr
 		compileLogicalOpExprAux(context, reg, expr.Rhs, ec, endlabel, endlabel, false, lb)
 	}
 
-	lastinst := code.Last()
-	if opGetOpCode(lastinst) == OP_JMP && opGetArgSbx(lastinst) == lb.f {
-		code.Pop()
-	}
-
 	if lb.b {
 		context.SetLabelPc(lb.f, code.LastPC())
 		code.AddABC(OP_LOADBOOL, a, 0, 1, sline(expr))
@@ -1359,7 +1346,7 @@ func compileLogicalOpExpr(context *funcContext, reg int, expr *ast.LogicalOpExpr
 		code.AddABC(OP_LOADBOOL, a, 1, 0, sline(expr))
 	}
 
-	lastinst = code.Last()
+	lastinst := code.Last()
 	if opGetOpCode(lastinst) == OP_JMP && opGetArgSbx(lastinst) == endlabel {
 		code.Pop()
 	}
@@ -1531,8 +1518,6 @@ func getIdentRefType(context *funcContext, current *funcContext, expr *ast.Ident
 func getExprName(context *funcContext, expr ast.Expr) string { // {{{
 	switch ex := expr.(type) {
 	case *ast.IdentExpr:
-		return ex.Value
-	case *ast.StringExpr:
 		return ex.Value
 	case *ast.AttrGetExpr:
 		switch kex := ex.Key.(type) {
