@@ -322,8 +322,6 @@ func init() {
 			switch lv := L.rkValue(B).(type) {
 			case LString:
 				reg.Set(RA, LNumber(len(lv)))
-			case *LTable:
-				reg.Set(RA, LNumber(lv.Len()))
 			default:
 				op := L.metaOp1(lv, "__len")
 				if op.Type() == LTFunction {
@@ -331,6 +329,8 @@ func init() {
 					reg.Push(lv)
 					L.Call(1, 1)
 					reg.Set(RA, reg.Pop())
+				} else if lv.Type() == LTTable {
+					reg.Set(RA, LNumber(lv.(*LTable).Len()))
 				} else {
 					L.RaiseError("__len undefined")
 				}
@@ -825,7 +825,7 @@ func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
 	if lhs.Type() == LTNumber && rhs.Type() == LTNumber {
 		return numberArith(L, opcode, lhs.(LNumber), rhs.(LNumber))
 	}
-	L.RaiseError(fmt.Sprintf("cannot performs %v operation between %v and %v",
+	L.RaiseError(fmt.Sprintf("cannot perform %v operation between %v and %v",
 		strings.TrimLeft(event, "_"), lhs.Type().String(), rhs.Type().String()))
 
 	return LNil
@@ -939,10 +939,8 @@ func objectRationalWithError(L *LState, lhs, rhs LValue, event string) bool {
 		return true
 	case 0:
 		return false
-	default:
-		L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
-		return false
 	}
+	L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
 	return false
 }
 
