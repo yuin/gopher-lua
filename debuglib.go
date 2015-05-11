@@ -1,7 +1,7 @@
 package lua
 
 import (
-  "fmt"
+	"fmt"
 )
 
 func debugOpen(L *LState) {
