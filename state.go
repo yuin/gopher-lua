@@ -647,37 +647,42 @@ func (ls *LState) initCallFrame(cf *callFrame) {
 	if cf.Fn.IsG {
 		ls.reg.SetTop(cf.LocalBase + cf.NArgs)
 	} else {
-		/* swap vararg positions:
-				   closure
-				   namedparam1 <- lbase
-				   namedparam2
-				   vararg1
-				   vararg2
-
-		           TO
-
-				   closure
-				   nil
-				   nil
-				   vararg1
-				   vararg2
-				   namedparam1 <- lbase
-				   namedparam2
-		*/
 		proto := cf.Fn.Proto
 		nargs := cf.NArgs
 		np := int(proto.NumParameters)
-		nvarargs := nargs - np
-		if nvarargs < 0 {
-			nvarargs = 0
-		}
 		for i := nargs; i < np; i++ {
-			//ls.reg.Set(cf.LocalBase+i, LNil)
 			ls.reg.array[cf.LocalBase+i] = LNil
 			nargs = np
 		}
 
-		if (proto.IsVarArg & VarArgIsVarArg) != 0 {
+		if (proto.IsVarArg & VarArgIsVarArg) == 0 {
+			for i := np; i < nargs; i++ {
+				ls.reg.array[cf.LocalBase+i] = LNil
+			}
+			ls.reg.SetTop(cf.LocalBase + int(proto.NumUsedRegisters))
+		} else {
+			/* swap vararg positions:
+					   closure
+					   namedparam1 <- lbase
+					   namedparam2
+					   vararg1
+					   vararg2
+
+			           TO
+
+					   closure
+					   nil
+					   nil
+					   vararg1
+					   vararg2
+					   namedparam1 <- lbase
+					   namedparam2
+			*/
+			nvarargs := nargs - np
+			if nvarargs < 0 {
+				nvarargs = 0
+			}
+
 			ls.reg.SetTop(cf.LocalBase + nargs + np)
 			for i := 0; i < np; i++ {
 				//ls.reg.Set(cf.LocalBase+nargs+i, ls.reg.Get(cf.LocalBase+i))
@@ -701,18 +706,8 @@ func (ls *LState) initCallFrame(cf *callFrame) {
 				}
 			}
 			cf.LocalBase += nargs
-		} else {
-			for i := np; i < nargs; i++ {
-				ls.reg.array[cf.LocalBase+i] = LNil
-			}
-			ls.reg.SetTop(cf.LocalBase + np + 1)
-		}
-		maxreg := cf.LocalBase + int(proto.NumUsedRegisters)
-		top := ls.reg.Top()
-		ls.reg.SetTop(maxreg)
-		for i := top; i < maxreg; i++ {
-			//ls.reg.Set(i, LNil)
-			ls.reg.array[i] = LNil
+			maxreg := cf.LocalBase + int(proto.NumUsedRegisters)
+			ls.reg.SetTop(maxreg)
 		}
 	}
 }
