@@ -31,7 +31,7 @@ Design principle
 
 - Be a scripting language with extensible semantics.
 - User-friendly Go API
-    - The stack besed API like the one used in the original Lua 
+    - The stack based API like the one used in the original Lua 
       implementation will cause a performance improvements in GopherLua
       (It will reduce memory allocations and concrete type <-> interface conversions).
       GopherLua API is **not** the stack based API.
@@ -327,7 +327,7 @@ If ``Protect`` is false, GopherLua will panic instead of returning an ``error`` 
 +++++++++++++++++++++++++++++++++++++++++
 User-Defined types
 +++++++++++++++++++++++++++++++++++++++++
-You can exntend GopherLua with new types wrriten in Go.
+You can extend GopherLua with new types written in Go.
 ``LUserData`` is provided for this purpose.
 
 .. code-block:: go
@@ -641,7 +641,7 @@ Unsupported functions
 Miscellaneous notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- ``file:setvbuf`` does not support a line bufferring.
+- ``file:setvbuf`` does not support a line buffering.
 - Daylight saving time is not supported.
 - GopherLua has a function to set an environment variable : ``os.setenv(name, value)``
 
@@ -659,7 +659,7 @@ Lua has an interpreter called ``lua`` . GopherLua has an interpreter called ``gl
 ----------------------------------------------------------------
 How to Contribute
 ----------------------------------------------------------------
-Any kind of contributions are wellcome.
+Any kind of contributions are welcome.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Pull requests
