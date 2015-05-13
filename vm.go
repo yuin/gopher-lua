@@ -492,9 +492,6 @@ func init() {
 			if callable.IsG && callGFunction(L, false) {
 				return 1
 			}
-			if L.currentFrame == nil || L.currentFrame.Fn.IsG {
-				return 1
-			}
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_TAILCALL
