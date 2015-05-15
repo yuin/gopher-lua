@@ -537,6 +537,13 @@ func (ls *LState) rkValue(idx int) LValue {
 	return ls.reg.array[ls.currentFrame.LocalBase+idx]
 }
 
+func (ls *LState) rkString(idx int) string {
+	if (idx & opBitRk) != 0 {
+		return ls.currentFrame.Fn.Proto.stringConstants[idx & ^opBitRk]
+	}
+	return string(ls.reg.array[ls.currentFrame.LocalBase+idx].(LString))
+}
+
 func (ls *LState) closeUpvalues(idx int) {
 	if ls.uvcache == nil {
 		return

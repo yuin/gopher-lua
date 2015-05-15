@@ -43,12 +43,14 @@ const (
 	OP_LOADNIL             /*   A B     R(A) := ... := R(B) := nil                      */
 	OP_GETUPVAL            /*  A B     R(A) := UpValue[B]                              */
 
-	OP_GETGLOBAL /* A Bx    R(A) := Gbl[Kst(Bx)]                            */
-	OP_GETTABLE  /*  A B C   R(A) := R(B)[RK(C)]                             */
+	OP_GETGLOBAL  /* A Bx    R(A) := Gbl[Kst(Bx)]                            */
+	OP_GETTABLE   /*  A B C   R(A) := R(B)[RK(C)]                             */
+	OP_GETTABLEKS /*  A B C   R(A) := R(B)[RK(C)] ; RK(C) is constant string */
 
-	OP_SETGLOBAL /* A Bx    Gbl[Kst(Bx)] := R(A)                            */
-	OP_SETUPVAL  /*  A B     UpValue[B] := R(A)                              */
-	OP_SETTABLE  /*  A B C   R(A)[RK(B)] := RK(C)                            */
+	OP_SETGLOBAL  /* A Bx    Gbl[Kst(Bx)] := R(A)                            */
+	OP_SETUPVAL   /*  A B     UpValue[B] := R(A)                              */
+	OP_SETTABLE   /*  A B C   R(A)[RK(B)] := RK(C)                            */
+	OP_SETTABLEKS /*  A B C   R(A)[RK(B)] := RK(C) ; RK(B) is constant string */
 
 	OP_NEWTABLE /*  A B C   R(A) := {} (size = BC)                         */
 
@@ -130,9 +132,11 @@ var opProps = []opProp{
 	opProp{"GETUPVAL", false, true, opArgModeU, opArgModeN, opTypeABC},
 	opProp{"GETGLOBAL", false, true, opArgModeK, opArgModeN, opTypeABx},
 	opProp{"GETTABLE", false, true, opArgModeR, opArgModeK, opTypeABC},
+	opProp{"GETTABLEKS", false, true, opArgModeR, opArgModeK, opTypeABC},
 	opProp{"SETGLOBAL", false, false, opArgModeK, opArgModeN, opTypeABx},
 	opProp{"SETUPVAL", false, false, opArgModeU, opArgModeN, opTypeABC},
 	opProp{"SETTABLE", false, false, opArgModeK, opArgModeK, opTypeABC},
+	opProp{"SETTABLEKS", false, false, opArgModeK, opArgModeK, opTypeABC},
 	opProp{"NEWTABLE", false, true, opArgModeU, opArgModeU, opTypeABC},
 	opProp{"SELF", false, true, opArgModeR, opArgModeK, opTypeABC},
 	opProp{"ADD", false, true, opArgModeK, opArgModeK, opTypeABC},
@@ -290,12 +294,16 @@ func opToString(inst uint32) string {
 		buf += fmt.Sprintf("; R(%v) := Gbl[Kst(%v)]", arga, argbx)
 	case OP_GETTABLE:
 		buf += fmt.Sprintf("; R(%v) := R(%v)[RK(%v)]", arga, argb, argc)
+	case OP_GETTABLEKS:
+		buf += fmt.Sprintf("; R(%v) := R(%v)[RK(%v)] ; RK(%v) is constant string", arga, argb, argc, argc)
 	case OP_SETGLOBAL:
 		buf += fmt.Sprintf("; Gbl[Kst(%v)] := R(%v)", argbx, arga)
 	case OP_SETUPVAL:
 		buf += fmt.Sprintf("; UpValue[%v] := R(%v)", argb, arga)
 	case OP_SETTABLE:
 		buf += fmt.Sprintf("; R(%v)[RK(%v)] := RK(%v)", arga, argb, argc)
+	case OP_SETTABLEKS:
+		buf += fmt.Sprintf("; R(%v)[RK(%v)] := RK(%v) ; RK(%v) is constant string", arga, argb, argc, argb)
 	case OP_NEWTABLE:
 		buf += fmt.Sprintf("; R(%v) := {} (size = BC)", arga)
 	case OP_SELF:

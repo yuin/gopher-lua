@@ -194,7 +194,8 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			Bx := int(inst & 0x3ffff) //GETBX
-			reg.Set(RA, L.getField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx]))
+			//reg.Set(RA, L.getField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx]))
+			reg.Set(RA, L.getFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx]))
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_GETTABLE
@@ -208,6 +209,17 @@ func init() {
 			reg.Set(RA, L.getField(reg.Get(lbase+B), L.rkValue(C)))
 			return 0
 		},
+		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_GETTABLEKS
+			reg := L.reg
+			cf := L.currentFrame
+			lbase := cf.LocalBase
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			reg.Set(RA, L.getFieldString(reg.Get(lbase+B), L.rkString(C)))
+			return 0
+		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SETGLOBAL
 			reg := L.reg
 			cf := L.currentFrame
@@ -215,7 +227,8 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			Bx := int(inst & 0x3ffff) //GETBX
-			L.setField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx], reg.Get(RA))
+			//L.setField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx], reg.Get(RA))
+			L.setFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx], reg.Get(RA))
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SETUPVAL
@@ -237,6 +250,17 @@ func init() {
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
 			L.setField(reg.Get(RA), L.rkValue(B), L.rkValue(C))
+			return 0
+		},
+		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SETTABLEKS
+			reg := L.reg
+			cf := L.currentFrame
+			lbase := cf.LocalBase
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			L.setFieldString(reg.Get(RA), L.rkString(B), L.rkValue(C))
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_NEWTABLE

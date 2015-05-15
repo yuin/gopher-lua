@@ -619,6 +619,7 @@ func compileAssignStmt(context *funcContext, stmt *ast.AssignStmt) { // {{{
 			code.AddABC(OP_SETUPVAL, reg, context.Upvalues.RegisterUnique(ex.(*ast.IdentExpr).Value), 0, sline(ex))
 			reg -= 1
 		case ecTable:
+			// TODO: OP_SETTABLEKS
 			code.AddABC(OP_SETTABLE, acs[i].ec.reg, acs[i].keyrk, acs[i].valuerk, sline(ex))
 			if !opIsK(acs[i].valuerk) {
 				reg -= 1
@@ -988,7 +989,11 @@ func compileExpr(context *funcContext, reg int, expr ast.Expr, ec *expcontext) i
 		compileExprWithMVPropagation(context, ex.Object, &reg, &b)
 		c := reg
 		compileExprWithKMVPropagation(context, ex.Key, &reg, &c)
-		code.AddABC(OP_GETTABLE, a, b, c, sline(ex))
+		opcode := OP_GETTABLE
+		if _, ok := ex.Key.(*ast.StringExpr); ok {
+			opcode = OP_GETTABLEKS
+		}
+		code.AddABC(opcode, a, b, c, sline(ex))
 		return sused
 	case *ast.TableExpr:
 		compileTableExpr(context, reg, ex, ec)
@@ -1129,6 +1134,13 @@ func compileFunctionExpr(context *funcContext, funcexpr *ast.FunctionExpr, ec *e
 	context.Proto.DbgSourcePositions = context.Code.PosList()
 	context.Proto.DbgUpvalues = context.Upvalues.Names()
 	context.Proto.NumUpvalues = uint8(len(context.Proto.DbgUpvalues))
+	for _, clv := range context.Proto.Constants {
+		sv := ""
+		if slv, ok := clv.(LString); ok {
+			sv = string(slv)
+		}
+		context.Proto.stringConstants = append(context.Proto.stringConstants, sv)
+	}
 	patchCode(context)
 } // }}}
 
@@ -1164,7 +1176,11 @@ func compileTableExpr(context *funcContext, reg int, ex *ast.TableExpr, ec *expc
 			compileExprWithKMVPropagation(context, field.Key, &reg, &b)
 			c := reg
 			compileExprWithKMVPropagation(context, field.Value, &reg, &c)
-			code.AddABC(OP_SETTABLE, tablereg, b, c, sline(ex))
+			opcode := OP_SETTABLE
+			if _, ok := field.Key.(*ast.StringExpr); ok {
+				opcode = OP_SETTABLEKS
+			}
+			code.AddABC(opcode, tablereg, b, c, sline(ex))
 			reg = regorg
 		}
 		flush := arraycount % FieldsPerFlush

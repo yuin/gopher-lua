@@ -38,6 +38,8 @@ type FunctionProto struct {
 	DbgLocals          []*DbgLocalInfo
 	DbgCalls           []DbgCall
 	DbgUpvalues        []string
+
+	stringConstants []string
 }
 
 /* Upvalue {{{ */
@@ -102,6 +104,8 @@ func newFunctionProto(name string) *FunctionProto {
 		DbgLocals:          make([]*DbgLocalInfo, 0, 16),
 		DbgCalls:           make([]DbgCall, 0, 128),
 		DbgUpvalues:        make([]string, 0, 16),
+
+		stringConstants: make([]string, 0, 32),
 	}
 }
 
