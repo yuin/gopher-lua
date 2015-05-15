@@ -97,16 +97,16 @@ func osDate(L *LState) int {
 		}
 		if strings.HasPrefix(cfmt, "*t") {
 			ret := L.NewTable()
-			ret.RawSetH(LString("year"), LNumber(t.Year()))
-			ret.RawSetH(LString("month"), LNumber(t.Month()))
-			ret.RawSetH(LString("day"), LNumber(t.Day()))
-			ret.RawSetH(LString("hour"), LNumber(t.Hour()))
-			ret.RawSetH(LString("min"), LNumber(t.Minute()))
-			ret.RawSetH(LString("sec"), LNumber(t.Second()))
-			ret.RawSetH(LString("wday"), LNumber(t.Weekday()))
+			ret.RawSetString("year", LNumber(t.Year()))
+			ret.RawSetString("month", LNumber(t.Month()))
+			ret.RawSetString("day", LNumber(t.Day()))
+			ret.RawSetString("hour", LNumber(t.Hour()))
+			ret.RawSetString("min", LNumber(t.Minute()))
+			ret.RawSetString("sec", LNumber(t.Second()))
+			ret.RawSetString("wday", LNumber(t.Weekday()))
 			// TODO yday & dst
-			ret.RawSetH(LString("yday"), LNumber(0))
-			ret.RawSetH(LString("isdst"), LFalse)
+			ret.RawSetString("yday", LNumber(0))
+			ret.RawSetString("isdst", LFalse)
 			L.Push(ret)
 			return 1
 		}

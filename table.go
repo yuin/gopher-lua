@@ -35,6 +35,7 @@ func newLTable(acap int, hcap int) *LTable {
 	tb := &LTable{
 		array:     make([]LValue, 0, acap),
 		dict:      make(map[LValue]LValue, hcap),
+		strdict:   make(map[string]LValue, hcap),
 		keys:      nil,
 		k2i:       nil,
 		Metatable: LNil,
@@ -120,7 +121,11 @@ func (tb *LTable) RawSet(key LValue, value LValue) {
 			}
 			return
 		}
+	case LString:
+		tb.RawSetString(string(v), value)
+		return
 	}
+
 	tb.RawSetH(key, value)
 }
 
@@ -144,7 +149,20 @@ func (tb *LTable) RawSetInt(key int, value LValue) {
 	}
 }
 
+func (tb *LTable) RawSetString(key string, value LValue) {
+	if value == LNil {
+		delete(tb.strdict, key)
+	} else {
+		tb.strdict[key] = value
+	}
+}
+
 func (tb *LTable) RawSetH(key LValue, value LValue) {
+	if s, ok := key.(LString); ok {
+		tb.RawSetString(string(s), value)
+		return
+	}
+
 	if value == LNil {
 		delete(tb.dict, key)
 	} else {
@@ -162,6 +180,11 @@ func (tb *LTable) RawGet(key LValue) LValue {
 			}
 			return tb.array[index]
 		}
+	case LString:
+		if ret, ok := tb.strdict[string(v)]; ok {
+			return ret
+		}
+		return LNil
 	}
 	if v, ok := tb.dict[key]; ok {
 		return v
@@ -178,7 +201,20 @@ func (tb *LTable) RawGetInt(key int) LValue {
 }
 
 func (tb *LTable) RawGetH(key LValue) LValue {
+	if s, sok := key.(LString); sok {
+		if v, vok := tb.strdict[string(s)]; vok {
+			return v
+		}
+		return LNil
+	}
 	if v, ok := tb.dict[key]; ok {
+		return v
+	}
+	return LNil
+}
+
+func (tb *LTable) RawGetString(key string) LValue {
+	if v, vok := tb.strdict[string(key)]; vok {
 		return v
 	}
 	return LNil
@@ -188,6 +224,11 @@ func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 	for i, v := range tb.array {
 		if v != LNil {
 			cb(LNumber(i+1), v)
+		}
+	}
+	for k, v := range tb.strdict {
+		if v != LNil {
+			cb(LString(k), v)
 		}
 	}
 	for k, v := range tb.dict {
@@ -206,12 +247,17 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 	}
 
 	if tb.keys == nil {
-		tb.keys = make([]LValue, len(tb.dict))
+		tb.keys = make([]LValue, len(tb.dict)+len(tb.strdict))
 		tb.k2i = make(map[LValue]int)
 		i := 0
 		for k, _ := range tb.dict {
 			tb.keys[i] = k
 			tb.k2i[k] = i
+			i++
+		}
+		for k, _ := range tb.strdict {
+			tb.keys[i] = LString(k)
+			tb.k2i[LString(k)] = i
 			i++
 		}
 	}
@@ -224,21 +270,30 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 			}
 		}
 		if index == len(tb.array) {
-			if len(tb.dict) == 0 {
+			if len(tb.dict) == 0 && len(tb.strdict) == 0 {
 				tb.keys = nil
 				tb.k2i = nil
 				return LNil, LNil
 			}
 			key = tb.keys[0]
-			if v := tb.dict[key]; v != LNil {
+			if v, vok := tb.dict[key]; vok && v != LNil {
 				return key, v
+			} else if skey, sok := key.(LString); sok {
+				if sv, svok := tb.strdict[string(skey)]; svok && sv != LNil {
+					return key, sv
+				}
 			}
 		}
 	}
-	for i := tb.k2i[key] + 1; i < len(tb.dict); i++ {
+	length := len(tb.dict) + len(tb.strdict)
+	for i := tb.k2i[key] + 1; i < length; i++ {
 		key = tb.keys[i]
-		if v := tb.dict[key]; v != LNil {
+		if v, vok := tb.dict[key]; vok && v != LNil {
 			return key, v
+		} else if skey, sok := key.(LString); sok {
+			if sv, svok := tb.strdict[string(skey)]; svok && sv != LNil {
+				return key, sv
+			}
 		}
 	}
 	tb.keys = nil

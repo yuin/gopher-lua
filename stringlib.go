@@ -11,9 +11,9 @@ func stringOpen(L *LState) {
 	if !ok {
 		mod := L.RegisterModule("string", strFuncs).(*LTable)
 		gmatch := L.NewClosure(strGmatch, L.NewFunction(strGmatchIter))
-		mod.RawSetH(LString("gmatch"), gmatch)
-		mod.RawSetH(LString("gfind"), gmatch)
-		mod.RawSetH(LString("__index"), mod)
+		mod.RawSetString("gmatch", gmatch)
+		mod.RawSetString("gfind", gmatch)
+		mod.RawSetString("__index", mod)
 		L.G.builtinMts[int(LTString)] = mod
 	}
 }

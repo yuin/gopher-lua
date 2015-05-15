@@ -168,21 +168,21 @@ var stdFiles = []struct {
 func ioOpen(L *LState) {
 	mod := L.RegisterModule("io", map[string]LGFunction{}).(*LTable)
 	mt := L.NewTypeMetatable(lFileClass)
-	mt.RawSetH(LString("__index"), mt)
+	mt.RawSetString("__index", mt)
 	L.SetFuncs(mt, fileMethods)
-	mt.RawSetH(LString("lines"), L.NewClosure(fileLines, L.NewFunction(fileLinesIter)))
+	mt.RawSetString("lines", L.NewClosure(fileLines, L.NewFunction(fileLinesIter)))
 
 	for _, finfo := range stdFiles {
 		file, _ := newFile(L, finfo.file, "", 0, os.FileMode(0), finfo.writable, finfo.readable)
-		mod.RawSetH(LString(finfo.name), file)
+		mod.RawSetString(finfo.name, file)
 	}
 	uv := L.CreateTable(2, 0)
 	uv.RawSetInt(fileDefOutIndex, mod.RawGetH(LString("stdout")))
 	uv.RawSetInt(fileDefInIndex, mod.RawGetH(LString("stdin")))
 	for name, fn := range ioFuncs {
-		mod.RawSetH(LString(name), L.NewClosure(fn, uv))
+		mod.RawSetString(name, L.NewClosure(fn, uv))
 	}
-	mod.RawSetH(LString("lines"), L.NewClosure(ioLines, uv, L.NewClosure(ioLinesIter, uv)))
+	mod.RawSetString("lines", L.NewClosure(ioLines, uv, L.NewClosure(ioLinesIter, uv)))
 }
 
 var fileMethods = map[string]LGFunction{

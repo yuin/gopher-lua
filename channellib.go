@@ -22,7 +22,7 @@ func channelOpen(L *LState) {
 	if !ok {
 		L.RegisterModule("channel", channelFuncs)
 		mt := L.SetFuncs(L.NewTable(), channelMethods)
-		mt.RawSetH(LString("__index"), mt)
+		mt.RawSetString("__index", mt)
 		L.G.builtinMts[int(LTChannel)] = mt
 	}
 }

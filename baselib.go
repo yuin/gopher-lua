@@ -16,8 +16,8 @@ func baseOpen(L *LState) {
 	L.SetGlobal("_G", global)
 	L.SetGlobal("_VERSION", LString(PackageName+" "+PackageVersion))
 	L.RegisterModule("_G", baseFuncs)
-	global.RawSet(LString("ipairs"), L.NewClosure(baseIpairs, L.NewFunction(ipairsaux)))
-	global.RawSet(LString("pairs"), L.NewClosure(basePairs, L.NewFunction(pairsaux)))
+	global.RawSetString("ipairs", L.NewClosure(baseIpairs, L.NewFunction(ipairsaux)))
+	global.RawSetString("pairs", L.NewClosure(basePairs, L.NewFunction(pairsaux)))
 }
 
 var baseFuncs = map[string]LGFunction{

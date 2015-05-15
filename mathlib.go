@@ -7,8 +7,8 @@ import (
 
 func mathOpen(L *LState) {
 	mod := L.RegisterModule("math", mathFuncs).(*LTable)
-	mod.RawSetH(LString("pi"), LNumber(math.Pi))
-	mod.RawSetH(LString("huge"), LNumber(math.MaxFloat64))
+	mod.RawSetString("pi", LNumber(math.Pi))
+	mod.RawSetString("huge", LNumber(math.MaxFloat64))
 }
 
 var mathFuncs = map[string]LGFunction{

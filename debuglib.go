@@ -53,17 +53,17 @@ func debugGetInfo(L *LState) int {
 	}
 	tbl := L.NewTable()
 	if len(dbg.Name) > 0 {
-		tbl.RawSetH(LString("name"), LString(dbg.Name))
+		tbl.RawSetString("name", LString(dbg.Name))
 	} else {
-		tbl.RawSetH(LString("name"), LNil)
+		tbl.RawSetString("name", LNil)
 	}
-	tbl.RawSetH(LString("what"), LString(dbg.What))
-	tbl.RawSetH(LString("source"), LString(dbg.Source))
-	tbl.RawSetH(LString("currentline"), LNumber(dbg.CurrentLine))
-	tbl.RawSetH(LString("nups"), LNumber(dbg.NUpvalues))
-	tbl.RawSetH(LString("linedefined"), LNumber(dbg.LineDefined))
-	tbl.RawSetH(LString("lastlinedefined"), LNumber(dbg.LastLineDefined))
-	tbl.RawSetH(LString("func"), fn)
+	tbl.RawSetString("what", LString(dbg.What))
+	tbl.RawSetString("source", LString(dbg.Source))
+	tbl.RawSetString("currentline", LNumber(dbg.CurrentLine))
+	tbl.RawSetString("nups", LNumber(dbg.NUpvalues))
+	tbl.RawSetString("linedefined", LNumber(dbg.LineDefined))
+	tbl.RawSetString("lastlinedefined", LNumber(dbg.LastLineDefined))
+	tbl.RawSetString("func", fn)
 	L.Push(tbl)
 	return 1
 }

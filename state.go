@@ -698,7 +698,7 @@ func (ls *LState) initCallFrame(cf *callFrame) {
 					for i := 0; i < nvarargs; i++ {
 						argtb.RawSetInt(i+1, ls.reg.Get(cf.LocalBase+np+i))
 					}
-					argtb.RawSetH(LString("n"), LNumber(nvarargs))
+					argtb.RawSetString("n", LNumber(nvarargs))
 					//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
 					ls.reg.array[cf.LocalBase+nargs+np] = argtb
 				} else {
@@ -790,6 +790,37 @@ func (ls *LState) getField(obj LValue, key LValue) LValue {
 	return nil
 }
 
+func (ls *LState) getFieldString(obj LValue, key string) LValue {
+	curobj := obj
+	for i := 0; i < MaxTableGetLoop; i++ {
+		tb, istable := curobj.(*LTable)
+		if istable {
+			ret := tb.RawGetString(key)
+			if ret != LNil {
+				return ret
+			}
+		}
+		metaindex := ls.metaOp1(curobj, "__index")
+		if metaindex == LNil {
+			if !istable {
+				ls.RaiseError("attempt to index a non-table object(%v)", curobj.Type().String())
+			}
+			return LNil
+		}
+		if metaindex.Type() == LTFunction {
+			ls.reg.Push(metaindex)
+			ls.reg.Push(curobj)
+			ls.reg.Push(LString(key))
+			ls.Call(2, 1)
+			return ls.reg.Pop()
+		} else {
+			curobj = metaindex
+		}
+	}
+	ls.RaiseError("too many recursions in gettable")
+	return nil
+}
+
 func (ls *LState) setField(obj LValue, key LValue, value LValue) {
 	curobj := obj
 	for i := 0; i < MaxTableGetLoop; i++ {
@@ -812,6 +843,38 @@ func (ls *LState) setField(obj LValue, key LValue, value LValue) {
 			ls.reg.Push(metaindex)
 			ls.reg.Push(curobj)
 			ls.reg.Push(key)
+			ls.reg.Push(value)
+			ls.Call(3, 0)
+			return
+		} else {
+			curobj = metaindex
+		}
+	}
+	ls.RaiseError("too many recursions in settable")
+}
+
+func (ls *LState) setFieldString(obj LValue, key string, value LValue) {
+	curobj := obj
+	for i := 0; i < MaxTableGetLoop; i++ {
+		tb, istable := curobj.(*LTable)
+		if istable {
+			if tb.RawGetString(key) != LNil {
+				tb.RawSetString(key, value)
+				return
+			}
+		}
+		metaindex := ls.metaOp1(curobj, "__newindex")
+		if metaindex == LNil {
+			if !istable {
+				ls.RaiseError("attempt to index a non-table object(%v)", curobj.Type().String())
+			}
+			tb.RawSetString(key, value)
+			return
+		}
+		if metaindex.Type() == LTFunction {
+			ls.reg.Push(metaindex)
+			ls.reg.Push(curobj)
+			ls.reg.Push(LString(key))
 			ls.reg.Push(value)
 			ls.Call(3, 0)
 			return
@@ -1278,7 +1341,7 @@ func (ls *LState) RawGetInt(tb *LTable, key int) LValue {
 }
 
 func (ls *LState) GetField(obj LValue, skey string) LValue {
-	return ls.getField(obj, LString(skey))
+	return ls.getFieldString(obj, skey)
 }
 
 func (ls *LState) RawSet(tb *LTable, key LValue, value LValue) {
@@ -1295,7 +1358,7 @@ func (ls *LState) RawSetInt(tb *LTable, key int, value LValue) {
 }
 
 func (ls *LState) SetField(obj LValue, key string, value LValue) {
-	ls.setField(obj, LString(key), value)
+	ls.setFieldString(obj, key, value)
 }
 
 func (ls *LState) ForEach(tb *LTable, cb func(LValue, LValue)) {
