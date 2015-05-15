@@ -39,6 +39,7 @@ type assigncontext struct {
 	ec       *expcontext
 	keyrk    int
 	valuerk  int
+	keyks    bool
 	needmove bool
 }
 
@@ -524,11 +525,14 @@ func compileAssignStmtLeft(context *funcContext, stmt *ast.AssignStmt) (int, []*
 					ec.reg = context.FindLocalVar(st.Value)
 				}
 			}
-			acs = append(acs, &assigncontext{ec, 0, 0, false})
+			acs = append(acs, &assigncontext{ec, 0, 0, false, false})
 		case *ast.AttrGetExpr:
-			ac := &assigncontext{&expcontext{ecTable, regNotDefined, 0}, 0, 0, false}
+			ac := &assigncontext{&expcontext{ecTable, regNotDefined, 0}, 0, 0, false, false}
 			compileExprWithKMVPropagation(context, st.Object, &reg, &ac.ec.reg)
 			compileExprWithKMVPropagation(context, st.Key, &reg, &ac.keyrk)
+			if _, ok := st.Key.(*ast.StringExpr); ok {
+				ac.keyks = true
+			}
 			acs = append(acs, ac)
 
 		default:
@@ -619,8 +623,11 @@ func compileAssignStmt(context *funcContext, stmt *ast.AssignStmt) { // {{{
 			code.AddABC(OP_SETUPVAL, reg, context.Upvalues.RegisterUnique(ex.(*ast.IdentExpr).Value), 0, sline(ex))
 			reg -= 1
 		case ecTable:
-			// TODO: OP_SETTABLEKS
-			code.AddABC(OP_SETTABLE, acs[i].ec.reg, acs[i].keyrk, acs[i].valuerk, sline(ex))
+			opcode := OP_SETTABLE
+			if acs[i].keyks {
+				opcode = OP_SETTABLEKS
+			}
+			code.AddABC(opcode, acs[i].ec.reg, acs[i].keyrk, acs[i].valuerk, sline(ex))
 			if !opIsK(acs[i].valuerk) {
 				reg -= 1
 			}
