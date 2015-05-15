@@ -372,7 +372,7 @@ func baseSetMetatable(L *LState) int {
 	}
 	mt := L.Get(2)
 	if m := L.metatable(obj, true); m != LNil {
-		if tb, ok := m.(*LTable); ok && tb.RawGetH(LString("__metatable")) != LNil {
+		if tb, ok := m.(*LTable); ok && tb.RawGetString("__metatable") != LNil {
 			L.RaiseError("cannot change a protected metatable")
 		}
 	}

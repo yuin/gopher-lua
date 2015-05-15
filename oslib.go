@@ -14,7 +14,7 @@ func init() {
 }
 
 func getIntField(L *LState, tb *LTable, key string, v int) int {
-	ret := tb.RawGetH(LString(key))
+	ret := tb.RawGetString(key)
 	if ln, ok := ret.(LNumber); ok {
 		return int(ln)
 	}
@@ -22,7 +22,7 @@ func getIntField(L *LState, tb *LTable, key string, v int) int {
 }
 
 func getBoolField(L *LState, tb *LTable, key string, v bool) bool {
-	ret := tb.RawGetH(LString(key))
+	ret := tb.RawGetString(key)
 	if lb, ok := ret.(LBool); ok {
 		return bool(lb)
 	}

@@ -605,7 +605,7 @@ func (ls *LState) metatable(lvalue LValue, rawget bool) LValue {
 	if !rawget && metatable != LNil {
 		oldmt := metatable
 		if tb, ok := metatable.(*LTable); ok {
-			metatable = tb.RawGetH(LString("__metatable"))
+			metatable = tb.RawGetString("__metatable")
 			if metatable == LNil {
 				metatable = oldmt
 			}
@@ -618,7 +618,7 @@ func (ls *LState) metatable(lvalue LValue, rawget bool) LValue {
 func (ls *LState) metaOp1(lvalue LValue, event string) LValue {
 	if mt := ls.metatable(lvalue, true); mt != LNil {
 		if tb, ok := mt.(*LTable); ok {
-			return tb.RawGetH(LString(event))
+			return tb.RawGetString(event)
 		}
 	}
 	return LNil
@@ -627,14 +627,14 @@ func (ls *LState) metaOp1(lvalue LValue, event string) LValue {
 func (ls *LState) metaOp2(value1, value2 LValue, event string) LValue {
 	if mt := ls.metatable(value1, true); mt != LNil {
 		if tb, ok := mt.(*LTable); ok {
-			if ret := tb.RawGetH(LString(event)); ret != LNil {
+			if ret := tb.RawGetString(event); ret != LNil {
 				return ret
 			}
 		}
 	}
 	if mt := ls.metatable(value2, true); mt != LNil {
 		if tb, ok := mt.(*LTable); ok {
-			return tb.RawGetH(LString(event))
+			return tb.RawGetString(event)
 		}
 	}
 	return LNil

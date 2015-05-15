@@ -287,7 +287,7 @@ func (ls *LState) RegisterModule(name string, funcs map[string]LGFunction) LValu
 			ls.RaiseError("name conflict for module(%v)", name)
 		} else {
 			for fname, fn := range funcs {
-				newmodtb.RawSetH(LString(fname), ls.NewFunction(fn))
+				newmodtb.RawSetString(fname, ls.NewFunction(fn))
 			}
 			ls.SetField(tb, name, newmodtb)
 			return newmodtb
@@ -298,7 +298,7 @@ func (ls *LState) RegisterModule(name string, funcs map[string]LGFunction) LValu
 
 func (ls *LState) SetFuncs(tb *LTable, funcs map[string]LGFunction, upvalues ...LValue) *LTable {
 	for fname, fn := range funcs {
-		tb.RawSetH(LString(fname), ls.NewClosure(fn, upvalues...))
+		tb.RawSetString(fname, ls.NewClosure(fn, upvalues...))
 	}
 	return tb
 }

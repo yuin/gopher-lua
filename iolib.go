@@ -177,8 +177,8 @@ func ioOpen(L *LState) {
 		mod.RawSetString(finfo.name, file)
 	}
 	uv := L.CreateTable(2, 0)
-	uv.RawSetInt(fileDefOutIndex, mod.RawGetH(LString("stdout")))
-	uv.RawSetInt(fileDefInIndex, mod.RawGetH(LString("stdin")))
+	uv.RawSetInt(fileDefOutIndex, mod.RawGetString("stdout"))
+	uv.RawSetInt(fileDefInIndex, mod.RawGetString("stdin"))
 	for name, fn := range ioFuncs {
 		mod.RawSetString(name, L.NewClosure(fn, uv))
 	}

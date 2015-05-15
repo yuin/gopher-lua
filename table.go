@@ -276,24 +276,24 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 				return LNil, LNil
 			}
 			key = tb.keys[0]
-			if v, vok := tb.dict[key]; vok && v != LNil {
-				return key, v
-			} else if skey, sok := key.(LString); sok {
+			if skey, sok := key.(LString); sok {
 				if sv, svok := tb.strdict[string(skey)]; svok && sv != LNil {
 					return key, sv
 				}
+			} else if v, vok := tb.dict[key]; vok && v != LNil {
+				return key, v
 			}
 		}
 	}
 	length := len(tb.dict) + len(tb.strdict)
 	for i := tb.k2i[key] + 1; i < length; i++ {
 		key = tb.keys[i]
-		if v, vok := tb.dict[key]; vok && v != LNil {
-			return key, v
-		} else if skey, sok := key.(LString); sok {
+		if skey, sok := key.(LString); sok {
 			if sv, svok := tb.strdict[string(skey)]; svok && sv != LNil {
 				return key, sv
 			}
+		} else if v, vok := tb.dict[key]; vok && v != LNil {
+			return key, v
 		}
 	}
 	tb.keys = nil
