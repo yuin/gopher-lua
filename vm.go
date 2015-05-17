@@ -303,7 +303,7 @@ func init() {
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
 			selfobj := reg.Get(lbase + B)
-			reg.Set(RA, L.getField(selfobj, L.rkValue(C)))
+			reg.Set(RA, L.getFieldString(selfobj, L.rkString(C)))
 			reg.Set(RA+1, selfobj)
 			return 0
 		},
