@@ -37,11 +37,12 @@ const opMaxArgBx = (1 << opSizeBx) - 1
 const opMaxArgSbx = opMaxArgBx >> 1
 
 const (
-	OP_MOVE     int = iota /*      A B     R(A) := R(B)                      */
-	OP_LOADK               /*     A Bx    R(A) := Kst(Bx)                                 */
-	OP_LOADBOOL            /*  A B C   R(A) := (Bool)B; if (C) pc++                    */
-	OP_LOADNIL             /*   A B     R(A) := ... := R(B) := nil                      */
-	OP_GETUPVAL            /*  A B     R(A) := UpValue[B]                              */
+	OP_MOVE     int = iota /*      A B     R(A) := R(B)                            */
+	OP_MOVEN               /*      A B     R(A) := R(B); followed by R(C) MOVE ops */
+	OP_LOADK               /*     A Bx    R(A) := Kst(Bx)                          */
+	OP_LOADBOOL            /*  A B C   R(A) := (Bool)B; if (C) pc++                */
+	OP_LOADNIL             /*   A B     R(A) := ... := R(B) := nil                 */
+	OP_GETUPVAL            /*  A B     R(A) := UpValue[B]                          */
 
 	OP_GETGLOBAL  /* A Bx    R(A) := Gbl[Kst(Bx)]                            */
 	OP_GETTABLE   /*  A B C   R(A) := R(B)[RK(C)]                             */
@@ -126,6 +127,7 @@ type opProp struct {
 
 var opProps = []opProp{
 	opProp{"MOVE", false, true, opArgModeR, opArgModeN, opTypeABC},
+	opProp{"MOVEN", false, true, opArgModeR, opArgModeN, opTypeABC},
 	opProp{"LOADK", false, true, opArgModeK, opArgModeN, opTypeABx},
 	opProp{"LOADBOOL", false, true, opArgModeU, opArgModeU, opTypeABC},
 	opProp{"LOADNIL", false, true, opArgModeR, opArgModeN, opTypeABC},
@@ -173,7 +175,7 @@ func opGetOpCode(inst uint32) int {
 }
 
 func opSetOpCode(inst *uint32, opcode int) {
-	*inst = (*inst & 0x3fffff) | uint32(opcode<<26)
+	*inst = (*inst & 0x3ffffff) | uint32(opcode<<26)
 }
 
 func opGetArgA(inst uint32) int {
@@ -282,6 +284,8 @@ func opToString(inst uint32) string {
 	switch op {
 	case OP_MOVE:
 		buf += fmt.Sprintf("; R(%v) := R(%v)", arga, argb)
+	case OP_MOVEN:
+		buf += fmt.Sprintf("; R(%v) := R(%v); followed by %v MOVE ops", arga, argb, argc)
 	case OP_LOADK:
 		buf += fmt.Sprintf("; R(%v) := Kst(%v)", arga, argbx)
 	case OP_LOADBOOL:

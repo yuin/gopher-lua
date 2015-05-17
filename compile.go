@@ -1557,8 +1557,16 @@ func patchCode(context *funcContext) { // {{{
 	if np := int(context.Proto.NumParameters); np > 1 {
 		maxreg = np
 	}
-	for pc, inst := range context.Code.List() {
-		switch opGetOpCode(inst) {
+	moven := 0
+	code := context.Code.List()
+	for pc := 0; pc < len(code); pc++ {
+		inst := code[pc]
+		curop := opGetOpCode(inst)
+		switch curop {
+		case OP_CLOSURE:
+			pc += int(context.Proto.FunctionPrototypes[opGetArgBx(inst)].NumUpvalues)
+			moven = 0
+			continue
 		case OP_SETGLOBAL, OP_SETUPVAL, OP_EQ, OP_LT, OP_LE, OP_TEST,
 			OP_TAILCALL, OP_RETURN, OP_FORPREP, OP_FORLOOP, OP_TFORLOOP,
 			OP_SETLIST, OP_CLOSE:
@@ -1602,6 +1610,17 @@ func patchCode(context *funcContext) { // {{{
 			if reg := opGetArgA(inst); reg > maxreg {
 				maxreg = reg
 			}
+		}
+
+		// bulk move optimization(reducing op dipatch costs)
+		if curop == OP_MOVE {
+			moven++
+		} else {
+			if moven > 1 {
+				context.Code.SetOpCode(pc-moven, OP_MOVEN)
+				context.Code.SetC(pc-moven, intMin(moven-1, opMaxArgsC))
+			}
+			moven = 0
 		}
 	}
 	maxreg++

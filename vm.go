@@ -137,6 +137,26 @@ func init() {
 			reg.Set(RA, reg.Get(lbase+B))
 			return 0
 		},
+		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_MOVEN
+			reg := L.reg
+			cf := L.currentFrame
+			lbase := cf.LocalBase
+			A := int(inst>>18) & 0xff //GETA
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			reg.Set(lbase+A, reg.Get(lbase+B))
+			code := cf.Fn.Proto.Code
+			pc := cf.Pc
+			for i := 0; i < C; i++ {
+				inst = code[pc]
+				pc++
+				A = int(inst>>18) & 0xff //GETA
+				B = int(inst & 0x1ff)    //GETB
+				reg.Set(lbase+A, reg.Get(lbase+B))
+			}
+			cf.Pc = pc
+			return 0
+		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_LOADK
 			reg := L.reg
 			cf := L.currentFrame
