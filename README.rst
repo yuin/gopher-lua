@@ -704,6 +704,7 @@ Libraries for GopherLua
 - `gopher-luar <https://github.com/layeh/gopher-luar>`_ : Custom type reflection for gopher-lua
 - `gluamapper <https://github.com/yuin/gluamapper>`_ : Mapping a Lua table to a Go struct
 - `gluahttp <https://github.com/cjoudrey/gluahttp>`_ : HTTP request module for gopher-lua
+- `gopher-json <https://github.com/layeh/gopher-json>`_ : a simple JSON encoder/decoder for gopher-lua
 
 ----------------------------------------------------------------
 License
