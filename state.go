@@ -123,14 +123,13 @@ func (cs *callFrameStack) Clear() {
 	cs.sp = 0
 }
 
-func (cs *callFrameStack) Push(v callFrame) error {
+func (cs *callFrameStack) Push(v callFrame) {
 	if cs.sp == CallStackSize {
-		return newApiErrorS(ApiErrorRun, "stack overflow")
+		panic(newApiErrorS(ApiErrorRun, "stack overflow"))
 	}
 	cs.array[cs.sp] = v
 	cs.array[cs.sp].Idx = cs.sp
 	cs.sp++
-	return nil
 }
 
 func (cs *callFrameStack) Remove(sp int) {
@@ -190,10 +189,6 @@ type registry struct {
 
 func newRegistry(size int) *registry {
 	return &registry{make([]LValue, size), 0}
-}
-
-func (rg *registry) RawSetTop(top int) {
-	rg.top = top
 }
 
 func (rg *registry) SetTop(top int) {
@@ -663,10 +658,13 @@ func (ls *LState) initCallFrame(cf *callFrame) {
 		}
 
 		if (proto.IsVarArg & VarArgIsVarArg) == 0 {
+			if nargs < int(proto.NumUsedRegisters) {
+				nargs = int(proto.NumUsedRegisters)
+			}
 			for i := np; i < nargs; i++ {
 				ls.reg.array[cf.LocalBase+i] = LNil
 			}
-			ls.reg.SetTop(cf.LocalBase + int(proto.NumUsedRegisters))
+			ls.reg.top = cf.LocalBase + int(proto.NumUsedRegisters)
 		} else {
 			/* swap vararg positions:
 					   closure
@@ -727,10 +725,7 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) {
 	if cf.Fn == nil {
 		ls.RaiseError("attempt to call a non-function object")
 	}
-	err := ls.stack.Push(cf)
-	if err != nil {
-		ls.RaiseError(err.Error())
-	}
+	ls.stack.Push(cf)
 	newcf := ls.stack.Last()
 	ls.initCallFrame(newcf)
 	ls.currentFrame = newcf
@@ -1580,7 +1575,7 @@ func (ls *LState) Resume(th *LState, fn *LFunction, args ...LValue) (ResumeState
 	isstarted := th.isStarted()
 	if !isstarted {
 		base := 0
-		err := th.stack.Push(callFrame{
+		th.stack.Push(callFrame{
 			Fn:         fn,
 			Pc:         0,
 			Base:       base,
@@ -1591,9 +1586,6 @@ func (ls *LState) Resume(th *LState, fn *LFunction, args ...LValue) (ResumeState
 			Parent:     nil,
 			TailCall:   0,
 		})
-		if err != nil {
-			ls.RaiseError(err.Error())
-		}
 	}
 
 	if ls.G.CurrentThread == th {
