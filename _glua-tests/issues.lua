@@ -31,3 +31,21 @@ assert(#tbl == 3)
 local tbl = {string.find('hello.world', '.', 0)}
 assert(tbl[1] == 1 and tbl[2] == 1)
 assert(string.sub('hello.world', 0, 2) == "he")
+
+-- issue 33
+local a,b
+a = function ()
+  pcall(function()
+  end)
+  coroutine.yield("a")
+  return b()
+end
+
+b = function ()
+  return "b"
+end
+
+local co = coroutine.create(a)
+assert(select(2, coroutine.resume(co)) == "a")
+assert(select(2, coroutine.resume(co)) == "b")
+assert(coroutine.status(co) == "dead")
