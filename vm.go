@@ -617,7 +617,7 @@ func init() {
 				n = nret
 			}
 
-			if L.Parent != nil && (baseframe == cf || L.stack.Sp() == 1) {
+			if L.Parent != nil && L.stack.Sp() == 1 {
 				copyReturnValues(L, reg.Top(), RA, n, B)
 				switchToParentThread(L, n, false, true)
 				return 1
