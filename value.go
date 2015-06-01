@@ -167,11 +167,12 @@ type Global struct {
 }
 
 type LState struct {
-	G      *Global
-	Parent *LState
-	Env    *LTable
-	Panic  func(*LState)
-	Dead   bool
+	G       *Global
+	Parent  *LState
+	Env     *LTable
+	Panic   func(*LState)
+	Dead    bool
+	Options Options
 
 	stop         int32
 	reg          *registry

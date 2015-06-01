@@ -171,15 +171,25 @@ performance and debugging, but there are some limitations.
 Callstack & Registry size
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Size of the callstack & registry is **fixed** for mainly performance.
-You can change the size of the callstack & registry.
+You can change the default size of the callstack & registry.
 
 .. code-block:: go
 
    lua.RegistrySize = 1024 * 20
    lua.CallStackSize = 1024
-   L = lua.NewState()
+   L := lua.NewState()
    defer L.Close()
 
+You can also create an LState object that has the callstack & registry size specified by ``Options`` .
+
+.. code-block:: go
+
+    L := lua.NewState(lua.Options{
+        CallStackSize: 120,
+        RegistrySize:  120*20,
+    })
+
+An LState object that has been created by ``*LState#NewThread()`` inherits the callstack & registry size from the parent LState object.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 API

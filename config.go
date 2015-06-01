@@ -7,8 +7,8 @@ import (
 var CompatVarArg = true
 var LuaRegex = true
 var FieldsPerFlush = 50
-var RegistrySize = 1024 * 20
-var CallStackSize = 1024
+var RegistrySize = 256 * 20
+var CallStackSize = 256
 var MaxTableGetLoop = 100
 var MaxArrayIndex = 67108864
 

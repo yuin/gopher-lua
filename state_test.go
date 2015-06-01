@@ -6,12 +6,9 @@ import (
 )
 
 func TestCallStackOverflow(t *testing.T) {
-	oldsize := CallStackSize
-	CallStackSize = 3
-	defer func() {
-		CallStackSize = oldsize
-	}()
-	L := NewState()
+	L := NewState(Options{
+		CallStackSize: 3,
+	})
 	defer L.Close()
 	errorIfScriptNotFail(t, L, `
     local function a()

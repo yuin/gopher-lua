@@ -75,6 +75,18 @@ type P struct {
 
 /* }}} */
 
+/* Options {{{ */
+
+// Options is a configuration that is used to create a new LState.
+type Options struct {
+	// Call stack size. This defaults to `lua.CallStackSize`.
+	CallStackSize int
+	// Data stack size. This defaults to `lua.RegistrySize`.
+	RegistrySize int
+}
+
+/* }}} */
+
 /* Debug {{{ */
 
 type Debug struct {
@@ -110,7 +122,7 @@ type callFrameStack struct {
 	sp    int
 }
 
-func newcallFrameStack(size int) *callFrameStack {
+func newCallFrameStack(size int) *callFrameStack {
 	return &callFrameStack{
 		array: make([]callFrame, size),
 		sp:    0,
@@ -124,9 +136,6 @@ func (cs *callFrameStack) Clear() {
 }
 
 func (cs *callFrameStack) Push(v callFrame) {
-	if cs.sp == CallStackSize {
-		panic(newApiErrorS(ApiErrorRun, "stack overflow"))
-	}
 	cs.array[cs.sp] = v
 	cs.array[cs.sp].Idx = cs.sp
 	cs.sp++
@@ -288,16 +297,17 @@ func panicWithoutTraceback(L *LState) {
 	panic(err)
 }
 
-func newLState() *LState {
+func newLState(options Options) *LState {
 	ls := &LState{
-		G:      newGlobal(),
-		Parent: nil,
-		Panic:  panicWithTraceback,
-		Dead:   false,
+		G:       newGlobal(),
+		Parent:  nil,
+		Panic:   panicWithTraceback,
+		Dead:    false,
+		Options: options,
 
 		stop:         0,
-		reg:          newRegistry(RegistrySize),
-		stack:        newcallFrameStack(CallStackSize),
+		reg:          newRegistry(options.RegistrySize),
+		stack:        newCallFrameStack(options.CallStackSize),
 		currentFrame: nil,
 		wrapped:      false,
 		uvcache:      nil,
@@ -725,6 +735,9 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) {
 	if cf.Fn == nil {
 		ls.RaiseError("attempt to call a non-function object")
 	}
+	if ls.stack.sp == ls.Options.CallStackSize {
+		ls.RaiseError("stack overflow")
+	}
 	ls.stack.Push(cf)
 	newcf := ls.stack.Last()
 	ls.initCallFrame(newcf)
@@ -891,8 +904,22 @@ func (ls *LState) setFieldString(obj LValue, key string, value LValue) {
 
 /* api methods {{{ */
 
-func NewState() *LState {
-	ls := newLState()
+func NewState(opts ...Options) *LState {
+	var ls *LState
+	if len(opts) == 0 {
+		ls = newLState(Options{
+			CallStackSize: CallStackSize,
+			RegistrySize:  RegistrySize,
+		})
+	} else {
+		if opts[0].CallStackSize < 1 {
+			opts[0].CallStackSize = CallStackSize
+		}
+		if opts[0].RegistrySize < 128 {
+			opts[0].RegistrySize = RegistrySize
+		}
+		ls = newLState(opts[0])
+	}
 	ls.OpenLibs()
 	return ls
 }
@@ -1068,7 +1095,7 @@ func (ls *LState) CreateTable(acap, hcap int) *LTable {
 }
 
 func (ls *LState) NewThread() *LState {
-	thread := newLState()
+	thread := newLState(ls.Options)
 	thread.G = ls.G
 	thread.Env = ls.Env
 	return thread
