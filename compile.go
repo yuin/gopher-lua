@@ -1467,7 +1467,7 @@ func compileLogicalOpExprAux(context *funcContext, reg int, expr ast.Expr, ec *e
 
 func compileFuncCallExpr(context *funcContext, reg int, expr *ast.FuncCallExpr, ec *expcontext) int { // {{{
 	funcreg := reg
-	if ec.ctype == ecLocal && ec.reg <= reg+1 {
+	if ec.ctype == ecLocal && ec.reg == (int(context.Proto.NumParameters)-1) {
 		funcreg = ec.reg
 		reg = ec.reg
 	}
@@ -1508,6 +1508,10 @@ func compileFuncCallExpr(context *funcContext, reg int, expr *ast.FuncCallExpr, 
 	context.Code.AddABC(OP_CALL, funcreg, b, ec.varargopt+2, sline(expr))
 	context.Proto.DbgCalls = append(context.Proto.DbgCalls, DbgCall{Pc: context.Code.LastPC(), Name: name})
 
+	if ec.varargopt == 0 && ec.ctype == ecLocal && funcreg != ec.reg {
+		context.Code.AddABC(OP_MOVE, ec.reg, funcreg, 0, sline(expr))
+		return 1
+	}
 	if context.RegTop() > (funcreg+2+ec.varargopt) || ec.varargopt < -1 {
 		return 0
 	}

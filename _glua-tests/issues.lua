@@ -49,3 +49,13 @@ local co = coroutine.create(a)
 assert(select(2, coroutine.resume(co)) == "a")
 assert(select(2, coroutine.resume(co)) == "b")
 assert(coroutine.status(co) == "dead")
+
+-- issue 37
+function test(a, b, c)
+    b = b or string.format("b%s", a)
+    c = c or string.format("c%s", a)
+    assert(a == "test")
+    assert(b == "btest")
+    assert(c == "ctest")
+end
+test("test")
