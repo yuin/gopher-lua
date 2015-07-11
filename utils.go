@@ -161,12 +161,22 @@ func rRange(start, end byte, isnot bool) string {
 	return fmt.Sprintf(`\x%02x-\x%02x`, start, end)
 }
 
+var utf8LenTable = [...]int{
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 1, 1,
+}
+
 func compileLuaRegex(pattern string) (*regexp.Regexp, error) {
 	if !LuaRegex {
 		return regexp.Compile(pattern)
 	}
 
-	b := make([]byte, 1)
 	sc := newFlagScanner('%', "", "", pattern)
 	inset := false
 	for c, eos := sc.Next(); !eos; c, eos = sc.Next() {
@@ -255,11 +265,21 @@ func compileLuaRegex(pattern string) (*regexp.Regexp, error) {
 				} else if c == '\\' {
 					sc.AppendString("\\\\")
 				} else {
-					b[0] = c
+					b := []byte{c}
+					utf8len := utf8LenTable[uint8(c)]
 					if utf8.Valid(b) {
 						sc.AppendChar(c)
-					} else {
+					} else if utf8len == 1 {
 						sc.AppendString(fmt.Sprintf(`\x%02x`, c))
+					} else {
+						sc.AppendChar(c)
+						for i := 1; i < utf8len; i++ {
+							c, eos = sc.Next()
+							if eos {
+								return nil, errors.New("invalid utf8 byte found")
+							}
+							sc.AppendChar(c)
+						}
 					}
 				}
 			}

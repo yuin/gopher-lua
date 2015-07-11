@@ -59,3 +59,7 @@ function test(a, b, c)
     assert(c == "ctest")
 end
 test("test")
+
+-- issue 39
+assert(string.match("あいうえお", ".*あ.*") == "あいうえお")
+assert(string.match("あいうえお", "あいうえお") == "あいうえお")
