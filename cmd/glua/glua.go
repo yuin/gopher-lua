@@ -11,6 +11,10 @@ import (
 )
 
 func main() {
+	os.Exit(mainAux())
+}
+
+func mainAux() int {
 	var opt_e, opt_l string
 	var opt_i, opt_v, opt_dt, opt_dc bool
 	var opt_m int
@@ -67,12 +71,12 @@ Available options are:
 			file, err := os.Open(script)
 			if err != nil {
 				fmt.Println(err.Error())
-				os.Exit(1)
+				return 1
 			}
 			chunk, err2 := parse.Parse(file, script)
 			if err2 != nil {
 				fmt.Println(err2.Error())
-				os.Exit(1)
+				return 1
 			}
 			if opt_dt {
 				fmt.Println(parse.Dump(chunk))
@@ -81,7 +85,7 @@ Available options are:
 				proto, err3 := lua.Compile(chunk, script)
 				if err3 != nil {
 					fmt.Println(err3.Error())
-					os.Exit(1)
+					return 1
 				}
 				fmt.Println(proto.String())
 			}
@@ -113,5 +117,5 @@ Available options are:
 			}
 		}
 	}
-	os.Exit(status)
+	return status
 }
