@@ -11,10 +11,10 @@ import (
 )
 
 func main() {
-	os.Exit(realMain())
+	os.Exit(mainAux())
 }
 
-func realMain() int {
+func mainAux() int {
 	var opt_e, opt_l string
 	var opt_i, opt_v, opt_dt, opt_dc bool
 	var opt_m int
