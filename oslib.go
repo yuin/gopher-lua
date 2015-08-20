@@ -79,6 +79,7 @@ func osExecute(L *LState) int {
 }
 
 func osExit(L *LState) int {
+	L.Close()
 	os.Exit(L.OptInt(1, 0))
 	return 1
 }
