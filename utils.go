@@ -286,7 +286,7 @@ func compileLuaRegex(pattern string) (*regexp.Regexp, error) {
 		}
 	}
 
-	gopattern := sc.String()
+	gopattern := "(?s)" + sc.String()
 	return regexp.Compile(gopattern)
 }
 
