@@ -23,14 +23,20 @@ type ApiError struct {
 	Type       ApiErrorType
 	Object     LValue
 	StackTrace string
+	// Underlying error. This attribute is set only if the Type is ApiErrorFile or ApiErrorSyntax
+	Cause error
 }
 
 func newApiError(code ApiErrorType, object LValue) *ApiError {
-	return &ApiError{code, object, ""}
+	return &ApiError{code, object, "", nil}
 }
 
 func newApiErrorS(code ApiErrorType, message string) *ApiError {
 	return newApiError(code, LString(message))
+}
+
+func newApiErrorE(code ApiErrorType, err error) *ApiError {
+	return &ApiError{code, LString(err.Error()), "", err}
 }
 
 func (e *ApiError) Error() string {
@@ -1194,10 +1200,12 @@ func (ls *LState) ToThread(n int) *LState {
 
 /* error & debug operations {{{ */
 
+// This function is equivalent to luaL_error( http://www.lua.org/manual/5.1/manual.html#luaL_error ).
 func (ls *LState) RaiseError(format string, args ...interface{}) {
 	ls.raiseError(1, format, args...)
 }
 
+// This function is equivalent to lua_error( http://www.lua.org/manual/5.1/manual.html#lua_error ).
 func (ls *LState) Error(lv LValue, level int) {
 	if str, ok := lv.(LString); ok {
 		ls.raiseError(level, string(str))
@@ -1470,11 +1478,11 @@ func (ls *LState) Register(name string, fn LGFunction) {
 func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 	chunk, err := parse.Parse(reader, name)
 	if err != nil {
-		return nil, newApiErrorS(ApiErrorSyntax, err.Error())
+		return nil, newApiErrorE(ApiErrorSyntax, err)
 	}
 	proto, err := Compile(chunk, name)
 	if err != nil {
-		return nil, newApiErrorS(ApiErrorSyntax, err.Error())
+		return nil, newApiErrorE(ApiErrorSyntax, err)
 	}
 	return newLFunctionL(proto, ls.currentEnv(), 0), nil
 }

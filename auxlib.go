@@ -351,7 +351,7 @@ func (ls *LState) LoadFile(path string) (*LFunction, error) {
 		file, err = os.Open(path)
 		defer file.Close()
 		if err != nil {
-			return nil, newApiErrorS(ApiErrorFile, fmt.Sprintf("cannot open %v: %v", path, err.Error()))
+			return nil, newApiErrorE(ApiErrorFile, err)
 		}
 		reader = file
 	}

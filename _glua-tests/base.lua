@@ -1,7 +1,7 @@
 local ok, msg = pcall(function()
   dofile("notexist")
 end)
-assert(not ok and string.find(msg, "cannot open notexist"))
+assert(not ok and string.find(msg, "open.*notexist.*cannot.*"))
 
 local ok, msg = pcall(function()
   assert(getfenv(2) == _G)
