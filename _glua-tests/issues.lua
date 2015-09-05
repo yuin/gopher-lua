@@ -63,3 +63,6 @@ test("test")
 -- issue 39
 assert(string.match("あいうえお", ".*あ.*") == "あいうえお")
 assert(string.match("あいうえお", "あいうえお") == "あいうえお")
+
+-- issue 47
+assert(string.gsub("A\nA", ".", "A") == "AAA")
