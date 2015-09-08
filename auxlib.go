@@ -380,6 +380,17 @@ func (ls *LState) DoString(source string) error {
 	}
 }
 
+//DoReader executes lua code read from reader.
+//Name is a symbolic name to display in error messages.
+func (ls *LState) DoReader(reader io.Reader, name string) error {
+	if fn, err := ls.Load(reader, name); err != nil {
+		return err
+	} else {
+		ls.Push(fn)
+		return ls.PCall(0, MultRet, nil)
+	}
+}
+
 func (ls *LState) OpenLibs() {
 	// loadlib must be loaded 1st
 	loadOpen(ls)
