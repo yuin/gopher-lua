@@ -303,4 +303,10 @@ func TestDoReader(t *testing.T) {
 		t.Errorf("Error executing lua through DoReader: %v", err)
 		return
 	}
+
+	err = L.DoReader(strings.NewReader("bogus"), "<reader>")
+	if err == nil {
+		t.Errorf("No error generated when executing bogus code")
+		return
+	}
 }
