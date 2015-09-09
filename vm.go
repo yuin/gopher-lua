@@ -794,8 +794,7 @@ func opArith(L *LState, inst uint32, baseframe *callFrame) int { //OP_ADD, OP_SU
 	} else {
 		ret = objectArith(L, opcode, lhs, rhs)
 	}
-	//reg.Set(RA, ret)
-	reg.array[RA] = ret
+	reg.Set(RA, ret)
 	return 0
 }
 
@@ -945,7 +944,7 @@ func equals(L *LState, lhs, rhs LValue, raw bool) bool {
 		ret = true
 	case LTNumber:
 		v1, _ := lhs.assertFloat64()
-		v2, _ := lhs.assertFloat64()
+		v2, _ := rhs.assertFloat64()
 		ret = v1 == v2
 	case LTBool:
 		ret = bool(lhs.(LBool)) == bool(rhs.(LBool))
