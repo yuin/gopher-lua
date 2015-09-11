@@ -8,6 +8,7 @@ import (
 	"github.com/yuin/gopher-lua/parse"
 	"io"
 	"os"
+	"runtime/pprof"
 )
 
 func main() {
@@ -15,18 +16,19 @@ func main() {
 }
 
 func mainAux() int {
-	var opt_e, opt_l string
+	var opt_e, opt_l, opt_p string
 	var opt_i, opt_v, opt_dt, opt_dc bool
 	var opt_m int
 	flag.StringVar(&opt_e, "e", "", "")
 	flag.StringVar(&opt_l, "l", "", "")
+	flag.StringVar(&opt_p, "p", "", "")
 	flag.IntVar(&opt_m, "mx", 0, "")
 	flag.BoolVar(&opt_i, "i", false, "")
 	flag.BoolVar(&opt_v, "v", false, "")
 	flag.BoolVar(&opt_dt, "dt", false, "")
 	flag.BoolVar(&opt_dc, "dc", false, "")
 	flag.Usage = func() {
-		fmt.Println(`usage: glua.exe [options] [script [args]].
+		fmt.Println(`Usage: glua [options] [script [args]].
 Available options are:
   -e stat  execute string 'stat'
   -l name  require library 'name'
@@ -34,10 +36,20 @@ Available options are:
   -dt      dump AST trees
   -dc      dump VM codes
   -i       enter interactive mode after executing 'script'
+  -p file  write cpu profiles to the file
   -v       show version information
 `)
 	}
 	flag.Parse()
+	if len(opt_p) != 0 {
+		f, err := os.Create(opt_p)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 	if len(opt_e) == 0 && !opt_i && !opt_v && flag.NArg() == 0 {
 		opt_i = true
 	}
