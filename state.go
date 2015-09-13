@@ -200,10 +200,11 @@ func (cs *callFrameStack) Pop() *callFrame {
 type registry struct {
 	array []LValue
 	top   int
+	alloc *allocator
 }
 
-func newRegistry(size int) *registry {
-	return &registry{make([]LValue, size), 0}
+func newRegistry(size int, alloc *allocator) *registry {
+	return &registry{make([]LValue, size), 0, alloc}
 }
 
 func (rg *registry) SetTop(top int) {
@@ -271,7 +272,13 @@ func (rg *registry) Insert(value LValue, reg int) {
 func (rg *registry) Set(reg int, val LValue) {
 	rg.array[reg] = val
 	if reg >= rg.top {
-		//rg.FillNil(rg.top, reg-rg.top)
+		rg.top = reg + 1
+	}
+}
+
+func (rg *registry) SetNumber(reg int, val LNumber) {
+	rg.array[reg] = rg.alloc.LNumber2I(val)
+	if reg >= rg.top {
 		rg.top = reg + 1
 	}
 } /* }}} */
@@ -304,6 +311,7 @@ func panicWithoutTraceback(L *LState) {
 }
 
 func newLState(options Options) *LState {
+	al := newAllocator(32)
 	ls := &LState{
 		G:       newGlobal(),
 		Parent:  nil,
@@ -312,8 +320,9 @@ func newLState(options Options) *LState {
 		Options: options,
 
 		stop:         0,
-		reg:          newRegistry(options.RegistrySize),
+		reg:          newRegistry(options.RegistrySize, al),
 		stack:        newCallFrameStack(options.CallStackSize),
+		alloc:        al,
 		currentFrame: nil,
 		wrapped:      false,
 		uvcache:      nil,

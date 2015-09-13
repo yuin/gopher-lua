@@ -322,7 +322,7 @@ func init() {
 			B := int(inst & 0x1ff) //GETB
 			unaryv := L.rkValue(B)
 			if nm, ok := unaryv.(LNumber); ok {
-				reg.Set(RA, LNumber(-nm))
+				reg.SetNumber(RA, -nm)
 			} else {
 				op := L.metaOp1(unaryv, "__unm")
 				if op.Type() == LTFunction {
@@ -365,7 +365,7 @@ func init() {
 			B := int(inst & 0x1ff) //GETB
 			switch lv := L.rkValue(B).(type) {
 			case LString:
-				reg.Set(RA, LNumber(len(lv)))
+				reg.SetNumber(RA, LNumber(len(lv)))
 			default:
 				op := L.metaOp1(lv, "__len")
 				if op.Type() == LTFunction {
@@ -374,7 +374,7 @@ func init() {
 					L.Call(1, 1)
 					reg.Set(RA, reg.Pop())
 				} else if lv.Type() == LTTable {
-					reg.Set(RA, LNumber(lv.(*LTable).Len()))
+					reg.SetNumber(RA, LNumber(lv.(*LTable).Len()))
 				} else {
 					L.RaiseError("__len undefined")
 				}
@@ -640,11 +640,11 @@ func init() {
 				if limit, ok2 := reg.Get(RA + 1).assertFloat64(); ok2 {
 					if step, ok3 := reg.Get(RA + 2).assertFloat64(); ok3 {
 						init += step
-						reg.Set(RA, LNumber(init))
+						reg.SetNumber(RA, LNumber(init))
 						if (step > 0 && init <= limit) || (step <= 0 && init >= limit) {
 							Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
 							cf.Pc += Sbx
-							reg.Set(RA+3, LNumber(init))
+							reg.SetNumber(RA+3, LNumber(init))
 						} else {
 							reg.SetTop(RA + 1)
 						}
@@ -668,7 +668,7 @@ func init() {
 			Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
 			if init, ok1 := reg.Get(RA).assertFloat64(); ok1 {
 				if step, ok2 := reg.Get(RA + 2).assertFloat64(); ok2 {
-					reg.Set(RA, LNumber(init-step))
+					reg.SetNumber(RA, LNumber(init-step))
 				} else {
 					L.RaiseError("for statement step must be a number")
 				}
@@ -786,15 +786,13 @@ func opArith(L *LState, inst uint32, baseframe *callFrame) int { //OP_ADD, OP_SU
 	C := int(inst>>9) & 0x1ff //GETC
 	lhs := L.rkValue(B)
 	rhs := L.rkValue(C)
-	var ret LValue
 	v1, ok1 := lhs.assertFloat64()
 	v2, ok2 := rhs.assertFloat64()
 	if ok1 && ok2 {
-		ret = numberArith(L, opcode, LNumber(v1), LNumber(v2))
+		reg.SetNumber(RA, numberArith(L, opcode, LNumber(v1), LNumber(v2)))
 	} else {
-		ret = objectArith(L, opcode, lhs, rhs)
+		reg.Set(RA, objectArith(L, opcode, lhs, rhs))
 	}
-	reg.Set(RA, ret)
 	return 0
 }
 
