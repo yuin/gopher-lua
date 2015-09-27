@@ -89,6 +89,9 @@ type Options struct {
 	CallStackSize int
 	// Data stack size. This defaults to `lua.RegistrySize`.
 	RegistrySize int
+
+	// Controls whether or not libraries are opened by default
+	SkipOpenLibs bool
 }
 
 /* }}} */
@@ -926,6 +929,7 @@ func NewState(opts ...Options) *LState {
 			CallStackSize: CallStackSize,
 			RegistrySize:  RegistrySize,
 		})
+		ls.OpenLibs()
 	} else {
 		if opts[0].CallStackSize < 1 {
 			opts[0].CallStackSize = CallStackSize
@@ -934,8 +938,10 @@ func NewState(opts ...Options) *LState {
 			opts[0].RegistrySize = RegistrySize
 		}
 		ls = newLState(opts[0])
+		if !opts[0].SkipOpenLibs {
+			ls.OpenLibs()
+		}
 	}
-	ls.OpenLibs()
 	return ls
 }
 
