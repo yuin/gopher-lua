@@ -24,6 +24,16 @@ func TestCallStackOverflow(t *testing.T) {
     `, "stack overflow")
 }
 
+func TestSkipOpenLibs(t *testing.T) {
+	L := NewState(Options{SkipOpenLibs: true})
+	defer L.Close()
+	errorIfScriptNotFail(t, L, `print("")`,
+		"attempt to call a non-function object")
+	L2 := NewState()
+	defer L2.Close()
+	errorIfScriptFail(t, L2, `print("")`)
+}
+
 func TestGetAndReplace(t *testing.T) {
 	L := NewState()
 	defer L.Close()
