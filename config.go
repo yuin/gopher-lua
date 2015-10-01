@@ -5,7 +5,6 @@ import (
 )
 
 var CompatVarArg = true
-var LuaRegex = true
 var FieldsPerFlush = 50
 var RegistrySize = 256 * 20
 var CallStackSize = 256

@@ -2,16 +2,12 @@ package lua
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"math"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
-	"unicode/utf8"
 )
 
 func intMin(a, b int) int {
@@ -131,163 +127,6 @@ func strftime(t time.Time, cfmt string) string {
 	}
 
 	return sc.String()
-}
-
-func compileLuaTemplate(repl string) string {
-	if !LuaRegex {
-		return repl
-	}
-	sc := newFlagScanner('%', "${", "}", repl)
-	for c, eos := sc.Next(); !eos; c, eos = sc.Next() {
-		if !sc.ChangeFlag {
-			if c >= '0' && c <= '9' {
-				sc.AppendChar(c)
-				continue
-			}
-			if sc.HasFlag {
-				sc.AppendChar('}')
-				sc.HasFlag = false
-			}
-			sc.AppendChar(c)
-		}
-	}
-	return string(sc.String())
-}
-
-func rRange(start, end byte, isnot bool) string {
-	if isnot {
-		return fmt.Sprintf(`\x00-\x%02x\x%02x-\xFF`, start-1, end+1)
-	}
-	return fmt.Sprintf(`\x%02x-\x%02x`, start, end)
-}
-
-var utf8LenTable = [...]int{
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 1, 1,
-}
-
-func compileLuaRegex(pattern string) (*regexp.Regexp, error) {
-	if !LuaRegex {
-		return regexp.Compile(pattern)
-	}
-
-	sc := newFlagScanner('%', "", "", pattern)
-	inset := false
-	for c, eos := sc.Next(); !eos; c, eos = sc.Next() {
-	retry:
-		if !sc.ChangeFlag {
-			if sc.HasFlag {
-				if !unicode.IsLetter(rune(c)) {
-					sc.AppendChar('\\')
-					sc.AppendChar(c)
-				} else {
-					if !inset {
-						sc.AppendChar('[')
-					}
-
-					switch c {
-					case 'a':
-						sc.AppendString(`\x61-\x7a\x41-\x5a`)
-					case 'A':
-						sc.AppendString(`\x00-\x60\x7b-\xFF\x00-\x40\x5b-\xFF`)
-					case 'c':
-						sc.AppendString(`\x00-\x1f\x7f-\x7f`)
-					case 'C':
-						sc.AppendString(`\x00-\xff\x20-\xFF\x00-\x7e\x80-\xFF`)
-					case 'd':
-						sc.AppendString(`\d`)
-					case 'D':
-						sc.AppendString(`\D`)
-					case 'l':
-						sc.AppendString(`\x61-\x7a`)
-					case 'L':
-						sc.AppendString(`\x00-\x60\x7b-\xFF`)
-					case 'p':
-						sc.AppendString(`\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7d`)
-					case 'P':
-						sc.AppendString(`\x00-\x20\x30-\xFF\x00-\x39\x41-\xFF\x00-\x5a\x61-\xFF\x00-\x7a\x7e-\xFF`)
-					case 's':
-						sc.AppendString(`\s`)
-					case 'S':
-						sc.AppendString(`\S`)
-					case 'u':
-						sc.AppendString(`\x41-\x5a`)
-					case 'U':
-						sc.AppendString(`\x00-\x40\x5b-\xFF`)
-					case 'w':
-						sc.AppendString(`\w`)
-					case 'W':
-						sc.AppendString(`\W`)
-					case 'x':
-						sc.AppendString(`\x30-\x39\x61-\x66\x41-\x46`)
-					case 'X':
-						sc.AppendString(`\x00-\x2f\x3a-\xFF\x00-\x60\x67-\xFF\x00-\x40\x47-\xFF`)
-					case 'z':
-						sc.AppendString(`\x00`)
-					case 'Z':
-						sc.AppendString(`\x01-\xff`)
-					default:
-						return nil, errors.New("invalid character class:" + string(c))
-					}
-					if !inset {
-						sc.AppendChar(']')
-					}
-				}
-				sc.HasFlag = false
-			} else {
-				if c == '[' {
-					inset = true
-					sc.AppendChar(c)
-					c, eos = sc.Next()
-					if eos {
-						break
-					}
-					if c == '^' {
-						sc.AppendChar(c)
-					} else {
-						goto retry
-					}
-				} else if c == ']' {
-					inset = false
-					sc.AppendChar(c)
-				} else if c == '-' && !inset {
-					sc.AppendString("*?")
-				} else if c == '$' && sc.Pos != sc.Length {
-					sc.AppendString("\\$")
-				} else if c == '^' && sc.Pos != 1 && !inset {
-					sc.AppendString("\\^")
-				} else if c == '\\' {
-					sc.AppendString("\\\\")
-				} else {
-					b := []byte{c}
-					utf8len := utf8LenTable[uint8(c)]
-					if utf8.Valid(b) {
-						sc.AppendChar(c)
-					} else if utf8len == 1 {
-						sc.AppendString(fmt.Sprintf(`\x%02x`, c))
-					} else {
-						sc.AppendChar(c)
-						for i := 1; i < utf8len; i++ {
-							c, eos = sc.Next()
-							if eos {
-								return nil, errors.New("invalid utf8 byte found")
-							}
-							sc.AppendChar(c)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	gopattern := "(?s)" + sc.String()
-	return regexp.Compile(gopattern)
 }
 
 func isInteger(v LNumber) bool {

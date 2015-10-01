@@ -618,27 +618,6 @@ Goroutines
     - The ``channel`` table provides functions for performing channel operations.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Pattern match
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- GopherLua uses the regexp package to implement the pattern match.
-    - The Pattern match only works for utf8 strings.
-    - The regexp package does not support back-references.
-    - The regexp package does not support position-captures.
-
-GopherLua has an option to use the Go regexp syntax as a pattern match format.
-
-.. code-block:: go
-
-   lua.LuaRegex = false
-   L := lua.NewState()
-   defer L.Close()
-
-.. code-block:: lua
-
-   print(string.gsub("abc $!?", [[a(\w+)]], "${1}")) --> bc $!?
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Unsupported functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
