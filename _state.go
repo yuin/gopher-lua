@@ -91,6 +91,8 @@ type Options struct {
 	RegistrySize int
 	// Controls whether or not libraries are opened by default
 	SkipOpenLibs bool
+	// Tells whether a Go stacktrace should be included in a Lua stacktrace when panics occur.
+	IncludeGoStackTrace bool
 }
 
 /* }}} */
@@ -1523,10 +1525,12 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 		rcv := recover()
 		if rcv != nil {
 			if _, ok := rcv.(*ApiError); !ok {
-				buf := make([]byte, 4096)
-				runtime.Stack(buf, false)
 				err = newApiErrorS(ApiErrorPanic, fmt.Sprint(rcv))
-				err.(*ApiError).StackTrace = strings.Trim(string(buf), "\000")
+				if ls.Options.IncludeGoStackTrace {
+					buf := make([]byte, 4096)
+					runtime.Stack(buf, false)
+					err.(*ApiError).StackTrace = strings.Trim(string(buf), "\000") + "\n" + ls.stackTrace(true)
+				}
 			} else {
 				err = rcv.(*ApiError)
 			}
@@ -1539,10 +1543,12 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 					rcv := recover()
 					if rcv != nil {
 						if _, ok := rcv.(*ApiError); !ok {
-							buf := make([]byte, 4096)
-							runtime.Stack(buf, false)
 							err = newApiErrorS(ApiErrorPanic, fmt.Sprint(rcv))
-							err.(*ApiError).StackTrace = strings.Trim(string(buf), "\000")
+							if ls.Options.IncludeGoStackTrace {
+								buf := make([]byte, 4096)
+								runtime.Stack(buf, false)
+								err.(*ApiError).StackTrace = strings.Trim(string(buf), "\000") + ls.stackTrace(true)
+							}
 						} else {
 							err = rcv.(*ApiError)
 							err.(*ApiError).StackTrace = ls.stackTrace(true)
@@ -1551,7 +1557,7 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 				}()
 				ls.Call(1, 1)
 				err = newApiError(ApiErrorError, ls.Get(-1))
-			} else {
+			} else if len(err.(*ApiError).StackTrace) == 0 {
 				err.(*ApiError).StackTrace = ls.stackTrace(true)
 			}
 			ls.reg.SetTop(base)
