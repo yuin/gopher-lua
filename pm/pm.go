@@ -64,9 +64,7 @@ func (st *MatchData) setCapture(s, pos int) uint32 {
 	return v
 }
 
-func (st *MatchData) restoreCapture(s int, pos uint32) {
-	st.captures[s] = pos
-}
+func (st *MatchData) restoreCapture(s int, pos uint32) { st.captures[s] = pos }
 
 func (st *MatchData) CaptureLength() int { return len(st.captures) }
 
@@ -81,7 +79,6 @@ func (st *MatchData) Capture(idx int) int { return int(st.captures[idx] >> 1) }
 type scannerState struct {
 	Pos     int
 	started bool
-	blace   int
 }
 
 type scanner struct {
@@ -96,7 +93,6 @@ func newScanner(src []byte) *scanner {
 		State: scannerState{
 			Pos:     0,
 			started: false,
-			blace:   0,
 		},
 		saved: scannerState{},
 	}
@@ -149,21 +145,6 @@ func (sc *scanner) Peek() int {
 		}
 	}
 	return ch
-}
-
-func (sc *scanner) OpenBlace() {
-	sc.State.blace++
-}
-
-func (sc *scanner) HasUnfinishedBlace() bool {
-	return sc.State.blace > 0
-}
-
-func (sc *scanner) CloseBlace() {
-	sc.State.blace--
-	if sc.State.blace < 0 {
-		panic(newError(sc.State.Pos, "too many ')'"))
-	}
 }
 
 func (sc *scanner) Save() { sc.saved = sc.State }
@@ -287,8 +268,7 @@ func (pn *rangeClass) Matches(ch int) bool {
 
 // patterns {{{
 
-type pattern interface {
-}
+type pattern interface{}
 
 type singlePattern struct {
 	Class class
@@ -325,26 +305,22 @@ type bracePattern struct {
 /* parse {{{ */
 
 func parseClass(sc *scanner, allowset bool) class {
-	ch := sc.Peek()
+	ch := sc.Next()
 	switch ch {
 	case '%':
-		sc.Next()
 		return &singleClass{sc.Next()}
 	case '.':
-		sc.Next()
 		return &dotClass{}
 	case '[':
 		if !allowset {
 			panic(newError(sc.CurrentPos(), "invalid '['"))
 		}
-		sc.Next()
 		return parseClassSet(sc)
 	//case '^' '$', '(', ')', ']', '*', '+', '-', '?':
 	//	panic(newError(sc.CurrentPos(), "invalid %c", ch))
 	case _EOS:
 		panic(newError(sc.CurrentPos(), "unexpected EOS"))
 	default:
-		sc.Next()
 		return &charClass{ch}
 	}
 }
@@ -421,10 +397,11 @@ func parsePattern(sc *scanner, toplevel bool) *seqPattern {
 		case '.', '[':
 			pat.Patterns = append(pat.Patterns, &singlePattern{parseClass(sc, true)})
 		case ']':
-			panic(newError(sc.CurrentPos(), "invalid '%c'", ch))
+			panic(newError(sc.CurrentPos(), "invalid ']'"))
 		case ')':
-			sc.CloseBlace()
-			sc.Next()
+			if toplevel {
+				panic(newError(sc.CurrentPos(), "invalid ')'"))
+			}
 			return pat
 		case '(':
 			sc.Next()
@@ -432,8 +409,11 @@ func parsePattern(sc *scanner, toplevel bool) *seqPattern {
 				sc.Next()
 				pat.Patterns = append(pat.Patterns, &posCapPattern{})
 			} else {
-				sc.OpenBlace()
 				ret := &capPattern{parsePattern(sc, false)}
+				if sc.Peek() != ')' {
+					panic(newError(sc.CurrentPos(), "unfinished capture"))
+				}
+				sc.Next()
 				pat.Patterns = append(pat.Patterns, ret)
 			}
 		case '*', '+', '-', '?':
@@ -463,12 +443,6 @@ func parsePattern(sc *scanner, toplevel bool) *seqPattern {
 		}
 	}
 exit:
-	if toplevel {
-		if sc.HasUnfinishedBlace() {
-			panic(newError(sc.CurrentPos(), "unfinished capture"))
-		}
-	}
-
 	return pat
 }
 
