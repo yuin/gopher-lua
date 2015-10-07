@@ -90,6 +90,8 @@ Run scripts in the VM.
 
 Refer to `Lua Reference Manual <http://www.lua.org/manual/5.1/>`_ and `Go doc <http://godoc.org/github.com/yuin/gopher-lua>`_ for further information.
 
+Note that elements that are not commented in `Go doc <http://godoc.org/github.com/yuin/gopher-lua>`_ equivalent to `Lua Reference Manual <http://www.lua.org/manual/5.1/>`_ , except GopherLua uses objects instead of Lua stack indcies.
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Data model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -192,6 +194,16 @@ You can also create an LState object that has the callstack & registry size spec
     })
 
 An LState object that has been created by ``*LState#NewThread()`` inherits the callstack & registry size from the parent LState object.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Miscellaneous lua.NewState options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- **Options.SkipOpenLibs bool(default false)**
+    - By default, GopherLua opens all built-in libraries when new LState is created.
+    - You can skip this behaviour by setting this to ``true`` .
+- **Options.IncludeGoStackTrace bool(default false)**
+    - By default, GopherLua does not show Go stack traces when panics occur.
+    - You can get Go stack traces by setting this to ``true`` .
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 API
@@ -653,6 +665,20 @@ How to Contribute
 Any kind of contributions are welcome.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Building GopherLua
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+GopherLua uses simple inlining tool for generate efficient codes. This tool requires python interpreter. Files name of which starts with ``_`` genarate files name of which does not starts with ``_`` . For instance, ``_state.go`` generate ``state.go`` . You do not edit generated sources.
+To generate sources, some make target is available.
+
+.. code-block:: bash
+
+    make build
+    make glua
+    make test
+
+You have to run ``make build`` before committing to the repository.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Pull requests
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Our workflow is based on the `github-flow <https://guides.github.com/introduction/flow/>`_ .
@@ -694,8 +720,12 @@ Libraries for GopherLua
 
 - `gopher-luar <https://github.com/layeh/gopher-luar>`_ : Custom type reflection for gopher-lua
 - `gluamapper <https://github.com/yuin/gluamapper>`_ : Mapping a Lua table to a Go struct
+- `gluare <https://github.com/yuin/gluare>`_ : Regular expressions for gopher-lua
 - `gluahttp <https://github.com/cjoudrey/gluahttp>`_ : HTTP request module for gopher-lua
-- `gopher-json <https://github.com/layeh/gopher-json>`_ : a simple JSON encoder/decoder for gopher-lua
+- `gopher-json <https://github.com/layeh/gopher-json>`_ : A simple JSON encoder/decoder for gopher-lua
+- `gluayaml <https://github.com/kohkimakimoto/gluayaml>`_ : Yaml parser for gopher-lua
+- `glua-lfs <https://github.com/layeh/gopher-lfs>`_ : Partially implements the luafilesystem module for gopher-lua
+- `gluaurl <https://github.com/cjoudrey/gluaurl>`_ : A url parser/builder module for gopher-lua
 
 ----------------------------------------------------------------
 License
