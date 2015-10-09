@@ -398,6 +398,19 @@ func (ls *LState) OpenLibs() {
 
 /* GopherLua original APIs {{{ */
 
+// ToStringMeta returns string representation of given LValue.
+// This method calls the `__tostring` meta method if defined.
+func (ls *LState) ToStringMeta(lv LValue) LValue {
+	if fn, ok := ls.metaOp1(lv, "__tostring").assertFunction(); ok {
+		ls.Push(fn)
+		ls.Push(lv)
+		ls.Call(1, 1)
+		return ls.reg.Pop()
+	} else {
+		return LString(lv.String())
+	}
+}
+
 // Set a module loader to the package.preload table.
 func (ls *LState) PreloadModule(name string, loader LGFunction) {
 	preload := ls.GetField(ls.GetField(ls.Get(EnvironIndex), "package"), "preload")

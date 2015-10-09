@@ -48,6 +48,7 @@ func newLTable(acap int, hcap int) *LTable {
 	return tb
 }
 
+// Len returns length of this LTable.
 func (tb *LTable) Len() int {
 	if tb.array == nil {
 		return 0
@@ -63,6 +64,7 @@ func (tb *LTable) Len() int {
 	return 0
 }
 
+// Append appends a given LValue to this LTable.
 func (tb *LTable) Append(value LValue) {
 	if tb.array == nil {
 		tb.array = make([]LValue, 0, defaultArrayCap)
@@ -70,6 +72,7 @@ func (tb *LTable) Append(value LValue) {
 	tb.array = append(tb.array, value)
 }
 
+// Insert inserts a given LValue at position `i` in this table.
 func (tb *LTable) Insert(i int, value LValue) {
 	if tb.array == nil {
 		tb.array = make([]LValue, 0, defaultArrayCap)
@@ -88,6 +91,7 @@ func (tb *LTable) Insert(i int, value LValue) {
 	tb.array[i] = value
 }
 
+// MaxN returns a maximum number key that nil value does not exist before it.
 func (tb *LTable) MaxN() int {
 	if tb.array == nil {
 		return 0
@@ -100,6 +104,7 @@ func (tb *LTable) MaxN() int {
 	return 0
 }
 
+// Remove removes from this table the element at a given position.
 func (tb *LTable) Remove(pos int) LValue {
 	if tb.array == nil {
 		return LNil
@@ -122,6 +127,9 @@ func (tb *LTable) Remove(pos int) LValue {
 	return oldval
 }
 
+// RawSet sets a given LValue to a given index without the __newindex metamethod.
+// It is recommended to use `RawSetString` or `RawSetInt` for performance
+// if you already know the given LValue is a string or number.
 func (tb *LTable) RawSet(key LValue, value LValue) {
 	switch v := key.(type) {
 	case LNumber:
@@ -152,6 +160,7 @@ func (tb *LTable) RawSet(key LValue, value LValue) {
 	tb.RawSetH(key, value)
 }
 
+// RawSetInt sets a given LValue at a position `key` without the __newindex metamethod.
 func (tb *LTable) RawSetInt(key int, value LValue) {
 	if key < 1 || key >= MaxArrayIndex {
 		tb.RawSetH(LNumber(key), value)
@@ -175,6 +184,7 @@ func (tb *LTable) RawSetInt(key int, value LValue) {
 	}
 }
 
+// RawSetString sets a given LValue to a given string index without the __newindex metamethod.
 func (tb *LTable) RawSetString(key string, value LValue) {
 	if tb.strdict == nil {
 		tb.strdict = make(map[string]LValue, defaultHashCap)
@@ -186,6 +196,7 @@ func (tb *LTable) RawSetString(key string, value LValue) {
 	}
 }
 
+// RawSetH sets a given LValue to a given index without the __newindex metamethod.
 func (tb *LTable) RawSetH(key LValue, value LValue) {
 	if s, ok := key.(LString); ok {
 		tb.RawSetString(string(s), value)
@@ -202,6 +213,7 @@ func (tb *LTable) RawSetH(key LValue, value LValue) {
 	}
 }
 
+// RawGet returns an LValue associated with a given key without __index metamethod.
 func (tb *LTable) RawGet(key LValue) LValue {
 	switch v := key.(type) {
 	case LNumber:
@@ -233,6 +245,7 @@ func (tb *LTable) RawGet(key LValue) LValue {
 	return LNil
 }
 
+// RawGetInt returns an LValue at position `key` without __index metamethod.
 func (tb *LTable) RawGetInt(key int) LValue {
 	if tb.array == nil {
 		return LNil
@@ -244,6 +257,7 @@ func (tb *LTable) RawGetInt(key int) LValue {
 	return tb.array[index]
 }
 
+// RawGet returns an LValue associated with a given key without __index metamethod.
 func (tb *LTable) RawGetH(key LValue) LValue {
 	if s, sok := key.(LString); sok {
 		if tb.strdict == nil {
@@ -263,6 +277,7 @@ func (tb *LTable) RawGetH(key LValue) LValue {
 	return LNil
 }
 
+// RawGetString returns an LValue associated with a given key without __index metamethod.
 func (tb *LTable) RawGetString(key string) LValue {
 	if tb.strdict == nil {
 		return LNil
@@ -273,6 +288,7 @@ func (tb *LTable) RawGetString(key string) LValue {
 	return LNil
 }
 
+// ForEach iterates over this table of elements, yielding each in turn to a given function.
 func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 	if tb.array != nil {
 		for i, v := range tb.array {
@@ -297,6 +313,7 @@ func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 	}
 }
 
+// This function is equivalent to lua_next ( http://www.lua.org/manual/5.1/manual.html#lua_next ).
 func (tb *LTable) Next(key LValue) (LValue, LValue) {
 	// TODO: inefficient way
 	if key == LNil {

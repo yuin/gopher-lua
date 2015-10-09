@@ -36,8 +36,14 @@ type LValue interface {
 	assertFunction() (*LFunction, bool)
 }
 
+// LVIsFalse returns true if a given LValue is a nil or false otherwise false.
 func LVIsFalse(v LValue) bool { return v == LNil || v == LFalse }
-func LVAsBool(v LValue) bool  { return v != LNil && v != LFalse }
+
+// LVIsFalse returns false if a given LValue is a nil or false otherwise true.
+func LVAsBool(v LValue) bool { return v != LNil && v != LFalse }
+
+// LVAsString returns string representation of a given LValue
+// if the LValue is a string or number, otherwise an empty string.
 func LVAsString(v LValue) string {
 	switch sn := v.(type) {
 	case LString, LNumber:
@@ -47,6 +53,8 @@ func LVAsString(v LValue) string {
 	}
 }
 
+// LVCanConvToString returns true if a given LValue is a string or number
+// otherwise false.
 func LVCanConvToString(v LValue) bool {
 	switch v.(type) {
 	case LString, LNumber:
@@ -56,6 +64,7 @@ func LVCanConvToString(v LValue) bool {
 	}
 }
 
+// LVAsNumber tries to convert a given LValue to a number.
 func LVAsNumber(v LValue) LNumber {
 	switch lv := v.(type) {
 	case LNumber:
