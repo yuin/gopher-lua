@@ -745,7 +745,80 @@ func init() {
 					cf.NArgs++
 					L.reg.Insert(lv, cf.LocalBase)
 				}
-				L.initCallFrame(cf)
+				// this section is inlined by go-inline
+				// source function is 'func (ls *LState) initCallFrame(cf *callFrame) ' in '_state.go'
+				{
+					ls := L
+					if cf.Fn.IsG {
+						ls.reg.SetTop(cf.LocalBase + cf.NArgs)
+					} else {
+						proto := cf.Fn.Proto
+						nargs := cf.NArgs
+						np := int(proto.NumParameters)
+						for i := nargs; i < np; i++ {
+							ls.reg.array[cf.LocalBase+i] = LNil
+							nargs = np
+						}
+
+						if (proto.IsVarArg & VarArgIsVarArg) == 0 {
+							if nargs < int(proto.NumUsedRegisters) {
+								nargs = int(proto.NumUsedRegisters)
+							}
+							for i := np; i < nargs; i++ {
+								ls.reg.array[cf.LocalBase+i] = LNil
+							}
+							ls.reg.top = cf.LocalBase + int(proto.NumUsedRegisters)
+						} else {
+							/* swap vararg positions:
+									   closure
+									   namedparam1 <- lbase
+									   namedparam2
+									   vararg1
+									   vararg2
+
+							           TO
+
+									   closure
+									   nil
+									   nil
+									   vararg1
+									   vararg2
+									   namedparam1 <- lbase
+									   namedparam2
+							*/
+							nvarargs := nargs - np
+							if nvarargs < 0 {
+								nvarargs = 0
+							}
+
+							ls.reg.SetTop(cf.LocalBase + nargs + np)
+							for i := 0; i < np; i++ {
+								//ls.reg.Set(cf.LocalBase+nargs+i, ls.reg.Get(cf.LocalBase+i))
+								ls.reg.array[cf.LocalBase+nargs+i] = ls.reg.array[cf.LocalBase+i]
+								//ls.reg.Set(cf.LocalBase+i, LNil)
+								ls.reg.array[cf.LocalBase+i] = LNil
+							}
+
+							if CompatVarArg {
+								ls.reg.SetTop(cf.LocalBase + nargs + np + 1)
+								if (proto.IsVarArg & VarArgNeedsArg) != 0 {
+									argtb := newLTable(nvarargs, 0)
+									for i := 0; i < nvarargs; i++ {
+										argtb.RawSetInt(i+1, ls.reg.Get(cf.LocalBase+np+i))
+									}
+									argtb.RawSetString("n", LNumber(nvarargs))
+									//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
+									ls.reg.array[cf.LocalBase+nargs+np] = argtb
+								} else {
+									ls.reg.array[cf.LocalBase+nargs+np] = LNil
+								}
+							}
+							cf.LocalBase += nargs
+							maxreg := cf.LocalBase + int(proto.NumUsedRegisters)
+							ls.reg.SetTop(maxreg)
+						}
+					}
+				}
 				// this section is inlined by go-inline
 				// source function is 'func (rg *registry) CopyRange(regv, start, limit, n int) ' in '_state.go'
 				{

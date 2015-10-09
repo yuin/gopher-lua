@@ -583,7 +583,7 @@ func init() {
 					cf.NArgs++
 					L.reg.Insert(lv, cf.LocalBase)
 				}
-				L.initCallFrame(cf)
+				// +inline-call L.initCallFrame cf
 				// +inline-call L.reg.CopyRange base RA -1 reg.Top()-RA-1
 				cf.Base = base
 				cf.LocalBase = base + (cf.LocalBase - lbase + 1)
