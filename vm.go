@@ -33,7 +33,6 @@ func mainLoop(L *LState, baseframe *callFrame) {
 
 func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 	if b == 1 {
-		L.reg.FillNil(regv, n)
 		// this section is inlined by go-inline
 		//   source function 'is' func (rg *registry) FillNil(regm, n int)  in _state.go
 		{
@@ -810,7 +809,6 @@ func init() {
 					start := RA
 					b := B
 					if b == 1 {
-						L.reg.FillNil(regv, n)
 						// this section is inlined by go-inline
 						//   source function 'is' func (rg *registry) FillNil(regm, n int)  in _state.go
 						{
@@ -849,7 +847,6 @@ func init() {
 				start := RA
 				b := B
 				if b == 1 {
-					L.reg.FillNil(regv, n)
 					// this section is inlined by go-inline
 					//   source function 'is' func (rg *registry) FillNil(regm, n int)  in _state.go
 					{

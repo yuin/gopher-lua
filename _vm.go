@@ -32,7 +32,6 @@ func mainLoop(L *LState, baseframe *callFrame) {
 
 func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 	if b == 1 {
-		L.reg.FillNil(regv, n)
 		// +inline-call L.reg.FillNil  regv n
 	} else {
 		// +inline-call L.reg.CopyRange regv start -1 n
