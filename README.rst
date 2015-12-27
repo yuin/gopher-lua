@@ -728,6 +728,12 @@ Libraries for GopherLua
 - `gluaurl <https://github.com/cjoudrey/gluaurl>`_ : A url parser/builder module for gopher-lua
 
 ----------------------------------------------------------------
+Donation
+----------------------------------------------------------------
+
+BTC 1N86hywewUWAgjWQGhMBw6aAyUXrwCkcYm
+
+----------------------------------------------------------------
 License
 ----------------------------------------------------------------
 MIT
