@@ -731,7 +731,7 @@ Libraries for GopherLua
 Donation
 ----------------------------------------------------------------
 
-BTC 1N86hywewUWAgjWQGhMBw6aAyUXrwCkcYm
+BTC: 1NEDSyUmo4SMTDP83JJQSWi1MvQUGGNMZB
 
 ----------------------------------------------------------------
 License
