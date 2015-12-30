@@ -90,7 +90,7 @@ Run scripts in the VM.
 
 Refer to `Lua Reference Manual <http://www.lua.org/manual/5.1/>`_ and `Go doc <http://godoc.org/github.com/yuin/gopher-lua>`_ for further information.
 
-Note that elements that are not commented in `Go doc <http://godoc.org/github.com/yuin/gopher-lua>`_ equivalent to `Lua Reference Manual <http://www.lua.org/manual/5.1/>`_ , except GopherLua uses objects instead of Lua stack indcies.
+Note that elements that are not commented in `Go doc <http://godoc.org/github.com/yuin/gopher-lua>`_ equivalent to `Lua Reference Manual <http://www.lua.org/manual/5.1/>`_ , except GopherLua uses objects instead of Lua stack indices.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Data model
