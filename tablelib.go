@@ -4,8 +4,10 @@ import (
 	"sort"
 )
 
-func tableOpen(L *LState) {
+// OpenTable opens the 'table' library.
+func OpenTable(L *LState) int {
 	L.RegisterModule("table", tableFuncs)
+	return 0
 }
 
 var tableFuncs = map[string]LGFunction{

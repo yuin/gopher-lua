@@ -21,8 +21,8 @@ const (
 
 // LuaLibs are the built-in Gopher-lua libraries as opened by LState.OpenLibs().
 var LuaLibs = map[string]LGFunction{
-	//	TabLibName:     OpenTable,
-	IoLibName: OpenIo,
+	TabLibName: OpenTable,
+	IoLibName:  OpenIo,
 	//	OsLibName:      OpenOs,
 	//	StringLibName:  OpenString,
 	MathLibName:  OpenMath,
@@ -50,7 +50,7 @@ func (ls *LState) oldOpenLibs() {
 	coroutineOpen(ls)
 	//ioOpen(ls)
 	stringOpen(ls)
-	tableOpen(ls)
+	//tableOpen(ls)
 	//mathOpen(ls)
 	osOpen(ls)
 	//debugOpen(ls)
