@@ -21,18 +21,21 @@ const (
 
 // LuaLibs are the built-in Gopher-lua libraries as opened by LState.OpenLibs().
 var LuaLibs = map[string]LGFunction{
-	TabLibName:     OpenTable,
-	IoLibName:      OpenIo,
-	OsLibName:      OpenOs,
-	StringLibName:  OpenString,
-	MathLibName:    OpenMath,
-	DebugLibName:   OpenDebug,
-	ChannelLibName: OpenChannel,
+	//	TabLibName:     OpenTable,
+	IoLibName: OpenIo,
+	//	OsLibName:      OpenOs,
+	//	StringLibName:  OpenString,
+	//	MathLibName:    OpenMath,
+	//	DebugLibName:   OpenDebug,
+	//	ChannelLibName: OpenChannel,
 }
 
 // OpenLibs loads the built-in libraries. It is equivalent to iterating over
 // LuaLibs, preloading each, and requiring each to its own name.
 func (ls *LState) OpenLibs() {
+	// TODO: Remove when ready.
+	ls.oldOpenLibs()
+
 	for name, loader := range LuaLibs {
 		ls.PreloadModule(name, loader)
 		ls.DoString(fmt.Sprintf(`%s = require "%s"`, name, name))

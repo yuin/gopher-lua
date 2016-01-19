@@ -182,14 +182,28 @@ var stdFiles = []struct {
 // OpenIo - New way to open IO, as per https://github.com/yuin/gopher-lua/issues/55
 // Satisfies LGFunction.
 func OpenIo(L *LState) int {
-	// Modelled on https://github.com/layeh/gopher-json/blob/master/json.go
-	// for simplicity
-	t := L.NewTable()
-	L.SetFuncs(t, ioFuncs)
-	L.Push(t)
-	return 1
+	mod := L.RegisterModule("io", map[string]LGFunction{}).(*LTable)
+	mt := L.NewTypeMetatable(lFileClass)
+	mt.RawSetString("__index", mt)
+	L.SetFuncs(mt, fileMethods)
+	mt.RawSetString("lines", L.NewClosure(fileLines, L.NewFunction(fileLinesIter)))
+
+	for _, finfo := range stdFiles {
+		file, _ := newFile(L, finfo.file, "", 0, os.FileMode(0), finfo.writable, finfo.readable)
+		mod.RawSetString(finfo.name, file)
+	}
+	uv := L.CreateTable(2, 0)
+	uv.RawSetInt(fileDefOutIndex, mod.RawGetString("stdout"))
+	uv.RawSetInt(fileDefInIndex, mod.RawGetString("stdin"))
+	for name, fn := range ioFuncs {
+		mod.RawSetString(name, L.NewClosure(fn, uv))
+	}
+	mod.RawSetString("lines", L.NewClosure(ioLines, uv, L.NewClosure(ioLinesIter, uv)))
+	// Modifications are being made in-place rather than returned?
+	return 0
 }
 
+// Will be deprecated in favour of OpenIo function.
 func ioOpen(L *LState) {
 	mod := L.RegisterModule("io", map[string]LGFunction{}).(*LTable)
 	mt := L.NewTypeMetatable(lFileClass)
