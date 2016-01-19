@@ -25,8 +25,8 @@ var LuaLibs = map[string]LGFunction{
 	IoLibName: OpenIo,
 	//	OsLibName:      OpenOs,
 	//	StringLibName:  OpenString,
-	MathLibName: OpenMath,
-	//	DebugLibName:   OpenDebug,
+	MathLibName:  OpenMath,
+	DebugLibName: OpenDebug,
 	//	ChannelLibName: OpenChannel,
 }
 
@@ -41,3 +41,18 @@ func (ls *LState) OpenLibs() {
 		ls.DoString(fmt.Sprintf(`%s = require "%s"`, name, name))
 	}
 }
+
+/// Deprecating for linit.go/OpenLibs for https://github.com/yuin/gopher-lua/issues/55
+func (ls *LState) oldOpenLibs() {
+	// loadlib must be loaded 1st
+	loadOpen(ls)
+	baseOpen(ls)
+	coroutineOpen(ls)
+	//ioOpen(ls)
+	stringOpen(ls)
+	tableOpen(ls)
+	//mathOpen(ls)
+	osOpen(ls)
+	//debugOpen(ls)
+	channelOpen(ls)
+} // */

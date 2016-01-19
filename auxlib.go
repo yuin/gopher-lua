@@ -380,21 +380,6 @@ func (ls *LState) DoString(source string) error {
 	}
 }
 
-/// Deprecating for linit.go/OpenLibs for https://github.com/yuin/gopher-lua/issues/55
-func (ls *LState) oldOpenLibs() {
-	// loadlib must be loaded 1st
-	loadOpen(ls)
-	baseOpen(ls)
-	coroutineOpen(ls)
-	//ioOpen(ls)
-	stringOpen(ls)
-	tableOpen(ls)
-	//mathOpen(ls)
-	osOpen(ls)
-	debugOpen(ls)
-	channelOpen(ls)
-} // */
-
 /* }}} */
 
 /* GopherLua original APIs {{{ */
