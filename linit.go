@@ -25,7 +25,7 @@ var LuaLibs = map[string]LGFunction{
 	IoLibName: OpenIo,
 	//	OsLibName:      OpenOs,
 	//	StringLibName:  OpenString,
-	//	MathLibName:    OpenMath,
+	MathLibName: OpenMath,
 	//	DebugLibName:   OpenDebug,
 	//	ChannelLibName: OpenChannel,
 }
@@ -40,15 +40,4 @@ func (ls *LState) OpenLibs() {
 		ls.PreloadModule(name, loader)
 		ls.DoString(fmt.Sprintf(`%s = require "%s"`, name, name))
 	}
-	/*/ loadlib must be loaded 1st
-	loadOpen(ls)
-	baseOpen(ls)
-	coroutineOpen(ls)
-	ioOpen(ls)
-	stringOpen(ls)
-	tableOpen(ls)
-	mathOpen(ls)
-	osOpen(ls)
-	debugOpen(ls)
-	channelOpen(ls) //*/
 }

@@ -389,7 +389,7 @@ func (ls *LState) oldOpenLibs() {
 	//ioOpen(ls)
 	stringOpen(ls)
 	tableOpen(ls)
-	mathOpen(ls)
+	//mathOpen(ls)
 	osOpen(ls)
 	debugOpen(ls)
 	channelOpen(ls)

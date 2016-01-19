@@ -5,10 +5,12 @@ import (
 	"math/rand"
 )
 
-func mathOpen(L *LState) {
+// OpenMath opens the 'math' library.
+func OpenMath(L *LState) int {
 	mod := L.RegisterModule("math", mathFuncs).(*LTable)
 	mod.RawSetString("pi", LNumber(math.Pi))
 	mod.RawSetString("huge", LNumber(math.MaxFloat64))
+	return 0
 }
 
 var mathFuncs = map[string]LGFunction{
