@@ -46,7 +46,9 @@ func loFindFile(L *LState, name, pname string) (string, string) {
 	return "", strings.Join(messages, "\n\t")
 }
 
-func loadOpen(L *LState) {
+// OpenLoad opens the loading system of Lua; it is essential to load this before
+// other built-ins or third-party modules.
+func OpenLoad(L *LState) int {
 	packagemod := L.RegisterModule("package", loFuncs)
 
 	L.SetField(packagemod, "preload", L.NewTable())
@@ -64,6 +66,7 @@ func loadOpen(L *LState) {
 
 	L.SetField(packagemod, "path", LString(loGetPath(LuaPath, LuaPathDefault)))
 	L.SetField(packagemod, "cpath", LString(""))
+	return 0
 }
 
 var loFuncs = map[string]LGFunction{
