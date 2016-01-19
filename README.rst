@@ -281,7 +281,7 @@ main.go
     )
 
     func main() {
-      L := lua.NewState(lua.Options{SkipOpenLibs: true})
+      L := lua.NewState(&lua.Options{SkipOpenLibs: true})
       defer L.Close()
       for _, loader := range []lua.LGFunction{
         lua.OpenLoad,  // Must be first!
