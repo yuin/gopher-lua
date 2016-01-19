@@ -1,7 +1,10 @@
 package lua
 
-func coroutineOpen(L *LState) {
+// OpenCoroutine opens the 'coroutine' library in Lua.
+func OpenCoroutine(L *LState) int {
+	// TODO: Tie module name to contents of linit.go?
 	L.RegisterModule("coroutine", coFuncs)
+	return 0
 }
 
 var coFuncs = map[string]LGFunction{

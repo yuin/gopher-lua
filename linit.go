@@ -17,17 +17,20 @@ const (
 	DebugLibName = "debug"
 	// ChannelLibName is the name of the channel Library.
 	ChannelLibName = "channel"
+	// CoroutineLibName is the name of the coroutine Library.
+	CoroutineLibName = "coroutine"
 )
 
 // LuaLibs are the built-in Gopher-lua libraries as opened by LState.OpenLibs().
 var LuaLibs = map[string]LGFunction{
-	TabLibName:     OpenTable,
-	IoLibName:      OpenIo,
-	OsLibName:      OpenOs,
-	StringLibName:  OpenString,
-	MathLibName:    OpenMath,
-	DebugLibName:   OpenDebug,
-	ChannelLibName: OpenChannel,
+	TabLibName:       OpenTable,
+	IoLibName:        OpenIo,
+	OsLibName:        OpenOs,
+	StringLibName:    OpenString,
+	MathLibName:      OpenMath,
+	DebugLibName:     OpenDebug,
+	ChannelLibName:   OpenChannel,
+	CoroutineLibName: OpenCoroutine,
 }
 
 // OpenLibs loads the built-in libraries. It is equivalent to iterating over
@@ -47,7 +50,7 @@ func (ls *LState) oldOpenLibs() {
 	// loadlib must be loaded 1st
 	loadOpen(ls)
 	baseOpen(ls)
-	coroutineOpen(ls)
+	//coroutineOpen(ls)
 	//ioOpen(ls)
 	//stringOpen(ls)
 	//tableOpen(ls)
