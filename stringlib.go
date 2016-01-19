@@ -2,12 +2,14 @@ package lua
 
 import (
 	"fmt"
-	"github.com/yuin/gopher-lua/pm"
 	"strings"
 	"unsafe"
+
+	"github.com/yuin/gopher-lua/pm"
 )
 
-func stringOpen(L *LState) {
+// OpenString opens the 'string' library in Lua.
+func OpenString(L *LState) int {
 	_, ok := L.G.builtinMts[int(LTString)]
 	if !ok {
 		mod := L.RegisterModule("string", strFuncs).(*LTable)
@@ -17,6 +19,7 @@ func stringOpen(L *LState) {
 		mod.RawSetString("__index", mod)
 		L.G.builtinMts[int(LTString)] = mod
 	}
+	return 0
 }
 
 var strFuncs = map[string]LGFunction{
