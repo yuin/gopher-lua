@@ -203,27 +203,6 @@ func OpenIo(L *LState) int {
 	return 0
 }
 
-// Will be deprecated in favour of OpenIo function.
-func ioOpen(L *LState) {
-	mod := L.RegisterModule("io", map[string]LGFunction{}).(*LTable)
-	mt := L.NewTypeMetatable(lFileClass)
-	mt.RawSetString("__index", mt)
-	L.SetFuncs(mt, fileMethods)
-	mt.RawSetString("lines", L.NewClosure(fileLines, L.NewFunction(fileLinesIter)))
-
-	for _, finfo := range stdFiles {
-		file, _ := newFile(L, finfo.file, "", 0, os.FileMode(0), finfo.writable, finfo.readable)
-		mod.RawSetString(finfo.name, file)
-	}
-	uv := L.CreateTable(2, 0)
-	uv.RawSetInt(fileDefOutIndex, mod.RawGetString("stdout"))
-	uv.RawSetInt(fileDefInIndex, mod.RawGetString("stdin"))
-	for name, fn := range ioFuncs {
-		mod.RawSetString(name, L.NewClosure(fn, uv))
-	}
-	mod.RawSetString("lines", L.NewClosure(ioLines, uv, L.NewClosure(ioLinesIter, uv)))
-}
-
 var fileMethods = map[string]LGFunction{
 	"__tostring": fileToString,
 	"write":      fileWrite,
