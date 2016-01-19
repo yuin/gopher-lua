@@ -12,6 +12,20 @@ import (
 	"unsafe"
 )
 
+var ioFuncs = map[string]LGFunction{
+	"close":   ioClose,
+	"flush":   ioFlush,
+	"lines":   ioLines,
+	"input":   ioInput,
+	"output":  ioOutput,
+	"open":    ioOpenFile,
+	"popen":   ioPopen,
+	"read":    ioRead,
+	"type":    ioType,
+	"tmpfile": ioTmpFile,
+	"write":   ioWrite,
+}
+
 const lFileClass = "FILE*"
 
 type lFile struct {
@@ -165,6 +179,17 @@ var stdFiles = []struct {
 	{"stderr", os.Stderr, true, false},
 }
 
+// OpenIo - New way to open IO, as per https://github.com/yuin/gopher-lua/issues/55
+// Satisfies LGFunction.
+func OpenIo(L *LState) int {
+	// Modelled on https://github.com/layeh/gopher-json/blob/master/json.go
+	// for simplicity
+	t := L.NewTable()
+	L.SetFuncs(t, ioFuncs)
+	L.Push(t)
+	return 1
+}
+
 func ioOpen(L *LState) {
 	mod := L.RegisterModule("io", map[string]LGFunction{}).(*LTable)
 	mt := L.NewTypeMetatable(lFileClass)
@@ -263,7 +288,7 @@ func fileCloseAux(L *LState, file *lFile) int {
 		return 1
 	case lFileProcess:
 		err = file.pp.Wait()
-		var exitStatus int = 0
+		var exitStatus int // Initialised to zero value = 0
 		if err != nil {
 			if e2, ok := err.(*exec.ExitError); ok {
 				if s, ok := e2.Sys().(syscall.WaitStatus); ok {
@@ -515,20 +540,6 @@ errreturn:
 	L.Push(LNil)
 	L.Push(LString(err.Error()))
 	return 2
-}
-
-var ioFuncs = map[string]LGFunction{
-	"close":   ioClose,
-	"flush":   ioFlush,
-	"lines":   ioLines,
-	"input":   ioInput,
-	"output":  ioOutput,
-	"open":    ioOpenFile,
-	"popen":   ioPopen,
-	"read":    ioRead,
-	"type":    ioType,
-	"tmpfile": ioTmpFile,
-	"write":   ioWrite,
 }
 
 func ioInput(L *LState) int {
