@@ -179,8 +179,6 @@ var stdFiles = []struct {
 	{"stderr", os.Stderr, true, false},
 }
 
-// OpenIo - New way to open IO, as per https://github.com/yuin/gopher-lua/issues/55
-// Satisfies LGFunction.
 func OpenIo(L *LState) int {
 	mod := L.RegisterModule("io", map[string]LGFunction{}).(*LTable)
 	mt := L.NewTypeMetatable(lFileClass)
@@ -200,7 +198,8 @@ func OpenIo(L *LState) int {
 	}
 	mod.RawSetString("lines", L.NewClosure(ioLines, uv, L.NewClosure(ioLinesIter, uv)))
 	// Modifications are being made in-place rather than returned?
-	return 0
+	L.Push(mod)
+	return 1
 }
 
 var fileMethods = map[string]LGFunction{

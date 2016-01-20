@@ -17,16 +17,17 @@ func checkGoroutineSafe(L *LState, idx int) LValue {
 	return v
 }
 
-// OpenChannel opens the 'channel' library in Lua.
 func OpenChannel(L *LState) int {
+	var mod LValue
 	_, ok := L.G.builtinMts[int(LTChannel)]
 	if !ok {
-		L.RegisterModule("channel", channelFuncs)
+		mod = L.RegisterModule("channel", channelFuncs)
 		mt := L.SetFuncs(L.NewTable(), channelMethods)
 		mt.RawSetString("__index", mt)
 		L.G.builtinMts[int(LTChannel)] = mt
 	}
-	return 0
+	L.Push(mod)
+	return 1
 }
 
 var channelFuncs = map[string]LGFunction{

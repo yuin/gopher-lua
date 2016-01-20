@@ -4,10 +4,10 @@ import (
 	"fmt"
 )
 
-// OpenDebug opens the 'debug' library.
 func OpenDebug(L *LState) int {
-	L.RegisterModule("debug", debugFuncs)
-	return 0
+	dbgmod := L.RegisterModule("debug", debugFuncs)
+	L.Push(dbgmod)
+	return 1
 }
 
 var debugFuncs = map[string]LGFunction{

@@ -8,8 +8,8 @@ import (
 	"github.com/yuin/gopher-lua/pm"
 )
 
-// OpenString opens the 'string' library in Lua.
 func OpenString(L *LState) int {
+	var mod LValue
 	_, ok := L.G.builtinMts[int(LTString)]
 	if !ok {
 		mod := L.RegisterModule("string", strFuncs).(*LTable)
@@ -19,7 +19,8 @@ func OpenString(L *LState) int {
 		mod.RawSetString("__index", mod)
 		L.G.builtinMts[int(LTString)] = mod
 	}
-	return 0
+	L.Push(mod)
+	return 1
 }
 
 var strFuncs = map[string]LGFunction{

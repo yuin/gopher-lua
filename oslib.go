@@ -29,10 +29,10 @@ func getBoolField(L *LState, tb *LTable, key string, v bool) bool {
 	return v
 }
 
-// OpenOs opens the 'os' library in Lua.
 func OpenOs(L *LState) int {
-	L.RegisterModule("os", osFuncs)
-	return 0
+	osmod := L.RegisterModule("os", osFuncs)
+	L.Push(osmod)
+	return 1
 }
 
 var osFuncs = map[string]LGFunction{
