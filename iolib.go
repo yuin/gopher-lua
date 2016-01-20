@@ -12,6 +12,20 @@ import (
 	"unsafe"
 )
 
+var ioFuncs = map[string]LGFunction{
+	"close":   ioClose,
+	"flush":   ioFlush,
+	"lines":   ioLines,
+	"input":   ioInput,
+	"output":  ioOutput,
+	"open":    ioOpenFile,
+	"popen":   ioPopen,
+	"read":    ioRead,
+	"type":    ioType,
+	"tmpfile": ioTmpFile,
+	"write":   ioWrite,
+}
+
 const lFileClass = "FILE*"
 
 type lFile struct {
@@ -165,8 +179,8 @@ var stdFiles = []struct {
 	{"stderr", os.Stderr, true, false},
 }
 
-func ioOpen(L *LState) {
-	mod := L.RegisterModule("io", map[string]LGFunction{}).(*LTable)
+func OpenIo(L *LState) int {
+	mod := L.RegisterModule(IoLibName, map[string]LGFunction{}).(*LTable)
 	mt := L.NewTypeMetatable(lFileClass)
 	mt.RawSetString("__index", mt)
 	L.SetFuncs(mt, fileMethods)
@@ -183,6 +197,9 @@ func ioOpen(L *LState) {
 		mod.RawSetString(name, L.NewClosure(fn, uv))
 	}
 	mod.RawSetString("lines", L.NewClosure(ioLines, uv, L.NewClosure(ioLinesIter, uv)))
+	// Modifications are being made in-place rather than returned?
+	L.Push(mod)
+	return 1
 }
 
 var fileMethods = map[string]LGFunction{
@@ -263,7 +280,7 @@ func fileCloseAux(L *LState, file *lFile) int {
 		return 1
 	case lFileProcess:
 		err = file.pp.Wait()
-		var exitStatus int = 0
+		var exitStatus int // Initialised to zero value = 0
 		if err != nil {
 			if e2, ok := err.(*exec.ExitError); ok {
 				if s, ok := e2.Sys().(syscall.WaitStatus); ok {
@@ -515,20 +532,6 @@ errreturn:
 	L.Push(LNil)
 	L.Push(LString(err.Error()))
 	return 2
-}
-
-var ioFuncs = map[string]LGFunction{
-	"close":   ioClose,
-	"flush":   ioFlush,
-	"lines":   ioLines,
-	"input":   ioInput,
-	"output":  ioOutput,
-	"open":    ioOpenFile,
-	"popen":   ioPopen,
-	"read":    ioRead,
-	"type":    ioType,
-	"tmpfile": ioTmpFile,
-	"write":   ioWrite,
 }
 
 func ioInput(L *LState) int {

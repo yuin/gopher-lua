@@ -4,8 +4,10 @@ import (
 	"fmt"
 )
 
-func debugOpen(L *LState) {
-	L.RegisterModule("debug", debugFuncs)
+func OpenDebug(L *LState) int {
+	dbgmod := L.RegisterModule(DebugLibName, debugFuncs)
+	L.Push(dbgmod)
+	return 1
 }
 
 var debugFuncs = map[string]LGFunction{

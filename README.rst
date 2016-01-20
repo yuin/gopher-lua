@@ -9,7 +9,7 @@ GopherLua: VM and compiler for Lua in Go.
     :target: https://travis-ci.org/yuin/gopher-lua
 
 .. image:: https://coveralls.io/repos/yuin/gopher-lua/badge.svg
-    :target: https://coveralls.io/r/yuin/gopher-lua 
+    :target: https://coveralls.io/r/yuin/gopher-lua
 
 .. image:: https://badges.gitter.im/Join%20Chat.svg
     :alt: Join the chat at https://gitter.im/yuin/gopher-lua
@@ -19,7 +19,7 @@ GopherLua: VM and compiler for Lua in Go.
 
 GopherLua is a Lua5.1 VM and compiler written in Go. GopherLua has a same goal
 with Lua: **Be a scripting language with extensible semantics** . It provides
-Go APIs that allow you to easily embed a scripting language to your Go host 
+Go APIs that allow you to easily embed a scripting language to your Go host
 programs.
 
 .. contents::
@@ -31,7 +31,7 @@ Design principle
 
 - Be a scripting language with extensible semantics.
 - User-friendly Go API
-    - The stack based API like the one used in the original Lua 
+    - The stack based API like the one used in the original Lua
       implementation will cause a performance improvements in GopherLua
       (It will reduce memory allocations and concrete type <-> interface conversions).
       GopherLua API is **not** the stack based API.
@@ -49,7 +49,7 @@ Installation
 ----------------------------------------------------------------
 
 .. code-block:: bash
-   
+
    go get github.com/yuin/gopher-lua
 
 GopherLua supports >= Go1.4.
@@ -57,7 +57,7 @@ GopherLua supports >= Go1.4.
 ----------------------------------------------------------------
 Usage
 ----------------------------------------------------------------
-GopherLua APIs perform in much the same way as Lua, **but the stack is used only 
+GopherLua APIs perform in much the same way as Lua, **but the stack is used only
 for passing arguments and receiving returned values.**
 
 GopherLua supports channel operations. See **"Goroutines"** section.
@@ -65,7 +65,7 @@ GopherLua supports channel operations. See **"Goroutines"** section.
 Import a package.
 
 .. code-block:: go
-   
+
    import (
        "github.com/yuin/gopher-lua"
    )
@@ -73,7 +73,7 @@ Import a package.
 Run scripts in the VM.
 
 .. code-block:: go
-   
+
    L := lua.NewState()
    defer L.Close()
    if err := L.DoString(`print("hello")`); err != nil {
@@ -95,7 +95,7 @@ Note that elements that are not commented in `Go doc <http://godoc.org/github.co
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Data model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-All data in a GopherLua program is an ``LValue`` . ``LValue`` is an interface 
+All data in a GopherLua program is an ``LValue`` . ``LValue`` is an interface
 type that has following methods.
 
 - ``String() string``
@@ -146,10 +146,10 @@ To test ``LNilType`` and ``LBool``, You **must** use pre-defined constants.
 .. code-block:: go
 
    lv := L.Get(-1) // get the value at the top of the stack
-   
+
    if lv == LTrue { // correct
    }
-   
+
    if bl, ok == lv.(lua.LBool); ok && bool(bl) { // wrong
    }
 
@@ -160,12 +160,12 @@ In Lua, both ``nil`` and ``false`` make a condition false. ``LVIsFalse`` and ``L
    lv := L.Get(-1) // get the value at the top of the stack
    if LVIsFalse(lv) { // lv is nil or false
    }
-   
+
    if LVAsBool(lv) { // lv is neither nil nor false
    }
 
 Objects that based on go structs(``LFunction``. ``LUserData``, ``LTable``)
-have some public methods and fields. You can use these methods and fields for 
+have some public methods and fields. You can use these methods and fields for
 performance and debugging, but there are some limitations.
 
 - Metatable does not work.
@@ -201,6 +201,7 @@ Miscellaneous lua.NewState options
 - **Options.SkipOpenLibs bool(default false)**
     - By default, GopherLua opens all built-in libraries when new LState is created.
     - You can skip this behaviour by setting this to ``true`` .
+    - Using the various `OpenXXX(L *LState) int` functions you can open only those libraries that you require, for an example see below.
 - **Options.IncludeGoStackTrace bool(default false)**
     - By default, GopherLua does not show Go stack traces when panics occur.
     - You can get Go stack traces by setting this to ``true`` .
@@ -222,7 +223,7 @@ Calling Go from Lua
        L.Push(lua.LNumber(lv * 2)) /* push result */
        return 1                     /* number of results */
    }
-   
+
    func main() {
        L := lua.NewState()
        defer L.Close()
@@ -252,16 +253,51 @@ Working with coroutines.
            fmt.Println(err.Error())
            break
        }
-    
+
        for i, lv := range values {
            fmt.Printf("%v : %v\n", i, lv)
        }
-    
+
        if st == lua.ResumeOK {
            fmt.Println("yield break(ok)")
            break
        }
    }
+
++++++++++++++++++++++++++++++++++++++++++
+Opening a subset of builtin modules
++++++++++++++++++++++++++++++++++++++++++
+
+The following demonstrates how to open a subset of the built-in modules in Lua, say for example to avoid enabling modules with access to local files or system calls.
+
+main.go
+
+.. code-block:: go
+
+    package main
+
+    import (
+        "github.com/yuin/gopher-lua"
+    )
+
+    func main() {
+      L := lua.NewState(&lua.Options{SkipOpenLibs: true})
+      defer L.Close()
+      for _, loader := range []lua.LGFunction{
+        lua.OpenLoad,  // Must be first!
+        lua.OpenBase,  // Contains most builtins, pretty much required
+        lua.OpenString,
+        lua.OpenMath,
+        lua.OpenTable,
+        lua.OpenCoroutine,
+        lua.OpenChannel,
+      } {
+        _ = loader(L)
+      }
+      if err := L.DoFile("main.lua"); err != nil {
+        panic(err)
+      }
+    }
 
 +++++++++++++++++++++++++++++++++++++++++
 Creating a module by Go
@@ -272,26 +308,26 @@ mymodule.go
 .. code-block:: go
 
     package mymodule
-    
+
     import (
         "github.com/yuin/gopher-lua"
     )
-    
+
     func Loader(L *lua.LState) int {
         // register functions to the table
         mod := L.SetFuncs(L.NewTable(), exports)
         // register other stuff
         L.SetField(mod, "name", lua.LString("value"))
-    
+
         // returns the module
         L.Push(mod)
         return 1
     }
-    
+
     var exports = map[string]lua.LGFunction{
         "myfunc": myfunc,
     }
-    
+
     func myfunc(L *lua.LState) int {
         return 0
     }
@@ -301,12 +337,12 @@ mymain.go
 .. code-block:: go
 
     package main
-    
+
     import (
         "./mymodule"
         "github.com/yuin/gopher-lua"
     )
-    
+
     func main() {
         L := lua.NewState()
         defer L.Close()
@@ -359,9 +395,9 @@ You can extend GopherLua with new types written in Go.
     type Person struct {
         Name string
     }
-    
+
     const luaPersonTypeName = "person"
-    
+
     // Registers my person type to given L.
     func registerPersonType(L *lua.LState) {
         mt := L.NewTypeMetatable(luaPersonTypeName)
@@ -371,7 +407,7 @@ You can extend GopherLua with new types written in Go.
         // methods
         L.SetField(mt, "__index", L.SetFuncs(L.NewTable(), personMethods))
     }
-    
+
     // Constructor
     func newPerson(L *lua.LState) int {
         person := &Person{L.CheckString(1)}
@@ -381,7 +417,7 @@ You can extend GopherLua with new types written in Go.
         L.Push(ud)
         return 1
     }
-    
+
     // Checks whether the first lua argument is a *LUserData with *Person and returns this *Person.
     func checkPerson(L *lua.LState) *Person {
         ud := L.CheckUserData(1)
@@ -391,11 +427,11 @@ You can extend GopherLua with new types written in Go.
         L.ArgError(1, "person expected")
         return nil
     }
-    
+
     var personMethods = map[string]lua.LGFunction{
         "name": personGetSetName,
     }
-    
+
     // Getter and setter for the Person#Name
     func personGetSetName(L *lua.LState) int {
         p := checkPerson(L)
@@ -406,7 +442,7 @@ You can extend GopherLua with new types written in Go.
         L.Push(lua.LString(p.Name))
         return 1
     }
-    
+
     func main() {
         L := lua.NewState()
         defer L.Close()
@@ -468,7 +504,7 @@ You **must not** send these objects from Go APIs to channels.
             panic(err)
         }
     }
-    
+
     func sender(ch, quit chan lua.LValue) {
         L := lua.NewState()
         defer L.Close()
@@ -483,7 +519,7 @@ You **must not** send these objects from Go APIs to channels.
         ch <- lua.LString("3")
         quit <- lua.LTrue
     }
-    
+
     func main() {
         ch := make(chan lua.LValue)
         quit := make(chan lua.LValue)
@@ -508,8 +544,8 @@ Lua API
     - Create new channel that has a buffer size of ``buf``. By default, ``buf`` is 0.
 
 - **channel.select(case:table [, case:table, case:table ...]) -> {index:int, recv:any, ok}**
-    - Same as the ``select`` statement in Go. It returns the index of the chosen case and, if that 
-      case was a receive operation, the value received and a boolean indicating whether the channel has been closed. 
+    - Same as the ``select`` statement in Go. It returns the index of the chosen case and, if that
+      case was a receive operation, the value received and a boolean indicating whether the channel has been closed.
     - ``case`` is a table that outlined below.
         - receiving: `{"|<-", ch:channel [, handler:func(ok, data:any)]}`
         - sending: `{"<-|", ch:channel, data:any [, handler:func(data:any)]}`
@@ -558,12 +594,12 @@ The LState pool pattern
 To create per-thread LState instances, You can use the ``sync.Pool`` like mechanism.
 
 .. code-block:: go
-    
+
     type lStatePool struct {
         m     sync.Mutex
         saved []*lua.LState
     }
-    
+
     func (pl *lStatePool) Get() *lua.LState {
         pl.m.Lock()
         defer pl.m.Unlock()
@@ -575,26 +611,26 @@ To create per-thread LState instances, You can use the ``sync.Pool`` like mechan
         pl.saved = pl.saved[0 : n-1]
         return x
     }
-    
+
     func (pl *lStatePool) New() *lua.LState {
         L := lua.NewState()
         // setting the L up here.
         // load scripts, set global variables, share channels, etc...
         return L
     }
-    
+
     func (pl *lStatePool) Put(L *lua.LState) {
         pl.m.Lock()
         defer pl.m.Unlock()
         pl.saved = append(pl.saved, L)
     }
-    
+
     func (pl *lStatePool) Shutdown() {
         for _, L := range pl.saved {
             L.Close()
         }
     }
-    
+
     // Global LState pool
     var luaPool = &lStatePool{
         saved: make([]*lua.LState, 0, 4),
@@ -603,7 +639,7 @@ To create per-thread LState instances, You can use the ``sync.Pool`` like mechan
 Now, you can get per-thread LState objects from the ``luaPool`` .
 
 .. code-block:: go
-    
+
     func MyWorker() {
        L := luaPool.Get()
        defer luaPool.Put(L)
@@ -633,7 +669,7 @@ Goroutines
 Unsupported functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- ``string.dump`` 
+- ``string.dump``
 - ``os.setlocale``
 - ``collectgarbage``
 - ``lua_Debug.namewhat``
@@ -692,24 +728,24 @@ Our workflow is based on the `github-flow <https://guides.github.com/introductio
 
 4. Pull new changes from the upstream.
    ::
-        
+
         git checkout master
         git fetch upstream
         git merge upstream/master
 
 5. Create a feature branch
    ::
-        
+
         git checkout -b <branch-name>
 
 6. Commit your changes and reference the issue number in your comment.
    ::
-        
+
         git commit -m "Issue #<issue-ref> : <your message>"
 
 7. Push the feature branch to your remote repository.
    ::
-        
+
         git push origin <branch-name>
 
 8. Open new pull request.

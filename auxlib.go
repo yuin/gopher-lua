@@ -380,20 +380,6 @@ func (ls *LState) DoString(source string) error {
 	}
 }
 
-func (ls *LState) OpenLibs() {
-	// loadlib must be loaded 1st
-	loadOpen(ls)
-	baseOpen(ls)
-	coroutineOpen(ls)
-	ioOpen(ls)
-	stringOpen(ls)
-	tableOpen(ls)
-	mathOpen(ls)
-	osOpen(ls)
-	debugOpen(ls)
-	channelOpen(ls)
-}
-
 /* }}} */
 
 /* GopherLua original APIs {{{ */

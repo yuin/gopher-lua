@@ -29,8 +29,10 @@ func getBoolField(L *LState, tb *LTable, key string, v bool) bool {
 	return v
 }
 
-func osOpen(L *LState) {
-	L.RegisterModule("os", osFuncs)
+func OpenOs(L *LState) int {
+	osmod := L.RegisterModule(OsLibName, osFuncs)
+	L.Push(osmod)
+	return 1
 }
 
 var osFuncs = map[string]LGFunction{

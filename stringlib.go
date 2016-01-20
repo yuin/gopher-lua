@@ -2,21 +2,25 @@ package lua
 
 import (
 	"fmt"
-	"github.com/yuin/gopher-lua/pm"
 	"strings"
 	"unsafe"
+
+	"github.com/yuin/gopher-lua/pm"
 )
 
-func stringOpen(L *LState) {
-	_, ok := L.G.builtinMts[int(LTString)]
-	if !ok {
-		mod := L.RegisterModule("string", strFuncs).(*LTable)
-		gmatch := L.NewClosure(strGmatch, L.NewFunction(strGmatchIter))
-		mod.RawSetString("gmatch", gmatch)
-		mod.RawSetString("gfind", gmatch)
-		mod.RawSetString("__index", mod)
-		L.G.builtinMts[int(LTString)] = mod
-	}
+func OpenString(L *LState) int {
+	var mod *LTable
+	//_, ok := L.G.builtinMts[int(LTString)]
+	//if !ok {
+	mod = L.RegisterModule(StringLibName, strFuncs).(*LTable)
+	gmatch := L.NewClosure(strGmatch, L.NewFunction(strGmatchIter))
+	mod.RawSetString("gmatch", gmatch)
+	mod.RawSetString("gfind", gmatch)
+	mod.RawSetString("__index", mod)
+	L.G.builtinMts[int(LTString)] = mod
+	//}
+	L.Push(mod)
+	return 1
 }
 
 var strFuncs = map[string]LGFunction{

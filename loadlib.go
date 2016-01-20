@@ -46,8 +46,8 @@ func loFindFile(L *LState, name, pname string) (string, string) {
 	return "", strings.Join(messages, "\n\t")
 }
 
-func loadOpen(L *LState) {
-	packagemod := L.RegisterModule("package", loFuncs)
+func OpenPackage(L *LState) int {
+	packagemod := L.RegisterModule(LoadLibName, loFuncs)
 
 	L.SetField(packagemod, "preload", L.NewTable())
 
@@ -64,6 +64,9 @@ func loadOpen(L *LState) {
 
 	L.SetField(packagemod, "path", LString(loGetPath(LuaPath, LuaPathDefault)))
 	L.SetField(packagemod, "cpath", LString(""))
+
+	L.Push(packagemod)
+	return 1
 }
 
 var loFuncs = map[string]LGFunction{
