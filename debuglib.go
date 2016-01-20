@@ -5,7 +5,7 @@ import (
 )
 
 func OpenDebug(L *LState) int {
-	dbgmod := L.RegisterModule("debug", debugFuncs)
+	dbgmod := L.RegisterModule(DebugLibName, debugFuncs)
 	L.Push(dbgmod)
 	return 1
 }

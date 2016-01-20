@@ -19,13 +19,13 @@ func checkGoroutineSafe(L *LState, idx int) LValue {
 
 func OpenChannel(L *LState) int {
 	var mod LValue
-	_, ok := L.G.builtinMts[int(LTChannel)]
-	if !ok {
-		mod = L.RegisterModule("channel", channelFuncs)
-		mt := L.SetFuncs(L.NewTable(), channelMethods)
-		mt.RawSetString("__index", mt)
-		L.G.builtinMts[int(LTChannel)] = mt
-	}
+	//_, ok := L.G.builtinMts[int(LTChannel)]
+	//	if !ok {
+	mod = L.RegisterModule(ChannelLibName, channelFuncs)
+	mt := L.SetFuncs(L.NewTable(), channelMethods)
+	mt.RawSetString("__index", mt)
+	L.G.builtinMts[int(LTChannel)] = mt
+	//	}
 	L.Push(mod)
 	return 1
 }

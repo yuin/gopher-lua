@@ -6,7 +6,7 @@ import (
 )
 
 func OpenMath(L *LState) int {
-	mod := L.RegisterModule("math", mathFuncs).(*LTable)
+	mod := L.RegisterModule(MathLibName, mathFuncs).(*LTable)
 	mod.RawSetString("pi", LNumber(math.Pi))
 	mod.RawSetString("huge", LNumber(math.MaxFloat64))
 	L.Push(mod)

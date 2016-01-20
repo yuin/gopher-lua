@@ -9,16 +9,16 @@ import (
 )
 
 func OpenString(L *LState) int {
-	var mod LValue
-	_, ok := L.G.builtinMts[int(LTString)]
-	if !ok {
-		mod := L.RegisterModule("string", strFuncs).(*LTable)
-		gmatch := L.NewClosure(strGmatch, L.NewFunction(strGmatchIter))
-		mod.RawSetString("gmatch", gmatch)
-		mod.RawSetString("gfind", gmatch)
-		mod.RawSetString("__index", mod)
-		L.G.builtinMts[int(LTString)] = mod
-	}
+	var mod *LTable
+	//_, ok := L.G.builtinMts[int(LTString)]
+	//if !ok {
+	mod = L.RegisterModule(StringLibName, strFuncs).(*LTable)
+	gmatch := L.NewClosure(strGmatch, L.NewFunction(strGmatchIter))
+	mod.RawSetString("gmatch", gmatch)
+	mod.RawSetString("gfind", gmatch)
+	mod.RawSetString("__index", mod)
+	L.G.builtinMts[int(LTString)] = mod
+	//}
 	L.Push(mod)
 	return 1
 }

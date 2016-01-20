@@ -180,7 +180,7 @@ var stdFiles = []struct {
 }
 
 func OpenIo(L *LState) int {
-	mod := L.RegisterModule("io", map[string]LGFunction{}).(*LTable)
+	mod := L.RegisterModule(IoLibName, map[string]LGFunction{}).(*LTable)
 	mt := L.NewTypeMetatable(lFileClass)
 	mt.RawSetString("__index", mt)
 	L.SetFuncs(mt, fileMethods)

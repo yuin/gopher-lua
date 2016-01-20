@@ -30,7 +30,7 @@ func getBoolField(L *LState, tb *LTable, key string, v bool) bool {
 }
 
 func OpenOs(L *LState) int {
-	osmod := L.RegisterModule("os", osFuncs)
+	osmod := L.RegisterModule(OsLibName, osFuncs)
 	L.Push(osmod)
 	return 1
 }

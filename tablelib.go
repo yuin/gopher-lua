@@ -5,7 +5,7 @@ import (
 )
 
 func OpenTable(L *LState) int {
-	tabmod := L.RegisterModule("table", tableFuncs)
+	tabmod := L.RegisterModule(TabLibName, tableFuncs)
 	L.Push(tabmod)
 	return 1
 }
