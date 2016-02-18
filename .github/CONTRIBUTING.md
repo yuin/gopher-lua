@@ -20,30 +20,30 @@ Our workflow is based on the [github-flow](https://guides.github.com/introductio
 1. Create a new issue.
 2. Fork the project.
 3. Clone your fork and add the upstream.
-```bash
-git remote add upstream https://github.com/yuin/gopher-lua.git
-```
+    ```bash
+    git remote add upstream https://github.com/yuin/gopher-lua.git
+    ```
 
 4. Pull new changes from the upstream.
-```bash
-git checkout master
-git fetch upstream
-git merge upstream/master
-```
+    ```bash
+    git checkout master
+    git fetch upstream
+    git merge upstream/master
+    ```
 
 5. Create a feature branch
-```bash
-git checkout -b <branch-name>
-```
+    ```bash
+    git checkout -b <branch-name>
+    ```
 
 6. Commit your changes and reference the issue number in your comment.
-```bash
-git commit -m "Issue #<issue-ref> : <your message>"
-```
+    ```bash
+    git commit -m "Issue #<issue-ref> : <your message>"
+    ```
 
 7. Push the feature branch to your remote repository.
-```bash
-git push origin <branch-name>
-```
+    ```bash
+    git push origin <branch-name>
+    ```
 
 8. Open new pull request.
