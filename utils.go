@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -130,8 +129,9 @@ func strftime(t time.Time, cfmt string) string {
 }
 
 func isInteger(v LNumber) bool {
-	_, frac := math.Modf(float64(v))
-	return frac == 0.0
+	return float64(v) == float64(int64(v))
+	//_, frac := math.Modf(float64(v))
+	//return frac == 0.0
 }
 
 func isArrayKey(v LNumber) bool {
