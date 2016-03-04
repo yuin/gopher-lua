@@ -153,14 +153,10 @@ func debugSetUpvalue(L *LState) int {
 func debugTraceback(L *LState) int {
 	msg := L.OptString(1, "")
 	level := L.OptInt(2, 1)
-	stacktrace := strings.TrimSpace(L.stackTrace(true))
-	lines := strings.Split(stacktrace, "\n")
-	header := lines[0]
-	lst := lines[intMax(intMin(len(lines)-1, level), 0)+1 : len(lines)]
-	traceback := fmt.Sprintf("%s\n%s", header, strings.Join(lst, "\n"))
+	traceback := strings.TrimSpace(L.stackTrace(level))
 	if len(msg) > 0 {
 		traceback = fmt.Sprintf("%s\n%s", msg, traceback)
 	}
-	L.Push(LString(strings.TrimSpace(traceback)))
+	L.Push(LString(traceback))
 	return 1
 }
