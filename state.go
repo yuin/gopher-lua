@@ -334,6 +334,7 @@ func newLState(options Options) *LState {
 		currentFrame: nil,
 		wrapped:      false,
 		uvcache:      nil,
+		hasErrorFunc: false,
 	}
 	ls.Env = ls.G.Global
 	return ls
@@ -383,7 +384,9 @@ func (ls *LState) closeAllUpvalues() { // +inline-start
 } // +inline-end
 
 func (ls *LState) raiseError(level int, format string, args ...interface{}) {
-	ls.closeAllUpvalues()
+	if !ls.hasErrorFunc {
+		ls.closeAllUpvalues()
+	}
 	message := format
 	if len(args) > 0 {
 		message = fmt.Sprintf(format, args...)
@@ -457,11 +460,11 @@ func (ls *LState) stackTrace(include bool) string {
 		}
 	}
 	buf = append(buf, fmt.Sprintf("\t%v: %v", "[G]", "?"))
-	if len(buf) > 10 {
+	if len(buf) > 20 {
 		newbuf := make([]string, 0, 20)
 		newbuf = append(newbuf, buf[0:7]...)
 		newbuf = append(newbuf, "\t...")
-		newbuf = append(newbuf, buf[len(buf)-7:len(buf)-1]...)
+		newbuf = append(newbuf, buf[len(buf)-7:len(buf)]...)
 		buf = newbuf
 	}
 	ret := strings.Join(buf, "\n")
@@ -471,12 +474,12 @@ func (ls *LState) stackTrace(include bool) string {
 func (ls *LState) formattedFrameFuncName(fr *callFrame) string {
 	name, ischunk := ls.frameFuncName(fr)
 	if ischunk {
-		if name[0] != '(' && name[0] != '<' {
-			return fmt.Sprintf("function '%s'", name)
-		}
-		return fmt.Sprintf("function %s", name)
+		return name
 	}
-	return name
+	if name[0] != '(' && name[0] != '<' {
+		return fmt.Sprintf("function '%s'", name)
+	}
+	return fmt.Sprintf("function %s", name)
 }
 
 func (ls *LState) rawFrameFuncName(fr *callFrame) string {
@@ -1310,7 +1313,9 @@ func (ls *LState) Error(lv LValue, level int) {
 	if str, ok := lv.(LString); ok {
 		ls.raiseError(level, string(str))
 	} else {
-		ls.closeAllUpvalues()
+		if !ls.hasErrorFunc {
+			ls.closeAllUpvalues()
+		}
 		ls.Push(lv)
 		ls.Panic(ls)
 	}
@@ -1605,8 +1610,12 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 	base := ls.reg.Top() - nargs - 1
 	oldpanic := ls.Panic
 	ls.Panic = panicWithoutTraceback
+	if errfunc != nil {
+		ls.hasErrorFunc = true
+	}
 	defer func() {
 		ls.Panic = oldpanic
+		ls.hasErrorFunc = false
 		rcv := recover()
 		if rcv != nil {
 			if _, ok := rcv.(*ApiError); !ok {
