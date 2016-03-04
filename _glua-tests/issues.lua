@@ -66,3 +66,51 @@ assert(string.match("あいうえお", "あいうえお") == "あいうえお")
 
 -- issue 47
 assert(string.gsub("A\nA", ".", "A") == "AAA")
+
+-- issue 62
+local function level4() error("error!") end
+local function level3() level4() end
+local function level2() level3() end
+local function level1() level2() end
+local ok, result = xpcall(level1, function(err)
+  return debug.traceback("msg", 10)
+end)
+assert(result == [[msg
+stack traceback:]])
+ok, result = xpcall(level1, function(err)
+  return debug.traceback("msg", 9)
+end)
+assert(result == string.gsub([[msg
+stack traceback:
+@TAB@[G]: ?]], "@TAB@", "\t"))
+local ok, result = xpcall(level1, function(err)
+  return debug.traceback("msg", 0)
+end)
+
+assert(result == string.gsub([[msg
+stack traceback:
+@TAB@[G]: in function 'traceback'
+@TAB@issues.lua:87: in function <issues.lua:86>
+@TAB@[G]: in function 'error'
+@TAB@issues.lua:71: in function 'level4'
+@TAB@issues.lua:72: in function 'level3'
+@TAB@issues.lua:73: in function 'level2'
+@TAB@issues.lua:74: in function <issues.lua:74>
+@TAB@[G]: in function 'xpcall'
+@TAB@issues.lua:86: in main chunk
+@TAB@[G]: ?]], "@TAB@", "\t"))
+
+local ok, result = xpcall(level1, function(err)
+  return debug.traceback("msg", 3)
+end)
+
+assert(result == string.gsub([[msg
+stack traceback:
+@TAB@issues.lua:71: in function 'level4'
+@TAB@issues.lua:72: in function 'level3'
+@TAB@issues.lua:73: in function 'level2'
+@TAB@issues.lua:74: in function <issues.lua:74>
+@TAB@[G]: in function 'xpcall'
+@TAB@issues.lua:103: in main chunk
+@TAB@[G]: ?]], "@TAB@", "\t"))
+

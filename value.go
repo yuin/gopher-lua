@@ -214,6 +214,7 @@ type LState struct {
 	currentFrame *callFrame
 	wrapped      bool
 	uvcache      *Upvalue
+	hasErrorFunc bool
 }
 
 func (ls *LState) String() string                     { return fmt.Sprintf("thread: %p", ls) }
