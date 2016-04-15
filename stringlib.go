@@ -99,10 +99,6 @@ func strFind(L *LState) int {
 	if L.GetTop() == 4 {
 		plain = LVAsBool(L.Get(4))
 	}
-	if len(str) == 0 && len(pattern) == 0 {
-		L.Push(LNumber(1))
-		return 1
-	}
 
 	if plain {
 		pos := strings.Index(str[init:], pattern)

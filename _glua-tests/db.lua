@@ -81,3 +81,6 @@ local ok, msg = pcall(function()
   debug.setlocal(10, 1, 1)
 end)
 assert(not ok and string.find(msg, "level out of range"))
+
+assert(debug.getinfo(100) == nil)
+assert(debug.getinfo(1, "a") == nil)
