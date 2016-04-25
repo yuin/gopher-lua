@@ -69,6 +69,11 @@ func baseDoFile(L *LState) int {
 	src := L.ToString(1)
 	top := L.GetTop()
 	if err := L.DoFile(src); err != nil {
+		if _, ok := err.(*ApiError); ok {
+			// if the error is *ApiError, runs panic directly to prevent overriding a stacktrace in the error object.
+			panic(err)
+		}
+
 		L.RaiseError(err.Error())
 	}
 	return L.GetTop() - top
