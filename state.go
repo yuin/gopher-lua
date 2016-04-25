@@ -1656,6 +1656,8 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 		ls.stack.SetSp(sp)
 		if sp == 0 {
 			ls.currentFrame = nil
+		} else {
+			ls.currentFrame = ls.stack.Last()
 		}
 	}()
 
