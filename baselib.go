@@ -68,9 +68,13 @@ func baseCollectGarbage(L *LState) int {
 func baseDoFile(L *LState) int {
 	src := L.ToString(1)
 	top := L.GetTop()
-	if err := L.DoFile(src); err != nil {
-		L.RaiseError(err.Error())
+	fn, err := L.LoadFile(src)
+	if err != nil {
+		L.Push(LString(err.Error()))
+		L.Panic(L)
 	}
+	L.Push(fn)
+	L.Call(0, MultRet)
 	return L.GetTop() - top
 }
 
