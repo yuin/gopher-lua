@@ -112,7 +112,6 @@ const yyErrCode = 2
 const yyMaxDepth = 200
 
 //line parser.go.y:514
-
 func TokenName(c int) string {
 	if c >= TAnd && c-TAnd < len(yyToknames) {
 		if yyToknames[c-TAnd] != "" {
