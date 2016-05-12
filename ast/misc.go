@@ -6,8 +6,8 @@ type Field struct {
 }
 
 type ParList struct {
-  HasVargs bool
-  Names    []string
+	HasVargs bool
+	Names    []string
 }
 
 type FuncName struct {
