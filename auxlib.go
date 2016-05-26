@@ -1,8 +1,8 @@
 package lua
 
 import (
+	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 )
@@ -343,18 +343,33 @@ func (ls *LState) CallMeta(obj LValue, event string) LValue {
 
 func (ls *LState) LoadFile(path string) (*LFunction, error) {
 	var file *os.File
-	var reader io.Reader
 	var err error
 	if len(path) == 0 {
-		reader = os.Stdin
+		file = os.Stdin
 	} else {
 		file, err = os.Open(path)
 		defer file.Close()
 		if err != nil {
 			return nil, newApiErrorE(ApiErrorFile, err)
 		}
-		reader = file
 	}
+
+	reader := bufio.NewReader(file)
+	// get the first character.
+	c, err := reader.ReadByte()
+	if err != nil {
+		return nil, newApiErrorE(ApiErrorFile, err)
+	}
+	if c == byte('#') {
+		// Unix exec. file?
+		// skip first line
+		_, err, _ = readBufioLine(reader)
+		if err != nil {
+			return nil, newApiErrorE(ApiErrorFile, err)
+		}
+	}
+	reader.UnreadByte()
+
 	return ls.Load(reader, path)
 }
 

@@ -1,6 +1,8 @@
 package lua
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -291,4 +293,25 @@ func TestOptChannel(t *testing.T) {
 		L.OptChannel(3, defch)
 		return 0
 	}, "channel expected, got string")
+}
+
+func TestLoadFileForShebang(t *testing.T) {
+	tmpFile, err := ioutil.TempFile("", "")
+	errorIfNotNil(t, err)
+
+	err = ioutil.WriteFile(tmpFile.Name(), []byte(`#!/path/to/lua
+print("hello")
+`), 0644)
+	errorIfNotNil(t, err)
+
+	defer func() {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+	}()
+
+	L := NewState()
+	defer L.Close()
+
+	_, err = L.LoadFile(tmpFile.Name())
+	errorIfNotNil(t, err)
 }
