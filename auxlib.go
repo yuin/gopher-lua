@@ -356,11 +356,14 @@ func (ls *LState) LoadFile(path string) (*LFunction, error) {
 
 	reader := bufio.NewReader(file)
 	// get the first character.
-	c, _ := reader.ReadByte()
+	c, err := reader.ReadByte()
+	if err != nil {
+		return nil, newApiErrorE(ApiErrorFile, err)
+	}
 	if c == byte('#') {
 		// Unix exec. file?
 		// skip first line
-		_, _, err = reader.ReadLine()
+		_, err, _ = readBufioLine(reader)
 		if err != nil {
 			return nil, newApiErrorE(ApiErrorFile, err)
 		}
