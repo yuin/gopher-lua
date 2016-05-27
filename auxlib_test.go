@@ -315,3 +315,19 @@ print("hello")
 	_, err = L.LoadFile(tmpFile.Name())
 	errorIfNotNil(t, err)
 }
+
+func TestLoadFileForEmptyFile(t *testing.T) {
+	tmpFile, err := ioutil.TempFile("", "")
+	errorIfNotNil(t, err)
+
+	defer func() {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+	}()
+
+	L := NewState()
+	defer L.Close()
+
+	_, err = L.LoadFile(tmpFile.Name())
+	errorIfNotNil(t, err)
+}
