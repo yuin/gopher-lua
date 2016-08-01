@@ -712,6 +712,7 @@ Libraries for GopherLua
 - `glua-lfs <https://github.com/layeh/gopher-lfs>`_ : Partially implements the luafilesystem module for gopher-lua
 - `gluaurl <https://github.com/cjoudrey/gluaurl>`_ : A url parser/builder module for gopher-lua
 - `gluahttpscrape <https://github.com/felipejfc/gluahttpscrape>`_ : A simple HTML scraper module for gopher-lua
+- `Gru <https://github.com/dnaeon/gru>`_ : Orchestration made easy with Go and Lua
 
 ----------------------------------------------------------------
 Donation
