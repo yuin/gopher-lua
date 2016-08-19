@@ -42,6 +42,8 @@ How about performance?
 ----------------------------------------------------------------
 GopherLua is not fast but not too slow, I think.
 
+GopherLua has almost equivalent ( or little bit better ) performance as Python3 on micro benchmarks.
+
 There are some benchmarks on the `wiki page <https://github.com/yuin/gopher-lua/wiki/Benchmarks>`_ .
 
 ----------------------------------------------------------------
