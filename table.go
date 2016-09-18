@@ -316,10 +316,12 @@ func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 // This function is equivalent to lua_next ( http://www.lua.org/manual/5.1/manual.html#lua_next ).
 func (tb *LTable) Next(key LValue) (LValue, LValue) {
 	// TODO: inefficient way
+	init := false
 	if key == LNil {
 		tb.keys = nil
 		tb.k2i = nil
 		key = LNumber(0)
+		init = true
 	}
 
 	length := 0
@@ -350,43 +352,34 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 		}
 	}
 
-	if kv, ok := key.(LNumber); ok && isInteger(kv) && int(kv) >= 0 {
-		index := int(kv)
-		if tb.array != nil {
-			for ; index < len(tb.array); index++ {
-				if v := tb.array[index]; v != LNil {
-					return LNumber(index + 1), v
+	if init || key != LNumber(0) {
+		if kv, ok := key.(LNumber); ok && isInteger(kv) && int(kv) >= 0 {
+			index := int(kv)
+			if tb.array != nil {
+				for ; index < len(tb.array); index++ {
+					if v := tb.array[index]; v != LNil {
+						return LNumber(index + 1), v
+					}
 				}
 			}
-		}
-		if tb.array == nil || index == len(tb.array) {
-			if (tb.dict == nil || len(tb.dict) == 0) && (tb.strdict == nil || len(tb.strdict) == 0) {
-				tb.keys = nil
-				tb.k2i = nil
-				return LNil, LNil
-			}
-			key = tb.keys[0]
-			if skey, sok := key.(LString); sok && tb.strdict != nil {
-				if sv, svok := tb.strdict[string(skey)]; svok && sv != LNil {
-					return key, sv
+			if tb.array == nil || index == len(tb.array) {
+				if (tb.dict == nil || len(tb.dict) == 0) && (tb.strdict == nil || len(tb.strdict) == 0) {
+					tb.keys = nil
+					tb.k2i = nil
+					return LNil, LNil
 				}
-			} else if tb.dict != nil {
-				if v, vok := tb.dict[key]; vok && v != LNil {
+				key = tb.keys[0]
+				if v := tb.RawGetH(key); v != LNil {
 					return key, v
 				}
 			}
 		}
 	}
+
 	for i := tb.k2i[key] + 1; i < length; i++ {
-		key = tb.keys[i]
-		if skey, sok := key.(LString); sok && tb.strdict != nil {
-			if sv, svok := tb.strdict[string(skey)]; svok && sv != LNil {
-				return key, sv
-			}
-		} else if tb.dict != nil {
-			if v, vok := tb.dict[key]; vok && v != LNil {
-				return key, v
-			}
+		key = tb.keys[tb.k2i[key]+1]
+		if v := tb.RawGetH(key); v != LNil {
+			return key, v
 		}
 	}
 	tb.keys = nil
