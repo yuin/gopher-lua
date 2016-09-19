@@ -709,6 +709,7 @@ func compileReturnStmt(context *funcContext, stmt *ast.ReturnStmt) { // {{{
 			reg += compileExpr(context, reg, ex, ecnone(-2))
 			code.SetOpCode(code.LastPC(), OP_TAILCALL)
 			code.AddABC(OP_RETURN, a, 0, 0, sline(stmt))
+			return
 		}
 	}
 

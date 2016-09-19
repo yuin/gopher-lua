@@ -1012,14 +1012,17 @@ func init() {
 			RA := lbase + A
 			C := int(inst>>9) & 0x1ff //GETC
 			nret := C
-			reg.SetTop(RA + 3)
+			reg.SetTop(RA + 3 + 2)
+			reg.Set(RA+3+2, reg.Get(RA+2))
+			reg.Set(RA+3+1, reg.Get(RA+1))
+			reg.Set(RA+3, reg.Get(RA))
 			L.callR(2, nret, RA+3)
-			reg.SetTop(RA + 2 + C + 1)
 			if value := reg.Get(RA + 3); value != LNil {
 				reg.Set(RA+2, value)
-			} else {
-				cf.Pc++
+				pc := cf.Fn.Proto.Code[cf.Pc]
+				cf.Pc += int(pc&0x3ffff) - opMaxArgSbx
 			}
+			cf.Pc++
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SETLIST

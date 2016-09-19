@@ -136,3 +136,17 @@ local a, b = next(tbl, a)
 assert(a == 2 and b == "b")
 local a, b = next(tbl, a)
 assert(a == nil and b == nil)
+
+-- issue 82
+local cr = function()
+        return coroutine.wrap(function()
+                coroutine.yield(1, "a")
+                coroutine.yield(2, "b")
+        end)
+end
+
+local f = cr()
+local a, b = f()
+assert(a == 1 and b == "a")
+local a, b = f()
+assert(a == 2 and b == "b")
