@@ -149,10 +149,10 @@ To test ``LNilType`` and ``LBool``, You **must** use pre-defined constants.
 
    lv := L.Get(-1) // get the value at the top of the stack
 
-   if lv == LTrue { // correct
+   if lv == lua.LTrue { // correct
    }
 
-   if bl, ok == lv.(lua.LBool); ok && bool(bl) { // wrong
+   if bl, ok := lv.(lua.LBool); ok && bool(bl) { // wrong
    }
 
 In Lua, both ``nil`` and ``false`` make a condition false. ``LVIsFalse`` and ``LVAsBool`` implement this specification.
@@ -160,10 +160,10 @@ In Lua, both ``nil`` and ``false`` make a condition false. ``LVIsFalse`` and ``L
 .. code-block:: go
 
    lv := L.Get(-1) // get the value at the top of the stack
-   if LVIsFalse(lv) { // lv is nil or false
+   if lua.LVIsFalse(lv) { // lv is nil or false
    }
 
-   if LVAsBool(lv) { // lv is neither nil nor false
+   if lua.LVAsBool(lv) { // lv is neither nil nor false
    }
 
 Objects that based on go structs(``LFunction``. ``LUserData``, ``LTable``)
