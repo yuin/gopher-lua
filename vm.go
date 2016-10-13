@@ -28,6 +28,14 @@ func mainLoop(L *LState, baseframe *callFrame) {
 		cf = L.currentFrame
 		inst = cf.Fn.Proto.Code[cf.Pc]
 		cf.Pc++
+		if L.Options.Context != nil {
+			select {
+			case <-L.Options.Context.Done():
+				L.RaiseError("Context done")
+				return
+			default:
+			}
+		}
 		if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
 			return
 		}
