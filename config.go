@@ -20,15 +20,21 @@ var LuaPath = "LUA_PATH"
 var LuaLDir string
 var LuaPathDefault string
 var LuaOS string
+var LuaCDir string
+var LuaCPathDefault string
 
 func init() {
 	if os.PathSeparator == '/' { // unix-like
 		LuaOS = "unix"
 		LuaLDir = "/usr/local/share/lua/5.1"
 		LuaPathDefault = "./?.lua;" + LuaLDir + "/?.lua;" + LuaLDir + "/?/init.lua"
+		LuaCDir = "/usr/local/lib/glua/5.1"
+		LuaCPathDefault = "./?.so;" + LuaCDir + "/?.so;" + LuaCDir + "/loadall.so;"
 	} else { // windows
 		LuaOS = "windows"
 		LuaLDir = "!\\lua"
 		LuaPathDefault = ".\\?.lua;" + LuaLDir + "\\?.lua;" + LuaLDir + "\\?\\init.lua"
+		LuaCDir = "!\\"
+		LuaPathDefault = ".\\?.dll;" + LuaCDir + "\\?.dll;" + LuaCDir + "\\?\\loadall.dll"
 	}
 }
