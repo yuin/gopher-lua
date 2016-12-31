@@ -310,7 +310,11 @@ func parseClass(sc *scanner, allowset bool) class {
 	case '%':
 		return &singleClass{sc.Next()}
 	case '.':
-		return &dotClass{}
+		if allowset {
+			return &dotClass{}
+		} else {
+			return &charClass{ch}
+		}
 	case '[':
 		if !allowset {
 			panic(newError(sc.CurrentPos(), "invalid '['"))
@@ -362,7 +366,7 @@ func parseClassSet(sc *scanner) class {
 	}
 exit:
 	if isrange {
-		panic(newError(sc.CurrentPos(), "unfinished range"))
+		set.Classes = append(set.Classes, &charClass{'-'})
 	}
 
 	return set
