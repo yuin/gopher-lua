@@ -157,3 +157,8 @@ assert(string.match(url, ".-([%w-]*)[.]*") == "www")
 
 local s = "hello.world"
 assert(s:match("([^.]+).world") == "hello")
+
+-- issue 93
+local t = {}
+local ok, msg = pcall(function() t.notfound() end)
+assert(not ok and string.find(msg, "attempt to call a non-function object", 1, true))

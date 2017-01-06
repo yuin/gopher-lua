@@ -691,6 +691,9 @@ func init() {
 			} else {
 				callable, meta = L.metaCall(lv)
 			}
+			if callable == nil {
+				L.RaiseError("attempt to call a non-function object")
+			}
 			// this section is inlined by go-inline
 			// source function is 'func (ls *LState) closeUpvalues(idx int) ' in '_state.go'
 			{

@@ -548,6 +548,9 @@ func init() {
 			} else {
 				callable, meta = L.metaCall(lv)
 			}
+			if callable == nil {
+				L.RaiseError("attempt to call a non-function object")
+			}
 			// +inline-call L.closeUpvalues lbase
 			if callable.IsG {
 				luaframe := cf
