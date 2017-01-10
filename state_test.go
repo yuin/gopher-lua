@@ -1,8 +1,10 @@
 package lua
 
 import (
+	"context"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCallStackOverflow(t *testing.T) {
@@ -32,6 +34,28 @@ func TestSkipOpenLibs(t *testing.T) {
 	L2 := NewState()
 	defer L2.Close()
 	errorIfScriptFail(t, L2, `print("")`)
+}
+
+func TestContext(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	L := NewState(Options{Context: ctx})
+
+	done := make(chan struct{})
+	go func() {
+		defer L.Close()
+		errorIfScriptNotFail(t, L, `
+		while true do
+		end
+		`, "Context done")
+		close(done)
+	}()
+	select {
+	case <-time.After(300 * time.Millisecond):
+		t.Errorf("VM continued after context had timed out")
+	case <-done:
+	}
 }
 
 func TestGetAndReplace(t *testing.T) {
