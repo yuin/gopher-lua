@@ -247,7 +247,7 @@ Working with coroutines.
 
 .. code-block:: go
 
-   co := L.NewThread() /* create a new thread */
+   co, _ := L.NewThread() /* create a new thread */
    fn := L.GetGlobal("coro").(*lua.LFunction) /* get function from lua */
    for {
        st, err, values := L.Resume(co, fn)
