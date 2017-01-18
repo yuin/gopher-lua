@@ -30,6 +30,36 @@ func mainLoop(L *LState, baseframe *callFrame) {
 	}
 }
 
+func mainLoopWithContext(L *LState, baseframe *callFrame) {
+	var inst uint32
+	var cf *callFrame
+
+	if L.stack.IsEmpty() {
+		return
+	}
+
+	L.currentFrame = L.stack.Last()
+	if L.currentFrame.Fn.IsG {
+		callGFunction(L, false)
+		return
+	}
+
+	for {
+		cf = L.currentFrame
+		inst = cf.Fn.Proto.Code[cf.Pc]
+		cf.Pc++
+		select {
+		case <-L.ctx.Done():
+			L.RaiseError(L.ctx.Err().Error())
+			return
+		default:
+			if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
+				return
+			}
+		}
+	}
+}
+
 func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 	if b == 1 {
 		// +inline-call L.reg.FillNil  regv n
@@ -118,7 +148,7 @@ func threadRun(L *LState) {
 			}
 		}
 	}()
-	mainLoop(L, nil)
+	L.mainLoop(L, nil)
 }
 
 type instFunc func(*LState, uint32, *callFrame) int

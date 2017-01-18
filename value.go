@@ -2,6 +2,7 @@ package lua
 
 import (
 	"fmt"
+	"golang.org/x/net/context"
 	"os"
 )
 
@@ -215,6 +216,8 @@ type LState struct {
 	wrapped      bool
 	uvcache      *Upvalue
 	hasErrorFunc bool
+	mainLoop     func(*LState, *callFrame)
+	ctx          context.Context
 }
 
 func (ls *LState) String() string                     { return fmt.Sprintf("thread: %p", ls) }

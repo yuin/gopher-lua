@@ -7,6 +7,7 @@ package lua
 import (
 	"fmt"
 	"github.com/yuin/gopher-lua/parse"
+	"golang.org/x/net/context"
 	"io"
 	"math"
 	"os"
@@ -335,6 +336,8 @@ func newLState(options Options) *LState {
 		wrapped:      false,
 		uvcache:      nil,
 		hasErrorFunc: false,
+		mainLoop:     mainLoop,
+		ctx:          nil,
 	}
 	ls.Env = ls.G.Global
 	return ls
@@ -868,9 +871,9 @@ func (ls *LState) callR(nargs, nret, rbase int) {
 	if ls.G.MainThread == nil {
 		ls.G.MainThread = ls
 		ls.G.CurrentThread = ls
-		mainLoop(ls, nil)
+		ls.mainLoop(ls, nil)
 	} else {
-		mainLoop(ls, ls.currentFrame)
+		ls.mainLoop(ls, ls.currentFrame)
 	}
 	if nret != MultRet {
 		ls.reg.SetTop(rbase + nret)
@@ -1200,11 +1203,18 @@ func (ls *LState) CreateTable(acap, hcap int) *LTable {
 	return newLTable(acap, hcap)
 }
 
-func (ls *LState) NewThread() *LState {
+// NewThread returns a new LState that shares with the original state all global objects.
+// If the original state has context.Context, the new state has a new child context of the original state and this function returns its cancel function.
+func (ls *LState) NewThread() (*LState, context.CancelFunc) {
 	thread := newLState(ls.Options)
 	thread.G = ls.G
 	thread.Env = ls.Env
-	return thread
+	var f context.CancelFunc = nil
+	if ls.ctx != nil {
+		thread.mainLoop = mainLoopWithContext
+		thread.ctx, f = context.WithCancel(ls.ctx)
+	}
+	return thread, f
 }
 
 func (ls *LState) NewUserData() *LUserData {
@@ -1825,6 +1835,25 @@ func (ls *LState) SetMx(mx int) {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()
+}
+
+// SetContext set a context ctx to this LState. The provided ctx must be non-nil.
+func (ls *LState) SetContext(ctx context.Context) {
+	ls.mainLoop = mainLoopWithContext
+	ls.ctx = ctx
+}
+
+// Context returns the LState's context. To change the context, use WithContext.
+func (ls *LState) Context() context.Context {
+	return ls.ctx
+}
+
+// RemoveContext removes the context associated with this LState and returns this context.
+func (ls *LState) RemoveContext() context.Context {
+	oldctx := ls.ctx
+	ls.mainLoop = mainLoop
+	ls.ctx = nil
+	return oldctx
 }
 
 // Converts the Lua value at the given acceptable index to the chan LValue.

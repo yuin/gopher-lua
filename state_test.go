@@ -1,8 +1,10 @@
 package lua
 
 import (
+	"golang.org/x/net/context"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCallStackOverflow(t *testing.T) {
@@ -265,7 +267,7 @@ func TestPCall(t *testing.T) {
 func TestCoroutineApi1(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	co := L.NewThread()
+	co, _ := L.NewThread()
 	errorIfScriptFail(t, L, `
       function coro(v)
         assert(v == 10)
@@ -308,7 +310,7 @@ func TestCoroutineApi1(t *testing.T) {
       end
     `)
 	fn = L.GetGlobal("coro_error").(*LFunction)
-	co = L.NewThread()
+	co, _ = L.NewThread()
 	st, err, values = L.Resume(co, fn)
 	errorIfNotEqual(t, ResumeYield, st)
 	errorIfNotNil(t, err)
@@ -331,5 +333,81 @@ func TestCoroutineApi1(t *testing.T) {
 	errorIfNotEqual(t, ResumeError, st)
 	errorIfNil(t, err)
 	errorIfFalse(t, strings.Contains(err.Error(), "can not resume a dead thread"), "can not resume a dead thread")
+
+}
+
+func TestContextTimeout(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	L.SetContext(ctx)
+	errorIfNotEqual(t, ctx, L.Context())
+	err := L.DoString(`
+	  local clock = os.clock
+      function sleep(n)  -- seconds
+        local t0 = clock()
+        while clock() - t0 <= n do end
+      end
+	  sleep(3)
+	`)
+	errorIfNil(t, err)
+	errorIfFalse(t, strings.Contains(err.Error(), "context deadline exceeded"), "execution must be canceled")
+
+	oldctx := L.RemoveContext()
+	errorIfNotEqual(t, ctx, oldctx)
+	errorIfNotNil(t, L.ctx)
+}
+
+func TestContextCancel(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	errch := make(chan error, 1)
+	L.SetContext(ctx)
+	go func() {
+		errch <- L.DoString(`
+	    local clock = os.clock
+        function sleep(n)  -- seconds
+          local t0 = clock()
+          while clock() - t0 <= n do end
+        end
+	    sleep(3)
+	  `)
+	}()
+	time.Sleep(1 * time.Second)
+	cancel()
+	err := <-errch
+	errorIfNil(t, err)
+	errorIfFalse(t, strings.Contains(err.Error(), "context canceled"), "execution must be canceled")
+}
+
+func TestContextWithCroutine(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	L.SetContext(ctx)
+	defer cancel()
+	L.DoString(`
+	    function coro()
+		  local i = 0
+		  while true do
+		    coroutine.yield(i)
+			i = i+1
+		  end
+		  return i
+	    end
+	`)
+	co, cocancel := L.NewThread()
+	defer cocancel()
+	fn := L.GetGlobal("coro").(*LFunction)
+	_, err, values := L.Resume(co, fn)
+	errorIfNotNil(t, err)
+	errorIfNotEqual(t, LNumber(0), values[0])
+	// cancel the parent context
+	cancel()
+	_, err, values = L.Resume(co, fn)
+	errorIfNil(t, err)
+	errorIfFalse(t, strings.Contains(err.Error(), "context canceled"), "coroutine execution must be canceled when the parent context is canceled")
 
 }

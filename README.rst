@@ -460,6 +460,72 @@ You can extend GopherLua with new types written in Go.
     }
 
 +++++++++++++++++++++++++++++++++++++++++
+Terminating a running LState
++++++++++++++++++++++++++++++++++++++++++
+GopherLua supports the `Go Concurrency Patterns: Context <https://blog.golang.org/context>`_ .
+
+
+.. code-block:: go
+
+    L := lua.NewState()
+    defer L.Close()
+    ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+    defer cancel()
+    // set the context to our LState
+    L.SetContext(ctx)
+    err := L.DoString(`
+      local clock = os.clock
+      function sleep(n)  -- seconds
+        local t0 = clock()
+        while clock() - t0 <= n do end
+      end
+      sleep(3)
+    `)
+    // err.Error() contains "context deadline exceeded"
+
+With coroutines
+
+.. code-block:: go
+
+	L := lua.NewState()
+	defer L.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	L.SetContext(ctx)
+	defer cancel()
+	L.DoString(`
+	    function coro()
+		  local i = 0
+		  while true do
+		    coroutine.yield(i)
+			i = i+1
+		  end
+		  return i
+	    end
+	`)
+	co, cocancel := L.NewThread()
+	defer cocancel()
+	fn := L.GetGlobal("coro").(*LFunction)
+    
+	_, err, values := L.Resume(co, fn) // err is nil
+    
+	cancel() // cancel the parent context
+    
+	_, err, values = L.Resume(co, fn) // err is NOT nil : child context was canceled
+
+**Note that using a context causes performance degradation.**
+
+.. code-block::
+
+    time ./glua-with-context.exe fib.lua
+    9227465
+    0.01s user 0.11s system 1% cpu 7.505 total
+
+    time ./glua-without-context.exe fib.lua
+    9227465
+    0.01s user 0.01s system 0% cpu 5.306 total
+
+
++++++++++++++++++++++++++++++++++++++++++
 Goroutines
 +++++++++++++++++++++++++++++++++++++++++
 The ``LState`` is not goroutine-safe. It is recommended to use one LState per goroutine and communicate between goroutines by using channels.
