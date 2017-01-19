@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const _EOS = -1
+const EOS = -1
 const _UNKNOWN = -2
 
 /* Error {{{ */
@@ -24,7 +24,7 @@ func newError(pos int, message string, args ...interface{}) *Error {
 
 func (e *Error) Error() string {
 	switch e.Pos {
-	case _EOS:
+	case EOS:
 		return fmt.Sprintf("%s at EOS", e.Message)
 	case _UNKNOWN:
 		return fmt.Sprintf("%s", e.Message)
@@ -104,13 +104,13 @@ func (sc *scanner) Next() int {
 	if !sc.State.started {
 		sc.State.started = true
 		if len(sc.src) == 0 {
-			sc.State.Pos = _EOS
+			sc.State.Pos = EOS
 		}
 	} else {
 		sc.State.Pos = sc.NextPos()
 	}
-	if sc.State.Pos == _EOS {
-		return _EOS
+	if sc.State.Pos == EOS {
+		return EOS
 	}
 	return int(sc.src[sc.State.Pos])
 }
@@ -120,8 +120,8 @@ func (sc *scanner) CurrentPos() int {
 }
 
 func (sc *scanner) NextPos() int {
-	if sc.State.Pos == _EOS || sc.State.Pos >= len(sc.src)-1 {
-		return _EOS
+	if sc.State.Pos == EOS || sc.State.Pos >= len(sc.src)-1 {
+		return EOS
 	}
 	if !sc.State.started {
 		return 0
@@ -131,10 +131,10 @@ func (sc *scanner) NextPos() int {
 }
 
 func (sc *scanner) Peek() int {
-	cureof := sc.State.Pos == _EOS
+	cureof := sc.State.Pos == EOS
 	ch := sc.Next()
 	if !cureof {
-		if sc.State.Pos == _EOS {
+		if sc.State.Pos == EOS {
 			sc.State.Pos = len(sc.src) - 1
 		} else {
 			sc.State.Pos--
@@ -322,7 +322,7 @@ func parseClass(sc *scanner, allowset bool) class {
 		return parseClassSet(sc)
 	//case '^' '$', '(', ')', ']', '*', '+', '-', '?':
 	//	panic(newError(sc.CurrentPos(), "invalid %c", ch))
-	case _EOS:
+	case EOS:
 		panic(newError(sc.CurrentPos(), "unexpected EOS"))
 	default:
 		return &charClass{ch}
@@ -339,20 +339,20 @@ func parseClassSet(sc *scanner) class {
 	for {
 		ch := sc.Peek()
 		switch ch {
-		case '-':
-			if isrange {
-				panic(newError(sc.CurrentPos(), "invalid range"))
-			}
-			sc.Next()
-			isrange = true
-			continue
 		case '[':
 			panic(newError(sc.CurrentPos(), "'[' can not be nested"))
 		case ']':
 			sc.Next()
 			goto exit
-		case _EOS:
+		case EOS:
 			panic(newError(sc.CurrentPos(), "unexpected EOS"))
+		case '-':
+			if len(set.Classes) > 0 {
+				sc.Next()
+				isrange = true
+				continue
+			}
+			fallthrough
 		default:
 			set.Classes = append(set.Classes, parseClass(sc, false))
 		}
@@ -422,23 +422,23 @@ func parsePattern(sc *scanner, toplevel bool) *seqPattern {
 			}
 		case '*', '+', '-', '?':
 			sc.Next()
-			if len(pat.Patterns) == 0 {
-				panic(newError(sc.CurrentPos(), "no charcter class before '%c'", ch))
+			if len(pat.Patterns) > 0 {
+				spat, ok := pat.Patterns[len(pat.Patterns)-1].(*singlePattern)
+				if ok {
+					pat.Patterns = pat.Patterns[0 : len(pat.Patterns)-1]
+					pat.Patterns = append(pat.Patterns, &repeatPattern{ch, spat.Class})
+					continue
+				}
 			}
-			spat, ok := pat.Patterns[len(pat.Patterns)-1].(*singlePattern)
-			if !ok {
-				panic(newError(sc.CurrentPos(), "invalid charcter class before '%c'", ch))
-			}
-			pat.Patterns = pat.Patterns[0 : len(pat.Patterns)-1]
-			pat.Patterns = append(pat.Patterns, &repeatPattern{ch, spat.Class})
+			pat.Patterns = append(pat.Patterns, &singlePattern{&charClass{ch}})
 		case '$':
-			if toplevel && (sc.NextPos() == sc.Length()-1 || sc.NextPos() == _EOS) {
+			if toplevel && (sc.NextPos() == sc.Length()-1 || sc.NextPos() == EOS) {
 				pat.MustTail = true
 			} else {
 				pat.Patterns = append(pat.Patterns, &singlePattern{&charClass{ch}})
 			}
 			sc.Next()
-		case _EOS:
+		case EOS:
 			sc.Next()
 			goto exit
 		default:

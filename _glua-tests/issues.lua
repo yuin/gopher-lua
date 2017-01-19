@@ -158,6 +158,9 @@ assert(string.match(url, ".-([%w-]*)[.]*") == "www")
 local s = "hello.world"
 assert(s:match("([^.]+).world") == "hello")
 
+local s = "hello-world"
+assert(s:match("([^-]+)-world") == "hello")
+
 -- issue 93
 local t = {}
 local ok, msg = pcall(function() t.notfound() end)
