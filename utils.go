@@ -75,22 +75,21 @@ func (fs *flagScanner) Next() (byte, bool) {
 			fs.AppendString(fs.end)
 		}
 		return c, true
-	} else {
-		c = fs.str[fs.Pos]
-		if c == fs.flag {
-			if fs.Pos < (fs.Length-1) && fs.str[fs.Pos+1] == fs.flag {
-				fs.HasFlag = false
-				fs.AppendChar(fs.flag)
-				fs.Pos += 2
-				return fs.Next()
-			} else if fs.Pos != fs.Length-1 {
-				if fs.HasFlag {
-					fs.AppendString(fs.end)
-				}
-				fs.AppendString(fs.start)
-				fs.ChangeFlag = true
-				fs.HasFlag = true
+	}
+	c = fs.str[fs.Pos]
+	if c == fs.flag {
+		if fs.Pos < (fs.Length-1) && fs.str[fs.Pos+1] == fs.flag {
+			fs.HasFlag = false
+			fs.AppendChar(fs.flag)
+			fs.Pos += 2
+			return fs.Next()
+		} else if fs.Pos != fs.Length-1 {
+			if fs.HasFlag {
+				fs.AppendString(fs.end)
 			}
+			fs.AppendString(fs.start)
+			fs.ChangeFlag = true
+			fs.HasFlag = true
 		}
 	}
 	fs.Pos++
@@ -139,18 +138,16 @@ func isArrayKey(v LNumber) bool {
 }
 
 func parseNumber(number string) (LNumber, error) {
-	var value LNumber
 	number = strings.Trim(number, " \t\n")
-	if v, err := strconv.ParseInt(number, 0, LNumberBit); err != nil {
-		if v2, err2 := strconv.ParseFloat(number, LNumberBit); err2 != nil {
-			return LNumber(0), err2
-		} else {
-			value = LNumber(v2)
-		}
-	} else {
-		value = LNumber(v)
+	vi, err := strconv.ParseInt(number, 0, LNumberBit)
+	if err == nil {
+		return LNumber(vi), nil
 	}
-	return value, nil
+	vf, err := strconv.ParseFloat(number, LNumberBit)
+	if err == nil {
+		return LNumber(vf), nil
+	}
+	return LNumber(0), err
 }
 
 func popenArgs(arg string) (string, []string) {
