@@ -51,10 +51,10 @@ type flagScanner struct {
 	end        string
 	buf        []byte
 	str        string
-	Length     int
-	Pos        int
-	HasFlag    bool
-	ChangeFlag bool
+	length     int
+	pos        int
+	hasFlag    bool
+	changeFlag bool
 }
 
 func newFlagScanner(flag byte, start, end, str string) *flagScanner {
@@ -69,31 +69,30 @@ func (fs *flagScanner) String() string { return string(fs.buf) }
 
 func (fs *flagScanner) Next() (byte, bool) {
 	c := byte('\000')
-	fs.ChangeFlag = false
-	if fs.Pos == fs.Length {
-		if fs.HasFlag {
+	fs.changeFlag = false
+	if fs.pos == fs.length {
+		if fs.hasFlag {
 			fs.AppendString(fs.end)
 		}
 		return c, true
-	} else {
-		c = fs.str[fs.Pos]
-		if c == fs.flag {
-			if fs.Pos < (fs.Length-1) && fs.str[fs.Pos+1] == fs.flag {
-				fs.HasFlag = false
-				fs.AppendChar(fs.flag)
-				fs.Pos += 2
-				return fs.Next()
-			} else if fs.Pos != fs.Length-1 {
-				if fs.HasFlag {
-					fs.AppendString(fs.end)
-				}
-				fs.AppendString(fs.start)
-				fs.ChangeFlag = true
-				fs.HasFlag = true
+	}
+	c = fs.str[fs.pos]
+	if c == fs.flag {
+		if fs.pos < (fs.length-1) && fs.str[fs.pos+1] == fs.flag {
+			fs.hasFlag = false
+			fs.AppendChar(fs.flag)
+			fs.pos += 2
+			return fs.Next()
+		} else if fs.pos != fs.length-1 {
+			if fs.hasFlag {
+				fs.AppendString(fs.end)
 			}
+			fs.AppendString(fs.start)
+			fs.changeFlag = true
+			fs.hasFlag = true
 		}
 	}
-	fs.Pos++
+	fs.pos++
 	return c, false
 }
 
@@ -105,8 +104,8 @@ var cDateFlagToGo = map[byte]string{
 func strftime(t time.Time, cfmt string) string {
 	sc := newFlagScanner('%', "", "", cfmt)
 	for c, eos := sc.Next(); !eos; c, eos = sc.Next() {
-		if !sc.ChangeFlag {
-			if sc.HasFlag {
+		if !sc.changeFlag {
+			if sc.hasFlag {
 				if v, ok := cDateFlagToGo[c]; ok {
 					sc.AppendString(t.Format(v))
 				} else {
@@ -118,7 +117,7 @@ func strftime(t time.Time, cfmt string) string {
 						sc.AppendChar(c)
 					}
 				}
-				sc.HasFlag = false
+				sc.hasFlag = false
 			} else {
 				sc.AppendChar(c)
 			}
@@ -139,18 +138,16 @@ func isArrayKey(v LNumber) bool {
 }
 
 func parseNumber(number string) (LNumber, error) {
-	var value LNumber
 	number = strings.Trim(number, " \t\n")
-	if v, err := strconv.ParseInt(number, 0, LNumberBit); err != nil {
-		if v2, err2 := strconv.ParseFloat(number, LNumberBit); err2 != nil {
-			return LNumber(0), err2
-		} else {
-			value = LNumber(v2)
-		}
-	} else {
-		value = LNumber(v)
+	vi, err := strconv.ParseInt(number, 0, LNumberBit)
+	if err == nil {
+		return LNumber(vi), nil
 	}
-	return value, nil
+	vf, err := strconv.ParseFloat(number, LNumberBit)
+	if err == nil {
+		return LNumber(vf), nil
+	}
+	return LNumber(0), err
 }
 
 func popenArgs(arg string) (string, []string) {
@@ -175,7 +172,7 @@ func isGoroutineSafe(lv LValue) bool {
 	}
 }
 
-func readBufioSize(reader *bufio.Reader, size int64) ([]byte, error, bool) {
+func readBufioSize(reader *bufio.Reader, size int64) ([]byte, bool, error) {
 	result := []byte{}
 	read := int64(0)
 	var err error
@@ -190,14 +187,14 @@ func readBufioSize(reader *bufio.Reader, size int64) ([]byte, error, bool) {
 		result = append(result, buf[:n]...)
 	}
 	e := err
-	if e != nil && e == io.EOF {
+	if e == io.EOF {
 		e = nil
 	}
 
-	return result, e, len(result) == 0 && err == io.EOF
+	return result, len(result) == 0 && err == io.EOF, e
 }
 
-func readBufioLine(reader *bufio.Reader) ([]byte, error, bool) {
+func readBufioLine(reader *bufio.Reader) ([]byte, bool, error) {
 	result := []byte{}
 	var buf []byte
 	var err error
@@ -210,11 +207,11 @@ func readBufioLine(reader *bufio.Reader) ([]byte, error, bool) {
 		result = append(result, buf...)
 	}
 	e := err
-	if e != nil && e == io.EOF {
+	if e == io.EOF {
 		e = nil
 	}
 
-	return result, e, len(result) == 0 && err == io.EOF
+	return result, len(result) == 0 && err == io.EOF, e
 }
 
 func int2Fb(val int) int {

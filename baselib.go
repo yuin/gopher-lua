@@ -109,12 +109,12 @@ func baseGetFEnv(L *LState) int {
 		} else {
 			cf := L.currentFrame
 			for i := 0; i < level && cf != nil; i++ {
-				cf = cf.Parent
+				cf = cf.parent
 			}
-			if cf == nil || cf.Fn.IsG {
+			if cf == nil || cf.fn.IsG {
 				L.Push(L.G.Global)
 			} else {
-				L.Push(cf.Fn.Env)
+				L.Push(cf.fn.Env)
 			}
 		}
 		return 1
@@ -355,13 +355,13 @@ func baseSetFEnv(L *LState) int {
 
 		cf := L.currentFrame
 		for i := 0; i < level && cf != nil; i++ {
-			cf = cf.Parent
+			cf = cf.parent
 		}
-		if cf == nil || cf.Fn.IsG {
+		if cf == nil || cf.fn.IsG {
 			L.RaiseError("cannot change the environment of given object")
 		} else {
-			cf.Fn.Env = env
-			L.Push(cf.Fn)
+			cf.fn.Env = env
+			L.Push(cf.fn)
 			return 1
 		}
 	}
@@ -484,13 +484,13 @@ func loModule(L *LState) int {
 		L.SetField(tb, "_PACKAGE", LString(pname))
 	}
 
-	caller := L.currentFrame.Parent
+	caller := L.currentFrame.parent
 	if caller == nil {
 		L.RaiseError("no calling stack.")
-	} else if caller.Fn.IsG {
+	} else if caller.fn.IsG {
 		L.RaiseError("module() can not be called from GFunctions.")
 	}
-	L.SetFEnv(caller.Fn, tb)
+	L.SetFEnv(caller.fn, tb)
 
 	top := L.GetTop()
 	for i := 2; i <= top; i++ {

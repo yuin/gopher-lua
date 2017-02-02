@@ -21,15 +21,15 @@ func coCreate(L *LState) int {
 	newthread, _ := L.NewThread()
 	base := 0
 	newthread.stack.Push(callFrame{
-		Fn:         fn,
-		Pc:         0,
-		Base:       base,
-		LocalBase:  base + 1,
-		ReturnBase: base,
-		NArgs:      0,
-		NRet:       MultRet,
-		Parent:     nil,
-		TailCall:   0,
+		fn:         fn,
+		pc:         0,
+		base:       base,
+		localBase:  base + 1,
+		returnBase: base,
+		nArgs:      0,
+		nRet:       MultRet,
+		parent:     nil,
+		tailCall:   0,
 	})
 	L.Push(newthread)
 	return 1
@@ -69,7 +69,7 @@ func coResume(L *LState) int {
 		th.SetTop(0)
 		nargs := L.GetTop() - 1
 		L.XMoveTo(th, nargs)
-		cf.NArgs = nargs
+		cf.nArgs = nargs
 		th.initCallFrame(cf)
 		th.Panic = panicWithoutTraceback
 	} else {

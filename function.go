@@ -134,7 +134,7 @@ func (fp *FunctionProto) str(level int, count int) string {
 	protono := 0
 	for no, code := range fp.Code {
 		inst := opGetOpCode(code)
-		if inst == OP_CLOSURE {
+		if inst == op_CLOSURE {
 			buf = append(buf, "\n")
 			buf = append(buf, fp.FunctionPrototypes[protono].str(level+1, protono))
 			buf = append(buf, "\n")

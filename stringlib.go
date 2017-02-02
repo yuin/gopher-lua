@@ -173,8 +173,8 @@ func strGsub(L *LState) int {
 }
 
 type replaceInfo struct {
-	Indicies []int
-	String   string
+	indicies []int
+	str      string
 }
 
 func checkCaptureIndex(L *LState, m *pm.MatchData, idx int) {
@@ -204,13 +204,13 @@ func strGsubDoReplace(str string, info []replaceInfo) string {
 	buf := []byte(str)
 	for _, replace := range info {
 		oldlen := len(buf)
-		b1 := append([]byte(""), buf[0:offset+replace.Indicies[0]]...)
+		b1 := append([]byte(""), buf[0:offset+replace.indicies[0]]...)
 		b2 := []byte("")
-		index2 := offset + replace.Indicies[1]
+		index2 := offset + replace.indicies[1]
 		if index2 <= len(buf) {
 			b2 = append(b2, buf[index2:len(buf)]...)
 		}
-		buf = append(b1, replace.String...)
+		buf = append(b1, replace.str...)
 		buf = append(buf, b2...)
 		offset += len(buf) - oldlen
 	}
@@ -223,15 +223,15 @@ func strGsubStr(L *LState, str string, repl string, matches []*pm.MatchData) str
 		start, end := match.Capture(0), match.Capture(1)
 		sc := newFlagScanner('%', "", "", repl)
 		for c, eos := sc.Next(); !eos; c, eos = sc.Next() {
-			if !sc.ChangeFlag {
-				if sc.HasFlag {
+			if !sc.changeFlag {
+				if sc.hasFlag {
 					if c >= '0' && c <= '9' {
 						sc.AppendString(capturedString(L, match, str, 2*(int(c)-48)))
 					} else {
 						sc.AppendChar('%')
 						sc.AppendChar(c)
 					}
-					sc.HasFlag = false
+					sc.hasFlag = false
 				} else {
 					sc.AppendChar(c)
 				}

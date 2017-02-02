@@ -120,16 +120,16 @@ type Debug struct {
 /* callFrame {{{ */
 
 type callFrame struct {
-	Idx        int
-	Fn         *LFunction
-	Parent     *callFrame
-	Pc         int
-	Base       int
-	LocalBase  int
-	ReturnBase int
-	NArgs      int
-	NRet       int
-	TailCall   int
+	idx        int
+	fn         *LFunction
+	parent     *callFrame
+	pc         int
+	base       int
+	localBase  int
+	returnBase int
+	nArgs      int
+	nRet       int
+	tailCall   int
 }
 
 type callFrameStack struct {
@@ -152,7 +152,7 @@ func (cs *callFrameStack) Clear() {
 
 func (cs *callFrameStack) Push(v callFrame) { // +inline-start
 	cs.array[cs.sp] = v
-	cs.array[cs.sp].Idx = cs.sp
+	cs.array[cs.sp].idx = cs.sp
 	cs.sp++
 } // +inline-end
 
@@ -168,11 +168,11 @@ func (cs *callFrameStack) Remove(sp int) {
 		next = &cs.array[nsp]
 	}
 	if next != nil {
-		next.Parent = pre
+		next.parent = pre
 	}
 	for i := sp; i+1 < cs.sp; i++ {
 		cs.array[i] = cs.array[i+1]
-		cs.array[i].Idx = i
+		cs.array[i].idx = i
 		cs.sp = i
 	}
 	cs.sp++
@@ -348,8 +348,8 @@ func (ls *LState) printReg() {
 	println("thread:", ls)
 	println("top:", ls.reg.Top())
 	if ls.currentFrame != nil {
-		println("function base:", ls.currentFrame.Base)
-		println("return base:", ls.currentFrame.ReturnBase)
+		println("function base:", ls.currentFrame.base)
+		println("return base:", ls.currentFrame.returnBase)
 	} else {
 		println("(vm not started)")
 	}
@@ -369,19 +369,19 @@ func (ls *LState) printCallStack() {
 		if frame == nil {
 			break
 		}
-		if frame.Fn.IsG {
-			println("IsG:", true, "Frame:", frame, "Fn:", frame.Fn)
+		if frame.fn.IsG {
+			println("IsG:", true, "Frame:", frame, "Fn:", frame.fn)
 		} else {
-			println("IsG:", false, "Frame:", frame, "Fn:", frame.Fn, "pc:", frame.Pc)
+			println("IsG:", false, "Frame:", frame, "Fn:", frame.fn, "pc:", frame.pc)
 		}
 	}
 	println("-------------------------")
 }
 
 func (ls *LState) closeAllUpvalues() { // +inline-start
-	for cf := ls.currentFrame; cf != nil; cf = cf.Parent {
-		if !cf.Fn.IsG {
-			ls.closeUpvalues(cf.LocalBase)
+	for cf := ls.currentFrame; cf != nil; cf = cf.parent {
+		if !cf.fn.IsG {
+			ls.closeUpvalues(cf.localBase)
 		}
 	}
 } // +inline-end
@@ -402,21 +402,21 @@ func (ls *LState) raiseError(level int, format string, args ...interface{}) {
 }
 
 func (ls *LState) findLocal(frame *callFrame, no int) string {
-	fn := frame.Fn
+	fn := frame.fn
 	if !fn.IsG {
-		if name, ok := fn.LocalName(no, frame.Pc-1); ok {
+		if name, ok := fn.LocalName(no, frame.pc-1); ok {
 			return name
 		}
 	}
 	var top int
 	if ls.currentFrame == frame {
 		top = ls.reg.Top()
-	} else if frame.Idx+1 < ls.stack.Sp() {
-		top = ls.stack.At(frame.Idx + 1).Base
+	} else if frame.idx+1 < ls.stack.Sp() {
+		top = ls.stack.At(frame.idx + 1).base
 	} else {
 		return ""
 	}
-	if top-frame.LocalBase >= no {
+	if top-frame.localBase >= no {
 		return "(*temporary)"
 	}
 	return ""
@@ -428,7 +428,7 @@ func (ls *LState) where(level int, skipg bool) string {
 		return ""
 	}
 	cf := dbg.frame
-	proto := cf.Fn.Proto
+	proto := cf.fn.Proto
 	sourcename := "[G]"
 	if proto != nil {
 		sourcename = proto.SourceName
@@ -437,7 +437,7 @@ func (ls *LState) where(level int, skipg bool) string {
 	}
 	line := ""
 	if proto != nil {
-		line = fmt.Sprintf("%v:", proto.DbgSourcePositions[cf.Pc-1])
+		line = fmt.Sprintf("%v:", proto.DbgSourcePositions[cf.pc-1])
 	}
 	return fmt.Sprintf("%v:%v", sourcename, line)
 }
@@ -450,8 +450,8 @@ func (ls *LState) stackTrace(level int) string {
 		for dbg, ok := ls.GetStack(i); ok; dbg, ok = ls.GetStack(i) {
 			cf := dbg.frame
 			buf = append(buf, fmt.Sprintf("\t%v in %v", ls.Where(i), ls.formattedFrameFuncName(cf)))
-			if !cf.Fn.IsG && cf.TailCall > 0 {
-				for tc := cf.TailCall; tc > 0; tc-- {
+			if !cf.fn.IsG && cf.tailCall > 0 {
+				for tc := cf.tailCall; tc > 0; tc-- {
 					buf = append(buf, "\t(tailcall): ?")
 					i++
 				}
@@ -488,7 +488,7 @@ func (ls *LState) rawFrameFuncName(fr *callFrame) string {
 }
 
 func (ls *LState) frameFuncName(fr *callFrame) (string, bool) {
-	frame := fr.Parent
+	frame := fr.parent
 	if frame == nil {
 		if ls.Parent == nil {
 			return "main chunk", true
@@ -496,20 +496,20 @@ func (ls *LState) frameFuncName(fr *callFrame) (string, bool) {
 			return "corountine", true
 		}
 	}
-	if !frame.Fn.IsG {
-		pc := frame.Pc - 1
-		for _, call := range frame.Fn.Proto.DbgCalls {
+	if !frame.fn.IsG {
+		pc := frame.pc - 1
+		for _, call := range frame.fn.Proto.DbgCalls {
 			if call.Pc == pc {
 				name := call.Name
-				if (name == "?" || fr.TailCall > 0) && !fr.Fn.IsG {
-					name = fmt.Sprintf("<%v:%v>", fr.Fn.Proto.SourceName, fr.Fn.Proto.LineDefined)
+				if (name == "?" || fr.tailCall > 0) && !fr.fn.IsG {
+					name = fmt.Sprintf("<%v:%v>", fr.fn.Proto.SourceName, fr.fn.Proto.LineDefined)
 				}
 				return name, false
 			}
 		}
 	}
-	if !fr.Fn.IsG {
-		return fmt.Sprintf("<%v:%v>", fr.Fn.Proto.SourceName, fr.Fn.Proto.LineDefined), false
+	if !fr.fn.IsG {
+		return fmt.Sprintf("<%v:%v>", fr.fn.Proto.SourceName, fr.fn.Proto.LineDefined), false
 	}
 	return "(anonymous)", false
 }
@@ -540,7 +540,7 @@ func (ls *LState) indexToReg(idx int) int {
 func (ls *LState) currentLocalBase() int {
 	base := 0
 	if ls.currentFrame != nil {
-		base = ls.currentFrame.LocalBase
+		base = ls.currentFrame.localBase
 	}
 	return base
 }
@@ -551,28 +551,28 @@ func (ls *LState) currentEnv() *LTable {
 		if ls.currentFrame == nil {
 			return ls.Env
 		}
-		return ls.currentFrame.Fn.Env
+		return ls.currentFrame.fn.Env
 	*/
 }
 
 func (ls *LState) rkValue(idx int) LValue {
 	/*
 		if OpIsK(idx) {
-			return ls.currentFrame.Fn.Proto.Constants[opIndexK(idx)]
+			return ls.currentFrame.fn.Proto.Constants[opIndexK(idx)]
 		}
-		return ls.reg.Get(ls.currentFrame.LocalBase + idx)
+		return ls.reg.Get(ls.currentFrame.localBase + idx)
 	*/
 	if (idx & opBitRk) != 0 {
-		return ls.currentFrame.Fn.Proto.Constants[idx & ^opBitRk]
+		return ls.currentFrame.fn.Proto.Constants[idx & ^opBitRk]
 	}
-	return ls.reg.array[ls.currentFrame.LocalBase+idx]
+	return ls.reg.array[ls.currentFrame.localBase+idx]
 }
 
 func (ls *LState) rkString(idx int) string {
 	if (idx & opBitRk) != 0 {
-		return ls.currentFrame.Fn.Proto.stringConstants[idx & ^opBitRk]
+		return ls.currentFrame.fn.Proto.stringConstants[idx & ^opBitRk]
 	}
-	return string(ls.reg.array[ls.currentFrame.LocalBase+idx].(LString))
+	return string(ls.reg.array[ls.currentFrame.localBase+idx].(LString))
 }
 
 func (ls *LState) closeUpvalues(idx int) { // +inline-start
@@ -681,14 +681,14 @@ func (ls *LState) metaCall(lvalue LValue) (*LFunction, bool) {
 }
 
 func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
-	if cf.Fn.IsG {
-		ls.reg.SetTop(cf.LocalBase + cf.NArgs)
+	if cf.fn.IsG {
+		ls.reg.SetTop(cf.localBase + cf.nArgs)
 	} else {
-		proto := cf.Fn.Proto
-		nargs := cf.NArgs
+		proto := cf.fn.Proto
+		nargs := cf.nArgs
 		np := int(proto.NumParameters)
 		for i := nargs; i < np; i++ {
-			ls.reg.array[cf.LocalBase+i] = LNil
+			ls.reg.array[cf.localBase+i] = LNil
 			nargs = np
 		}
 
@@ -697,9 +697,9 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 				nargs = int(proto.NumUsedRegisters)
 			}
 			for i := np; i < nargs; i++ {
-				ls.reg.array[cf.LocalBase+i] = LNil
+				ls.reg.array[cf.localBase+i] = LNil
 			}
-			ls.reg.top = cf.LocalBase + int(proto.NumUsedRegisters)
+			ls.reg.top = cf.localBase + int(proto.NumUsedRegisters)
 		} else {
 			/* swap vararg positions:
 					   closure
@@ -723,30 +723,30 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 				nvarargs = 0
 			}
 
-			ls.reg.SetTop(cf.LocalBase + nargs + np)
+			ls.reg.SetTop(cf.localBase + nargs + np)
 			for i := 0; i < np; i++ {
-				//ls.reg.Set(cf.LocalBase+nargs+i, ls.reg.Get(cf.LocalBase+i))
-				ls.reg.array[cf.LocalBase+nargs+i] = ls.reg.array[cf.LocalBase+i]
-				//ls.reg.Set(cf.LocalBase+i, LNil)
-				ls.reg.array[cf.LocalBase+i] = LNil
+				//ls.reg.Set(cf.localBase+nargs+i, ls.reg.Get(cf.localBase+i))
+				ls.reg.array[cf.localBase+nargs+i] = ls.reg.array[cf.localBase+i]
+				//ls.reg.Set(cf.localBase+i, LNil)
+				ls.reg.array[cf.localBase+i] = LNil
 			}
 
 			if CompatVarArg {
-				ls.reg.SetTop(cf.LocalBase + nargs + np + 1)
+				ls.reg.SetTop(cf.localBase + nargs + np + 1)
 				if (proto.IsVarArg & VarArgNeedsArg) != 0 {
 					argtb := newLTable(nvarargs, 0)
 					for i := 0; i < nvarargs; i++ {
-						argtb.RawSetInt(i+1, ls.reg.Get(cf.LocalBase+np+i))
+						argtb.RawSetInt(i+1, ls.reg.Get(cf.localBase+np+i))
 					}
 					argtb.RawSetString("n", LNumber(nvarargs))
-					//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
-					ls.reg.array[cf.LocalBase+nargs+np] = argtb
+					//ls.reg.Set(cf.localBase+nargs+np, argtb)
+					ls.reg.array[cf.localBase+nargs+np] = argtb
 				} else {
-					ls.reg.array[cf.LocalBase+nargs+np] = LNil
+					ls.reg.array[cf.localBase+nargs+np] = LNil
 				}
 			}
-			cf.LocalBase += nargs
-			maxreg := cf.LocalBase + int(proto.NumUsedRegisters)
+			cf.localBase += nargs
+			maxreg := cf.localBase + int(proto.NumUsedRegisters)
 			ls.reg.SetTop(maxreg)
 		}
 	}
@@ -754,10 +754,10 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 
 func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline-start
 	if meta {
-		cf.NArgs++
-		ls.reg.Insert(fn, cf.LocalBase)
+		cf.nArgs++
+		ls.reg.Insert(fn, cf.localBase)
 	}
-	if cf.Fn == nil {
+	if cf.fn == nil {
 		ls.RaiseError("attempt to call a non-function object")
 	}
 	if ls.stack.sp == ls.Options.CallStackSize {
@@ -769,7 +769,7 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 		cs := ls.stack
 		v := cf
 		cs.array[cs.sp] = v
-		cs.array[cs.sp].Idx = cs.sp
+		cs.array[cs.sp].idx = cs.sp
 		cs.sp++
 	}
 	newcf := ls.stack.Last()
@@ -777,14 +777,14 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 	// source function is 'func (ls *LState) initCallFrame(cf *callFrame) ' in '_state.go'
 	{
 		cf := newcf
-		if cf.Fn.IsG {
-			ls.reg.SetTop(cf.LocalBase + cf.NArgs)
+		if cf.fn.IsG {
+			ls.reg.SetTop(cf.localBase + cf.nArgs)
 		} else {
-			proto := cf.Fn.Proto
-			nargs := cf.NArgs
+			proto := cf.fn.Proto
+			nargs := cf.nArgs
 			np := int(proto.NumParameters)
 			for i := nargs; i < np; i++ {
-				ls.reg.array[cf.LocalBase+i] = LNil
+				ls.reg.array[cf.localBase+i] = LNil
 				nargs = np
 			}
 
@@ -793,9 +793,9 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 					nargs = int(proto.NumUsedRegisters)
 				}
 				for i := np; i < nargs; i++ {
-					ls.reg.array[cf.LocalBase+i] = LNil
+					ls.reg.array[cf.localBase+i] = LNil
 				}
-				ls.reg.top = cf.LocalBase + int(proto.NumUsedRegisters)
+				ls.reg.top = cf.localBase + int(proto.NumUsedRegisters)
 			} else {
 				/* swap vararg positions:
 						   closure
@@ -819,30 +819,30 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 					nvarargs = 0
 				}
 
-				ls.reg.SetTop(cf.LocalBase + nargs + np)
+				ls.reg.SetTop(cf.localBase + nargs + np)
 				for i := 0; i < np; i++ {
-					//ls.reg.Set(cf.LocalBase+nargs+i, ls.reg.Get(cf.LocalBase+i))
-					ls.reg.array[cf.LocalBase+nargs+i] = ls.reg.array[cf.LocalBase+i]
-					//ls.reg.Set(cf.LocalBase+i, LNil)
-					ls.reg.array[cf.LocalBase+i] = LNil
+					//ls.reg.Set(cf.localBase+nargs+i, ls.reg.Get(cf.localBase+i))
+					ls.reg.array[cf.localBase+nargs+i] = ls.reg.array[cf.localBase+i]
+					//ls.reg.Set(cf.localBase+i, LNil)
+					ls.reg.array[cf.localBase+i] = LNil
 				}
 
 				if CompatVarArg {
-					ls.reg.SetTop(cf.LocalBase + nargs + np + 1)
+					ls.reg.SetTop(cf.localBase + nargs + np + 1)
 					if (proto.IsVarArg & VarArgNeedsArg) != 0 {
 						argtb := newLTable(nvarargs, 0)
 						for i := 0; i < nvarargs; i++ {
-							argtb.RawSetInt(i+1, ls.reg.Get(cf.LocalBase+np+i))
+							argtb.RawSetInt(i+1, ls.reg.Get(cf.localBase+np+i))
 						}
 						argtb.RawSetString("n", LNumber(nvarargs))
-						//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
-						ls.reg.array[cf.LocalBase+nargs+np] = argtb
+						//ls.reg.Set(cf.localBase+nargs+np, argtb)
+						ls.reg.array[cf.localBase+nargs+np] = argtb
 					} else {
-						ls.reg.array[cf.LocalBase+nargs+np] = LNil
+						ls.reg.array[cf.localBase+nargs+np] = LNil
 					}
 				}
-				cf.LocalBase += nargs
-				maxreg := cf.LocalBase + int(proto.NumUsedRegisters)
+				cf.localBase += nargs
+				maxreg := cf.localBase + int(proto.NumUsedRegisters)
 				ls.reg.SetTop(maxreg)
 			}
 		}
@@ -858,15 +858,15 @@ func (ls *LState) callR(nargs, nret, rbase int) {
 	lv := ls.reg.Get(base)
 	fn, meta := ls.metaCall(lv)
 	ls.pushCallFrame(callFrame{
-		Fn:         fn,
-		Pc:         0,
-		Base:       base,
-		LocalBase:  base + 1,
-		ReturnBase: rbase,
-		NArgs:      nargs,
-		NRet:       nret,
-		Parent:     ls.currentFrame,
-		TailCall:   0,
+		fn:         fn,
+		pc:         0,
+		base:       base,
+		localBase:  base + 1,
+		returnBase: rbase,
+		nArgs:      nargs,
+		nRet:       nret,
+		parent:     ls.currentFrame,
+		tailCall:   0,
 	}, lv, meta)
 	if ls.G.MainThread == nil {
 		ls.G.MainThread = ls
@@ -1083,7 +1083,7 @@ func (ls *LState) Replace(idx int, value LValue) {
 				ls.RaiseError("no calling environment")
 			}
 			if tb, ok := value.(*LTable); ok {
-				ls.currentFrame.Fn.Env = tb
+				ls.currentFrame.fn.Env = tb
 			} else {
 				ls.RaiseError("environment must be a table(%v)", value.Type().String())
 			}
@@ -1094,7 +1094,7 @@ func (ls *LState) Replace(idx int, value LValue) {
 				ls.RaiseError("_G must be a table(%v)", value.Type().String())
 			}
 		default:
-			fn := ls.currentFrame.Fn
+			fn := ls.currentFrame.fn
 			index := GlobalsIndex - idx - 1
 			if index < len(fn.Upvalues) {
 				fn.Upvalues[index].SetValue(value)
@@ -1127,11 +1127,11 @@ func (ls *LState) Get(idx int) LValue {
 			if ls.currentFrame == nil {
 				return ls.Env
 			}
-			return ls.currentFrame.Fn.Env
+			return ls.currentFrame.fn.Env
 		case GlobalsIndex:
 			return ls.G.Global
 		default:
-			fn := ls.currentFrame.Fn
+			fn := ls.currentFrame.fn
 			index := GlobalsIndex - idx - 1
 			if index < len(fn.Upvalues) {
 				return fn.Upvalues[index].Value()
@@ -1330,7 +1330,7 @@ func (ls *LState) Error(lv LValue, level int) {
 
 func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 	if !strings.HasPrefix(what, ">") {
-		fn = dbg.frame.Fn
+		fn = dbg.frame.fn
 	} else {
 		what = what[1:]
 	}
@@ -1345,11 +1345,11 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 		case 'f':
 			retfn = true
 		case 'S':
-			if dbg.frame != nil && dbg.frame.Parent == nil {
+			if dbg.frame != nil && dbg.frame.parent == nil {
 				dbg.What = "main"
 			} else if f.IsG {
 				dbg.What = "G"
-			} else if dbg.frame != nil && dbg.frame.TailCall > 0 {
+			} else if dbg.frame != nil && dbg.frame.tailCall > 0 {
 				dbg.What = "tail"
 			} else {
 				dbg.What = "Lua"
@@ -1361,8 +1361,8 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 			}
 		case 'l':
 			if !f.IsG && dbg.frame != nil {
-				if dbg.frame.Pc > 0 {
-					dbg.CurrentLine = f.Proto.DbgSourcePositions[dbg.frame.Pc-1]
+				if dbg.frame.pc > 0 {
+					dbg.CurrentLine = f.Proto.DbgSourcePositions[dbg.frame.pc-1]
 				}
 			} else {
 				dbg.CurrentLine = -1
@@ -1387,10 +1387,10 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 
 func (ls *LState) GetStack(level int) (*Debug, bool) {
 	frame := ls.currentFrame
-	for ; level > 0 && frame != nil; frame = frame.Parent {
+	for ; level > 0 && frame != nil; frame = frame.parent {
 		level--
-		if !frame.Fn.IsG {
-			level -= frame.TailCall
+		if !frame.fn.IsG {
+			level -= frame.tailCall
 		}
 	}
 
@@ -1405,7 +1405,7 @@ func (ls *LState) GetStack(level int) (*Debug, bool) {
 func (ls *LState) GetLocal(dbg *Debug, no int) (string, LValue) {
 	frame := dbg.frame
 	if name := ls.findLocal(frame, no); len(name) > 0 {
-		return name, ls.reg.Get(frame.LocalBase + no - 1)
+		return name, ls.reg.Get(frame.localBase + no - 1)
 	}
 	return "", LNil
 }
@@ -1413,7 +1413,7 @@ func (ls *LState) GetLocal(dbg *Debug, no int) (string, LValue) {
 func (ls *LState) SetLocal(dbg *Debug, no int, lv LValue) string {
 	frame := dbg.frame
 	if name := ls.findLocal(frame, no); len(name) > 0 {
-		ls.reg.Set(frame.LocalBase+no-1, lv)
+		ls.reg.Set(frame.localBase+no-1, lv)
 		return name
 	}
 	return ""
@@ -1739,15 +1739,15 @@ func (ls *LState) Resume(th *LState, fn *LFunction, args ...LValue) (ResumeState
 	if !isstarted {
 		base := 0
 		th.stack.Push(callFrame{
-			Fn:         fn,
-			Pc:         0,
-			Base:       base,
-			LocalBase:  base + 1,
-			ReturnBase: base,
-			NArgs:      0,
-			NRet:       MultRet,
-			Parent:     nil,
-			TailCall:   0,
+			fn:         fn,
+			pc:         0,
+			base:       base,
+			localBase:  base + 1,
+			returnBase: base,
+			nArgs:      0,
+			nRet:       MultRet,
+			parent:     nil,
+			tailCall:   0,
 		})
 	}
 
@@ -1766,7 +1766,7 @@ func (ls *LState) Resume(th *LState, fn *LFunction, args ...LValue) (ResumeState
 		for _, arg := range args {
 			th.Push(arg)
 		}
-		cf.NArgs = len(args)
+		cf.nArgs = len(args)
 		th.initCallFrame(cf)
 		th.Panic = panicWithoutTraceback
 	} else {

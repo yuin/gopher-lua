@@ -364,7 +364,7 @@ func (ls *LState) LoadFile(path string) (*LFunction, error) {
 	if c == byte('#') {
 		// Unix exec. file?
 		// skip first line
-		_, err, _ = readBufioLine(reader)
+		_, _, err = readBufioLine(reader)
 		if err != nil {
 			return nil, newApiErrorE(ApiErrorFile, err)
 		}
