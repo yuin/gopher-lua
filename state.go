@@ -460,12 +460,12 @@ func (ls *LState) stackTrace(level int) string {
 		}
 	}
 	buf = append(buf, fmt.Sprintf("\t%v: %v", "[G]", "?"))
-	buf = buf[intMax(0, intMin(level, len(buf))):len(buf)]
+	buf = buf[intMax(0, intMin(level, len(buf))):]
 	if len(buf) > 20 {
 		newbuf := make([]string, 0, 20)
 		newbuf = append(newbuf, buf[0:7]...)
 		newbuf = append(newbuf, "\t...")
-		newbuf = append(newbuf, buf[len(buf)-7:len(buf)]...)
+		newbuf = append(newbuf, buf[len(buf)-7:]...)
 		buf = newbuf
 	}
 	return fmt.Sprintf("%s\n%s", header, strings.Join(buf, "\n"))
