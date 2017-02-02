@@ -175,7 +175,7 @@ func isGoroutineSafe(lv LValue) bool {
 	}
 }
 
-func readBufioSize(reader *bufio.Reader, size int64) ([]byte, error, bool) {
+func readBufioSize(reader *bufio.Reader, size int64) ([]byte, bool, error) {
 	result := []byte{}
 	read := int64(0)
 	var err error
@@ -190,14 +190,14 @@ func readBufioSize(reader *bufio.Reader, size int64) ([]byte, error, bool) {
 		result = append(result, buf[:n]...)
 	}
 	e := err
-	if e != nil && e == io.EOF {
+	if e == io.EOF {
 		e = nil
 	}
 
-	return result, e, len(result) == 0 && err == io.EOF
+	return result, len(result) == 0 && err == io.EOF, e
 }
 
-func readBufioLine(reader *bufio.Reader) ([]byte, error, bool) {
+func readBufioLine(reader *bufio.Reader) ([]byte, bool, error) {
 	result := []byte{}
 	var buf []byte
 	var err error
@@ -210,11 +210,11 @@ func readBufioLine(reader *bufio.Reader) ([]byte, error, bool) {
 		result = append(result, buf...)
 	}
 	e := err
-	if e != nil && e == io.EOF {
+	if e == io.EOF {
 		e = nil
 	}
 
-	return result, e, len(result) == 0 && err == io.EOF
+	return result, len(result) == 0 && err == io.EOF, e
 }
 
 func int2Fb(val int) int {
