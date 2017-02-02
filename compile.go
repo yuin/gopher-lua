@@ -53,6 +53,9 @@ type lblabels struct {
 type constLValueExpr struct {
 	ast.ExprBase
 
+	// Value is a capitalized 'exported field'
+	// but it's not exported actually (it's in a unexported struct),
+	// because we want to keep consistency with structs in package ast.
 	Value LValue
 }
 
