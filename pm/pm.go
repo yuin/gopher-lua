@@ -77,21 +77,21 @@ func (st *MatchData) Capture(idx int) int { return int(st.captures[idx] >> 1) }
 /* scanner {{{ */
 
 type scannerState struct {
-	Pos     int
+	pos     int
 	started bool
 }
 
 type scanner struct {
 	src   []byte
-	State scannerState
+	state scannerState
 	saved scannerState
 }
 
 func newScanner(src []byte) *scanner {
 	return &scanner{
 		src: src,
-		State: scannerState{
-			Pos:     0,
+		state: scannerState{
+			pos:     0,
 			started: false,
 		},
 		saved: scannerState{},
@@ -101,55 +101,55 @@ func newScanner(src []byte) *scanner {
 func (sc *scanner) Length() int { return len(sc.src) }
 
 func (sc *scanner) Next() int {
-	if !sc.State.started {
-		sc.State.started = true
+	if !sc.state.started {
+		sc.state.started = true
 		if len(sc.src) == 0 {
-			sc.State.Pos = EOS
+			sc.state.pos = EOS
 		}
 	} else {
-		sc.State.Pos = sc.NextPos()
+		sc.state.pos = sc.NextPos()
 	}
-	if sc.State.Pos == EOS {
+	if sc.state.pos == EOS {
 		return EOS
 	}
-	return int(sc.src[sc.State.Pos])
+	return int(sc.src[sc.state.pos])
 }
 
 func (sc *scanner) CurrentPos() int {
-	return sc.State.Pos
+	return sc.state.pos
 }
 
 func (sc *scanner) NextPos() int {
-	if sc.State.Pos == EOS || sc.State.Pos >= len(sc.src)-1 {
+	if sc.state.pos == EOS || sc.state.pos >= len(sc.src)-1 {
 		return EOS
 	}
-	if !sc.State.started {
+	if !sc.state.started {
 		return 0
 	} else {
-		return sc.State.Pos + 1
+		return sc.state.pos + 1
 	}
 }
 
 func (sc *scanner) Peek() int {
-	cureof := sc.State.Pos == EOS
+	cureof := sc.state.pos == EOS
 	ch := sc.Next()
 	if !cureof {
-		if sc.State.Pos == EOS {
-			sc.State.Pos = len(sc.src) - 1
+		if sc.state.pos == EOS {
+			sc.state.pos = len(sc.src) - 1
 		} else {
-			sc.State.Pos--
-			if sc.State.Pos < 0 {
-				sc.State.Pos = 0
-				sc.State.started = false
+			sc.state.pos--
+			if sc.state.pos < 0 {
+				sc.state.pos = 0
+				sc.state.started = false
 			}
 		}
 	}
 	return ch
 }
 
-func (sc *scanner) Save() { sc.saved = sc.State }
+func (sc *scanner) Save() { sc.saved = sc.state }
 
-func (sc *scanner) Restore() { sc.State = sc.saved }
+func (sc *scanner) Restore() { sc.state = sc.saved }
 
 /* }}} */
 
