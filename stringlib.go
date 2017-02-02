@@ -223,15 +223,15 @@ func strGsubStr(L *LState, str string, repl string, matches []*pm.MatchData) str
 		start, end := match.Capture(0), match.Capture(1)
 		sc := newFlagScanner('%', "", "", repl)
 		for c, eos := sc.Next(); !eos; c, eos = sc.Next() {
-			if !sc.ChangeFlag {
-				if sc.HasFlag {
+			if !sc.changeFlag {
+				if sc.hasFlag {
 					if c >= '0' && c <= '9' {
 						sc.AppendString(capturedString(L, match, str, 2*(int(c)-48)))
 					} else {
 						sc.AppendChar('%')
 						sc.AppendChar(c)
 					}
-					sc.HasFlag = false
+					sc.hasFlag = false
 				} else {
 					sc.AppendChar(c)
 				}

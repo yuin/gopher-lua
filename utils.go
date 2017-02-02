@@ -51,10 +51,10 @@ type flagScanner struct {
 	end        string
 	buf        []byte
 	str        string
-	Length     int
-	Pos        int
-	HasFlag    bool
-	ChangeFlag bool
+	length     int
+	pos        int
+	hasFlag    bool
+	changeFlag bool
 }
 
 func newFlagScanner(flag byte, start, end, str string) *flagScanner {
@@ -69,30 +69,30 @@ func (fs *flagScanner) String() string { return string(fs.buf) }
 
 func (fs *flagScanner) Next() (byte, bool) {
 	c := byte('\000')
-	fs.ChangeFlag = false
-	if fs.Pos == fs.Length {
-		if fs.HasFlag {
+	fs.changeFlag = false
+	if fs.pos == fs.length {
+		if fs.hasFlag {
 			fs.AppendString(fs.end)
 		}
 		return c, true
 	}
-	c = fs.str[fs.Pos]
+	c = fs.str[fs.pos]
 	if c == fs.flag {
-		if fs.Pos < (fs.Length-1) && fs.str[fs.Pos+1] == fs.flag {
-			fs.HasFlag = false
+		if fs.pos < (fs.length-1) && fs.str[fs.pos+1] == fs.flag {
+			fs.hasFlag = false
 			fs.AppendChar(fs.flag)
-			fs.Pos += 2
+			fs.pos += 2
 			return fs.Next()
-		} else if fs.Pos != fs.Length-1 {
-			if fs.HasFlag {
+		} else if fs.pos != fs.length-1 {
+			if fs.hasFlag {
 				fs.AppendString(fs.end)
 			}
 			fs.AppendString(fs.start)
-			fs.ChangeFlag = true
-			fs.HasFlag = true
+			fs.changeFlag = true
+			fs.hasFlag = true
 		}
 	}
-	fs.Pos++
+	fs.pos++
 	return c, false
 }
 
@@ -104,8 +104,8 @@ var cDateFlagToGo = map[byte]string{
 func strftime(t time.Time, cfmt string) string {
 	sc := newFlagScanner('%', "", "", cfmt)
 	for c, eos := sc.Next(); !eos; c, eos = sc.Next() {
-		if !sc.ChangeFlag {
-			if sc.HasFlag {
+		if !sc.changeFlag {
+			if sc.hasFlag {
 				if v, ok := cDateFlagToGo[c]; ok {
 					sc.AppendString(t.Format(v))
 				} else {
@@ -117,7 +117,7 @@ func strftime(t time.Time, cfmt string) string {
 						sc.AppendChar(c)
 					}
 				}
-				sc.HasFlag = false
+				sc.hasFlag = false
 			} else {
 				sc.AppendChar(c)
 			}
