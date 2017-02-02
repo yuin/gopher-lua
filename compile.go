@@ -255,8 +255,8 @@ func (cd *codeStore) Pop() {
 /* {{{ VarNamePool */
 
 type varNamePoolValue struct {
-	Index int
-	Name  string
+	index int
+	name  string
 }
 
 type varNamePool struct {
@@ -275,8 +275,8 @@ func (vp *varNamePool) Names() []string {
 func (vp *varNamePool) List() []varNamePoolValue {
 	result := make([]varNamePoolValue, len(vp.names), len(vp.names))
 	for i, name := range vp.names {
-		result[i].Index = i + vp.offset
-		result[i].Name = name
+		result[i].index = i + vp.offset
+		result[i].name = name
 	}
 	return result
 }
@@ -438,7 +438,7 @@ func (fc *funcContext) LeaveBlock() int {
 
 func (fc *funcContext) EndScope() {
 	for _, vr := range fc.block.localVars.List() {
-		fc.proto.DbgLocals[vr.Index].EndPc = fc.code.LastPC()
+		fc.proto.DbgLocals[vr.index].EndPc = fc.code.LastPC()
 	}
 }
 
@@ -1030,14 +1030,14 @@ func compileExpr(context *funcContext, reg int, expr ast.Expr, ec *expcontext) i
 		context.proto.FunctionPrototypes = append(context.proto.FunctionPrototypes, childcontext.proto)
 		code.AddABx(op_CLOSURE, sreg, protono, sline(ex))
 		for _, upvalue := range childcontext.upvalues.List() {
-			localidx, block := context.FindLocalVarAndBlock(upvalue.Name)
+			localidx, block := context.FindLocalVarAndBlock(upvalue.name)
 			if localidx > -1 {
 				code.AddABC(op_MOVE, 0, localidx, 0, sline(ex))
 				block.refUpvalue = true
 			} else {
-				upvalueidx := context.upvalues.Find(upvalue.Name)
+				upvalueidx := context.upvalues.Find(upvalue.name)
 				if upvalueidx < 0 {
-					upvalueidx = context.upvalues.RegisterUnique(upvalue.Name)
+					upvalueidx = context.upvalues.RegisterUnique(upvalue.name)
 				}
 				code.AddABC(op_GETUPVAL, 0, upvalueidx, 0, sline(ex))
 			}
