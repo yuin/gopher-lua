@@ -117,12 +117,12 @@ const (
 )
 
 type opProp struct {
-	Name     string
-	IsTest   bool
-	SetRegA  bool
-	ModeArgB opArgMode
-	ModeArgC opArgMode
-	Type     opType
+	name     string
+	isTest   bool
+	setRegA  bool
+	modeArgB opArgMode
+	modeArgC opArgMode
+	optype   opType
 }
 
 var opProps = []opProp{
@@ -272,13 +272,13 @@ func opToString(inst uint32) string {
 	argsbx := opGetArgSbx(inst)
 
 	buf := ""
-	switch prop.Type {
+	switch prop.optype {
 	case opTypeABC:
-		buf = fmt.Sprintf("%s      |  %d, %d, %d", prop.Name, arga, argb, argc)
+		buf = fmt.Sprintf("%s      |  %d, %d, %d", prop.name, arga, argb, argc)
 	case opTypeABx:
-		buf = fmt.Sprintf("%s      |  %d, %d", prop.Name, arga, argbx)
+		buf = fmt.Sprintf("%s      |  %d, %d", prop.name, arga, argbx)
 	case opTypeASbx:
-		buf = fmt.Sprintf("%s      |  %d, %d", prop.Name, arga, argsbx)
+		buf = fmt.Sprintf("%s      |  %d, %d", prop.name, arga, argsbx)
 	}
 
 	switch op {
