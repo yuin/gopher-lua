@@ -337,14 +337,14 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 		tb.k2i = make(map[LValue]int)
 		i := 0
 		if tb.dict != nil {
-			for k, _ := range tb.dict {
+			for k := range tb.dict {
 				tb.keys[i] = k
 				tb.k2i[k] = i
 				i++
 			}
 		}
 		if tb.strdict != nil {
-			for k, _ := range tb.strdict {
+			for k := range tb.strdict {
 				tb.keys[i] = LString(k)
 				tb.k2i[LString(k)] = i
 				i++
