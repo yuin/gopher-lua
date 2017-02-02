@@ -170,8 +170,8 @@ const (
 )
 
 type inst struct {
-	OpCode   opCode
-	Class    class
+	code     opCode
+	cls      class
 	Operand1 int
 	Operand2 int
 }
@@ -531,9 +531,9 @@ func recursiveVM(src []byte, insts []inst, pc, sp int, ms ...*MatchData) (bool, 
 	}
 redo:
 	inst := insts[pc]
-	switch inst.OpCode {
+	switch inst.code {
 	case opChar:
-		if sp >= len(src) || !inst.Class.Matches(int(src[sp])) {
+		if sp >= len(src) || !inst.cls.Matches(int(src[sp])) {
 			return false, sp, m
 		}
 		pc++
