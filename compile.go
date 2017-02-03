@@ -134,7 +134,7 @@ type CompileError struct { // {{{
 }
 
 func (e *CompileError) Error() string {
-	return fmt.Sprintf("compile error near line(%v) %v: %v", e.Line, e.context.proto.SourceName, e.Message)
+	return fmt.Sprintf("compile error near line(%v) %v: %v", e.Line, e.context.Proto.SourceName, e.Message)
 } // }}}
 
 type codeStore struct { // {{{
