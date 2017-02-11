@@ -158,6 +158,18 @@ func (nm LNumber) Format(f fmt.State, c rune) {
 	}
 }
 
+func (nm LNumber) Integer() int64 {
+	return int64(nm)
+}
+
+func (nm LNumber) Float() float64 {
+	return float64(nm)
+}
+
+func (nm LNumber) IsInteger() bool {
+	return isInteger(nm)
+}
+
 type LTable struct {
 	Metatable LValue
 
@@ -168,11 +180,11 @@ type LTable struct {
 	k2i     map[LValue]int
 }
 
-func (tb *LTable) String() string                     { return fmt.Sprintf("table: %p", tb) }
-func (tb *LTable) Type() LValueType                   { return LTTable }
-func (tb *LTable) assertFloat64() (float64, bool)     { return 0, false }
-func (tb *LTable) assertString() (string, bool)       { return "", false }
-func (tb *LTable) assertFunction() (*LFunction, bool) { return nil, false }
+func (tb LTable) String() string                     { return fmt.Sprintf("table: %p", tb) }
+func (tb LTable) Type() LValueType                   { return LTTable }
+func (tb LTable) assertFloat64() (float64, bool)     { return 0, false }
+func (tb LTable) assertString() (string, bool)       { return "", false }
+func (tb LTable) assertFunction() (*LFunction, bool) { return nil, false }
 
 type LFunction struct {
 	IsG       bool
