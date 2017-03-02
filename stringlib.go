@@ -3,7 +3,6 @@ package lua
 import (
 	"fmt"
 	"strings"
-	"unsafe"
 
 	"github.com/yuin/gopher-lua/pm"
 )
@@ -111,7 +110,7 @@ func strFind(L *LState) int {
 		return 2
 	}
 
-	mds, err := pm.Find(pattern, *(*[]byte)(unsafe.Pointer(&str)), init, 1)
+	mds, err := pm.Find(pattern, unsafeFastStringToReadOnlyBytes(str), init, 1)
 	if err != nil {
 		L.RaiseError(err.Error())
 	}
@@ -151,7 +150,7 @@ func strGsub(L *LState) int {
 	repl := L.CheckAny(3)
 	limit := L.OptInt(4, -1)
 
-	mds, err := pm.Find(pat, *(*[]byte)(unsafe.Pointer(&str)), 0, limit)
+	mds, err := pm.Find(pat, unsafeFastStringToReadOnlyBytes(str), 0, limit)
 	if err != nil {
 		L.RaiseError(err.Error())
 	}
@@ -362,7 +361,7 @@ func strMatch(L *LState) int {
 		offset = 0
 	}
 
-	mds, err := pm.Find(pattern, *(*[]byte)(unsafe.Pointer(&str)), offset, 1)
+	mds, err := pm.Find(pattern, unsafeFastStringToReadOnlyBytes(str), offset, 1)
 	if err != nil {
 		L.RaiseError(err.Error())
 	}
