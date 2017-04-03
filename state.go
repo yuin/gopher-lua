@@ -1195,8 +1195,7 @@ func (ls *LState) Remove(index int) {
 /* object allocation {{{ */
 
 func (ls *LState) NewTable() *LTable {
-	// TODO change size
-	return newLTable(32, 32)
+	return newLTable(defaultArrayCap, defaultHashCap)
 }
 
 func (ls *LState) CreateTable(acap, hcap int) *LTable {
