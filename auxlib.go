@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strings"
 )
@@ -30,6 +31,16 @@ func (ls *LState) CheckInt64(n int) int64 {
 	v := ls.Get(n)
 	if intv, ok := v.(LNumber); ok {
 		return int64(intv)
+	}
+	ls.TypeError(n, LTNumber)
+	return 0
+}
+
+func (ls *LState) CheckUnsignedNumber(n int) uint {
+	v := ls.Get(n)
+	if lv, ok := v.(LNumber); ok {
+		const supUnsigned = float64(^uint32(0)) + 1
+		return uint(float64(lv) - math.Floor(float64(lv)/supUnsigned)*supUnsigned)
 	}
 	ls.TypeError(n, LTNumber)
 	return 0
