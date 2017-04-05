@@ -1,7 +1,7 @@
 package lua
 
 import (
-	"golang.org/x/net/context"
+	"context"
 	"strings"
 	"testing"
 	"time"

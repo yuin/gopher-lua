@@ -5,9 +5,9 @@ package lua
 ////////////////////////////////////////////////////////
 
 import (
+	"context"
 	"fmt"
 	"github.com/yuin/gopher-lua/parse"
-	"golang.org/x/net/context"
 	"io"
 	"math"
 	"os"
