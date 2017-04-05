@@ -460,7 +460,7 @@ func compilePattern(p pattern, ps ...*iptr) []inst {
 	toplevel := false
 	if len(ps) == 0 {
 		toplevel = true
-		ptr = &iptr{[]inst{inst{opSave, nil, 0, -1}}, 2}
+		ptr = &iptr{[]inst{{opSave, nil, 0, -1}}, 2}
 	} else {
 		ptr = ps[0]
 	}
