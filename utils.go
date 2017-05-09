@@ -4,11 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
-	"unsafe"
 )
 
 func intMin(a, b int) int {
@@ -253,10 +251,4 @@ func strCmp(s1, s2 string) int {
 			return 0
 		}
 	}
-}
-
-func unsafeFastStringToReadOnlyBytes(s string) []byte {
-	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	bh := reflect.SliceHeader{sh.Data, sh.Len, sh.Len}
-	return *(*[]byte)(unsafe.Pointer(&bh))
 }
