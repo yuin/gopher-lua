@@ -187,10 +187,12 @@ func (ud *undumpState) readFunction() (p *FunctionProto, errs error) {
 		return
 	} else {
 		p.Constants = constants
-		for _, cons := range p.Constants {
-			if val, iss := cons.assertString(); iss {
-				p.stringConstants = append(p.stringConstants, val)
+		for _, clv := range p.Constants {
+			sv := ""
+			if slv, ok := clv.(LString); ok {
+				sv = string(slv)
 			}
+			p.stringConstants = append(p.stringConstants, sv)
 		}
 	}
 
