@@ -1606,9 +1606,6 @@ func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 		binary_mode = true
 	}
 
-	// Return the read byte
-	_ = b.UnreadByte()
-
 	if binary_mode {
 		proto, err := ls.Undump(b, "=?")
 		if err != nil {
@@ -1617,7 +1614,7 @@ func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 		return newLFunctionL(proto, ls.currentEnv(), 0), nil
 	}
 
-	chunk, err := parse.Parse(reader, name)
+	chunk, err := parse.Parse(b, name)
 	if err != nil {
 		return nil, newApiErrorE(ApiErrorSyntax, err)
 	}
@@ -1625,6 +1622,7 @@ func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 	if err != nil {
 		return nil, newApiErrorE(ApiErrorSyntax, err)
 	}
+
 	return newLFunctionL(proto, ls.currentEnv(), 0), nil
 }
 
