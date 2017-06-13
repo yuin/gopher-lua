@@ -1600,10 +1600,10 @@ func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 
 	b := bufio.NewReader(reader)
 
-	if sbuf, err := b.Peek(4); err != nil {
-		return nil, newApiErrorE(ApiErrorSyntax, err)
-	} else if string(sbuf) == Signature {
-		binary_mode = true
+	if sbuf, err := b.Peek(4); err == nil {
+		if string(sbuf) == Signature {
+			binary_mode = true
+		}
 	}
 
 	if binary_mode {
