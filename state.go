@@ -5,6 +5,7 @@ package lua
 ////////////////////////////////////////////////////////
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/yuin/gopher-lua/parse"
 	"golang.org/x/net/context"
@@ -1595,6 +1596,27 @@ func (ls *LState) Register(name string, fn LGFunction) {
 /* load and function call operations {{{ */
 
 func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
+	binary_mode := false
+
+	b := bufio.NewReader(reader)
+
+	if sbuf, err := b.Peek(4); err != nil {
+		return nil, newApiErrorE(ApiErrorSyntax, err)
+	} else if string(sbuf) == Signature {
+		binary_mode = true
+	}
+
+	// Return the read byte
+	_ = b.UnreadByte()
+
+	if binary_mode {
+		proto, err := ls.Undump(b, "=?")
+		if err != nil {
+			return nil, newApiErrorE(ApiErrorSyntax, err)
+		}
+		return newLFunctionL(proto, ls.currentEnv(), 0), nil
+	}
+
 	chunk, err := parse.Parse(reader, name)
 	if err != nil {
 		return nil, newApiErrorE(ApiErrorSyntax, err)

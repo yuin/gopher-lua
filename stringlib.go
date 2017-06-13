@@ -1,9 +1,9 @@
 package lua
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
-
 	"github.com/yuin/gopher-lua/pm"
 )
 
@@ -81,8 +81,11 @@ func strChar(L *LState) int {
 }
 
 func strDump(L *LState) int {
-	L.RaiseError("GopherLua does not support the string.dump")
-	return 0
+	bytes := new(bytes.Buffer)
+	L.Dump(bytes)
+	L.Push(LString(bytes.String()))
+
+	return 1
 }
 
 func strFind(L *LState) int {
