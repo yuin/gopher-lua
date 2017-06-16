@@ -161,6 +161,19 @@ func (d *dumpState) writeDebug(p *FunctionProto) {
 			d.writeString(upval)
 		}
 	}
+
+	/* GopherLua specific */
+	if length = uint32(len(p.DbgCalls)); d.strip {
+		length = 0
+	}
+	d.writeInt(length)
+
+	if d.strip == false {
+		for _, dc := range p.DbgCalls {
+			d.writeString(dc.Name)
+			d.writeInt(uint32(dc.Pc))
+		}
+	}
 }
 
 func (d *dumpState) dumpFunction(p *FunctionProto) {

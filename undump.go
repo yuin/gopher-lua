@@ -255,6 +255,22 @@ func (ud *undumpState) readFunction() (p *FunctionProto, errs error) {
 
 	}
 
+	/* GopherLua specific */
+	if numDebugCalls, err := ud.readInt(); err != nil {
+		return
+	} else {
+		p.DbgCalls = make([]DbgCall, numDebugCalls)
+		for i := 0; i < int(numDebugCalls); i++ {
+			name, _ := ud.readString()
+			pc, _ := ud.readInt()
+
+			p.DbgCalls[i] = DbgCall{
+				Name: name,
+				Pc:   int(pc),
+			}
+		}
+	}
+
 	return
 }
 
