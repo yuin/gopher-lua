@@ -1,10 +1,8 @@
 package lua
 
 import (
-	// "bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 )
 
@@ -207,7 +205,8 @@ func (ud *undumpState) readFunction() (p *FunctionProto, errs error) {
 		if f, err := ud.readFunction(); err == nil {
 			p.FunctionPrototypes[i] = f
 		} else {
-			fmt.Println("ERRRR", err)
+			errs = err
+			return
 		}
 	}
 
@@ -220,6 +219,9 @@ func (ud *undumpState) readFunction() (p *FunctionProto, errs error) {
 		for i := 0; i < int(numDebug); i++ {
 			if dp, err := ud.readInt(); err == nil {
 				p.DbgSourcePositions[i] = int(dp)
+			} else {
+				errs = err
+				return
 			}
 		}
 	}

@@ -2,7 +2,7 @@ package lua
 
 import (
 	"encoding/binary"
-	"fmt"
+	"errors"
 	"io"
 )
 
@@ -116,7 +116,7 @@ func (d *dumpState) writeString(s string) {
 		d.write(uint32(size))
 		break
 	default:
-		panic(fmt.Sprintf("unsupported pointer size (%d)"))
+		d.err = errors.New("unsupported pointer size")
 	}
 
 	if size > 0 {
@@ -211,7 +211,6 @@ func (l *LState) Dump(w io.Writer) error {
 	fp := fn.Proto
 
 	if err := l.dump(fp, w); err != nil {
-		fmt.Println("An error occured.", err)
 		return err
 	}
 
