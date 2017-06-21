@@ -92,7 +92,7 @@ type functionProtoContainer struct {
 	NumUsedRegisters   uint8
 	Code               []uint32
 	Constants          []LValue
-	FunctionPrototypes []*FunctionProto
+	FunctionPrototypes []*functionProtoContainer
 
 	DbgSourcePositions []int
 	DbgLocals          []*DbgLocalInfo
@@ -104,6 +104,31 @@ type functionProtoContainer struct {
 
 const dumpSignature = "\033GoL"
 
+func proto2container(proto *FunctionProto) *functionProtoContainer {
+	children := []*functionProtoContainer{}
+	for _, c := range proto.FunctionPrototypes {
+		children = append(children, proto2container(c))
+	}
+
+	return &functionProtoContainer{
+		SourceName:         proto.SourceName,
+		LineDefined:        proto.LineDefined,
+		LastLineDefined:    proto.LastLineDefined,
+		NumUpvalues:        proto.NumUpvalues,
+		NumParameters:      proto.NumParameters,
+		IsVarArg:           proto.IsVarArg,
+		NumUsedRegisters:   proto.NumUsedRegisters,
+		Code:               proto.Code,
+		Constants:          proto.Constants,
+		FunctionPrototypes: children,
+		DbgSourcePositions: proto.DbgSourcePositions,
+		DbgLocals:          proto.DbgLocals,
+		DbgCalls:           proto.DbgCalls,
+		DbgUpvalues:        proto.DbgUpvalues,
+		StringConstants:    proto.stringConstants,
+	}
+}
+
 func strDump(L *LState) int {
 	f := L.CheckFunction(1)
 	if f.IsG {
@@ -113,27 +138,10 @@ func strDump(L *LState) int {
 		L.RaiseError("function must not have any upvalues")
 	}
 
-	container := &functionProtoContainer{
-		SourceName:         f.Proto.SourceName,
-		LineDefined:        f.Proto.LineDefined,
-		LastLineDefined:    f.Proto.LastLineDefined,
-		NumUpvalues:        f.Proto.NumUpvalues,
-		NumParameters:      f.Proto.NumParameters,
-		IsVarArg:           f.Proto.IsVarArg,
-		NumUsedRegisters:   f.Proto.NumUsedRegisters,
-		Code:               f.Proto.Code,
-		Constants:          f.Proto.Constants,
-		FunctionPrototypes: f.Proto.FunctionPrototypes,
-		DbgSourcePositions: f.Proto.DbgSourcePositions,
-		DbgLocals:          f.Proto.DbgLocals,
-		DbgCalls:           f.Proto.DbgCalls,
-		DbgUpvalues:        f.Proto.DbgUpvalues,
-		StringConstants:    f.Proto.stringConstants,
-	}
 	var buf bytes.Buffer
 	buf.Write(unsafeFastStringToReadOnlyBytes(dumpSignature))
 	encoder := gob.NewEncoder(&buf)
-	if err := encoder.Encode(container); err != nil {
+	if err := encoder.Encode(proto2container(f.Proto)); err != nil {
 		L.RaiseError(err.Error())
 	}
 	L.Push(LString(buf.String()))

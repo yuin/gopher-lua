@@ -1511,6 +1511,31 @@ func (ls *LState) Register(name string, fn LGFunction) {
 
 /* load and function call operations {{{ */
 
+func container2proto(container *functionProtoContainer) *FunctionProto {
+	children := []*FunctionProto{}
+	for _, c := range container.FunctionPrototypes {
+		children = append(children, container2proto(c))
+	}
+
+	return &FunctionProto{
+		SourceName:         container.SourceName,
+		LineDefined:        container.LineDefined,
+		LastLineDefined:    container.LastLineDefined,
+		NumUpvalues:        container.NumUpvalues,
+		NumParameters:      container.NumParameters,
+		IsVarArg:           container.IsVarArg,
+		NumUsedRegisters:   container.NumUsedRegisters,
+		Code:               container.Code,
+		Constants:          container.Constants,
+		FunctionPrototypes: children,
+		DbgSourcePositions: container.DbgSourcePositions,
+		DbgLocals:          container.DbgLocals,
+		DbgCalls:           container.DbgCalls,
+		DbgUpvalues:        container.DbgUpvalues,
+		stringConstants:    container.StringConstants,
+	}
+}
+
 func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 	b := bufio.NewReader(reader)
 	if sbuf, err := b.Peek(4); err == nil {
@@ -1521,24 +1546,7 @@ func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 			if err := decoder.Decode(&container); err != nil {
 				ls.RaiseError(err.Error())
 			}
-			proto := &FunctionProto{
-				SourceName:         container.SourceName,
-				LineDefined:        container.LineDefined,
-				LastLineDefined:    container.LastLineDefined,
-				NumUpvalues:        container.NumUpvalues,
-				NumParameters:      container.NumParameters,
-				IsVarArg:           container.IsVarArg,
-				NumUsedRegisters:   container.NumUsedRegisters,
-				Code:               container.Code,
-				Constants:          container.Constants,
-				FunctionPrototypes: container.FunctionPrototypes,
-				DbgSourcePositions: container.DbgSourcePositions,
-				DbgLocals:          container.DbgLocals,
-				DbgCalls:           container.DbgCalls,
-				DbgUpvalues:        container.DbgUpvalues,
-				stringConstants:    container.StringConstants,
-			}
-			return newLFunctionL(proto, ls.currentEnv(), 0), nil
+			return newLFunctionL(container2proto(&container), ls.currentEnv(), 0), nil
 		}
 	}
 
