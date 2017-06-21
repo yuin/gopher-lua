@@ -1,7 +1,6 @@
 package lua
 
 import (
-	"encoding/gob"
 	"fmt"
 	"golang.org/x/net/context"
 	"os"
@@ -246,8 +245,3 @@ func (ch LChannel) Type() LValueType                   { return LTChannel }
 func (ch LChannel) assertFloat64() (float64, bool)     { return 0, false }
 func (ch LChannel) assertString() (string, bool)       { return "", false }
 func (ch LChannel) assertFunction() (*LFunction, bool) { return nil, false }
-
-func init() {
-	gob.Register(LString(""))
-	gob.Register(LNumber(0))
-}

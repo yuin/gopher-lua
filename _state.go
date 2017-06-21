@@ -2,11 +2,12 @@ package lua
 
 import (
 	"bufio"
-	"encoding/gob"
 	"fmt"
+	"github.com/vmihailenco/msgpack"
 	"github.com/yuin/gopher-lua/parse"
 	"golang.org/x/net/context"
 	"io"
+	"io/ioutil"
 	"math"
 	"os"
 	"runtime"
@@ -1512,9 +1513,19 @@ func (ls *LState) Register(name string, fn LGFunction) {
 /* load and function call operations {{{ */
 
 func container2proto(container *functionProtoContainer) *FunctionProto {
-	children := []*FunctionProto{}
+	protos := []*FunctionProto{}
 	for _, c := range container.FunctionPrototypes {
-		children = append(children, container2proto(c))
+		protos = append(protos, container2proto(c))
+	}
+	constants := []LValue{}
+	stringConstants := []string{}
+	for _, c := range container.Constants {
+		if s, ok := c.(string); ok {
+			constants = append(constants, LString(s))
+			stringConstants = append(stringConstants, s)
+		} else {
+			constants = append(constants, LNumber(c.(float64)))
+		}
 	}
 
 	return &FunctionProto{
@@ -1526,13 +1537,13 @@ func container2proto(container *functionProtoContainer) *FunctionProto {
 		IsVarArg:           container.IsVarArg,
 		NumUsedRegisters:   container.NumUsedRegisters,
 		Code:               container.Code,
-		Constants:          container.Constants,
-		FunctionPrototypes: children,
+		Constants:          constants,
+		FunctionPrototypes: protos,
 		DbgSourcePositions: container.DbgSourcePositions,
 		DbgLocals:          container.DbgLocals,
 		DbgCalls:           container.DbgCalls,
 		DbgUpvalues:        container.DbgUpvalues,
-		stringConstants:    container.StringConstants,
+		stringConstants:    stringConstants,
 	}
 }
 
@@ -1541,9 +1552,12 @@ func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 	if sbuf, err := b.Peek(4); err == nil {
 		if string(sbuf) == dumpSignature {
 			b.Discard(4)
-			decoder := gob.NewDecoder(b)
+			buf, err := ioutil.ReadAll(b)
+			if err != nil {
+				ls.RaiseError(err.Error())
+			}
 			var container functionProtoContainer
-			if err := decoder.Decode(&container); err != nil {
+			if err := msgpack.Unmarshal(buf, &container); err != nil {
 				ls.RaiseError(err.Error())
 			}
 			return newLFunctionL(container2proto(&container), ls.currentEnv(), 0), nil

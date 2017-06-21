@@ -1,11 +1,10 @@
 package lua
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	"strings"
 
+	"github.com/vmihailenco/msgpack"
 	"github.com/yuin/gopher-lua/pm"
 )
 
@@ -82,6 +81,12 @@ func strChar(L *LState) int {
 	return 1
 }
 
+type lvalueContainer struct {
+	Type   LValueType
+	String string
+	Number float64
+}
+
 type functionProtoContainer struct {
 	SourceName         string
 	LineDefined        int
@@ -91,23 +96,25 @@ type functionProtoContainer struct {
 	IsVarArg           uint8
 	NumUsedRegisters   uint8
 	Code               []uint32
-	Constants          []LValue
+	Constants          []interface{}
 	FunctionPrototypes []*functionProtoContainer
 
 	DbgSourcePositions []int
 	DbgLocals          []*DbgLocalInfo
 	DbgCalls           []DbgCall
 	DbgUpvalues        []string
-
-	StringConstants []string
 }
 
 const dumpSignature = "\033GoL"
 
 func proto2container(proto *FunctionProto) *functionProtoContainer {
-	children := []*functionProtoContainer{}
+	protos := []*functionProtoContainer{}
 	for _, c := range proto.FunctionPrototypes {
-		children = append(children, proto2container(c))
+		protos = append(protos, proto2container(c))
+	}
+	constants := []interface{}{}
+	for _, c := range proto.Constants {
+		constants = append(constants, c)
 	}
 
 	return &functionProtoContainer{
@@ -119,13 +126,12 @@ func proto2container(proto *FunctionProto) *functionProtoContainer {
 		IsVarArg:           proto.IsVarArg,
 		NumUsedRegisters:   proto.NumUsedRegisters,
 		Code:               proto.Code,
-		Constants:          proto.Constants,
-		FunctionPrototypes: children,
+		Constants:          constants,
+		FunctionPrototypes: protos,
 		DbgSourcePositions: proto.DbgSourcePositions,
 		DbgLocals:          proto.DbgLocals,
 		DbgCalls:           proto.DbgCalls,
 		DbgUpvalues:        proto.DbgUpvalues,
-		StringConstants:    proto.stringConstants,
 	}
 }
 
@@ -134,17 +140,11 @@ func strDump(L *LState) int {
 	if f.IsG {
 		L.RaiseError("function must be a lua function")
 	}
-	if len(f.Upvalues) != 0 {
-		L.RaiseError("function must not have any upvalues")
-	}
-
-	var buf bytes.Buffer
-	buf.Write(unsafeFastStringToReadOnlyBytes(dumpSignature))
-	encoder := gob.NewEncoder(&buf)
-	if err := encoder.Encode(proto2container(f.Proto)); err != nil {
+	buf, err := msgpack.Marshal(proto2container(f.Proto))
+	if err != nil {
 		L.RaiseError(err.Error())
 	}
-	L.Push(LString(buf.String()))
+	L.Push(LString(append(([]byte)(dumpSignature), buf...)))
 	return 1
 }
 
