@@ -1,6 +1,8 @@
 package lua
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"strings"
 
@@ -80,9 +82,62 @@ func strChar(L *LState) int {
 	return 1
 }
 
+type functionProtoContainer struct {
+	SourceName         string
+	LineDefined        int
+	LastLineDefined    int
+	NumUpvalues        uint8
+	NumParameters      uint8
+	IsVarArg           uint8
+	NumUsedRegisters   uint8
+	Code               []uint32
+	Constants          []LValue
+	FunctionPrototypes []*FunctionProto
+
+	DbgSourcePositions []int
+	DbgLocals          []*DbgLocalInfo
+	DbgCalls           []DbgCall
+	DbgUpvalues        []string
+
+	StringConstants []string
+}
+
+const dumpSignature = "\033GoL"
+
 func strDump(L *LState) int {
-	L.RaiseError("GopherLua does not support the string.dump")
-	return 0
+	f := L.CheckFunction(1)
+	if f.IsG {
+		L.RaiseError("function must be a lua function")
+	}
+	if len(f.Upvalues) != 0 {
+		L.RaiseError("function must not have any upvalues")
+	}
+
+	container := &functionProtoContainer{
+		SourceName:         f.Proto.SourceName,
+		LineDefined:        f.Proto.LineDefined,
+		LastLineDefined:    f.Proto.LastLineDefined,
+		NumUpvalues:        f.Proto.NumUpvalues,
+		NumParameters:      f.Proto.NumParameters,
+		IsVarArg:           f.Proto.IsVarArg,
+		NumUsedRegisters:   f.Proto.NumUsedRegisters,
+		Code:               f.Proto.Code,
+		Constants:          f.Proto.Constants,
+		FunctionPrototypes: f.Proto.FunctionPrototypes,
+		DbgSourcePositions: f.Proto.DbgSourcePositions,
+		DbgLocals:          f.Proto.DbgLocals,
+		DbgCalls:           f.Proto.DbgCalls,
+		DbgUpvalues:        f.Proto.DbgUpvalues,
+		StringConstants:    f.Proto.stringConstants,
+	}
+	var buf bytes.Buffer
+	buf.Write(unsafeFastStringToReadOnlyBytes(dumpSignature))
+	encoder := gob.NewEncoder(&buf)
+	if err := encoder.Encode(container); err != nil {
+		L.RaiseError(err.Error())
+	}
+	L.Push(LString(buf.String()))
+	return 1
 }
 
 func strFind(L *LState) int {

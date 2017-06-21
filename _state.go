@@ -1,6 +1,8 @@
 package lua
 
 import (
+	"bufio"
+	"encoding/gob"
 	"fmt"
 	"github.com/yuin/gopher-lua/parse"
 	"golang.org/x/net/context"
@@ -1510,7 +1512,37 @@ func (ls *LState) Register(name string, fn LGFunction) {
 /* load and function call operations {{{ */
 
 func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
-	chunk, err := parse.Parse(reader, name)
+	b := bufio.NewReader(reader)
+	if sbuf, err := b.Peek(4); err == nil {
+		if string(sbuf) == dumpSignature {
+			b.Discard(4)
+			decoder := gob.NewDecoder(b)
+			var container functionProtoContainer
+			if err := decoder.Decode(&container); err != nil {
+				ls.RaiseError(err.Error())
+			}
+			proto := &FunctionProto{
+				SourceName:         container.SourceName,
+				LineDefined:        container.LineDefined,
+				LastLineDefined:    container.LastLineDefined,
+				NumUpvalues:        container.NumUpvalues,
+				NumParameters:      container.NumParameters,
+				IsVarArg:           container.IsVarArg,
+				NumUsedRegisters:   container.NumUsedRegisters,
+				Code:               container.Code,
+				Constants:          container.Constants,
+				FunctionPrototypes: container.FunctionPrototypes,
+				DbgSourcePositions: container.DbgSourcePositions,
+				DbgLocals:          container.DbgLocals,
+				DbgCalls:           container.DbgCalls,
+				DbgUpvalues:        container.DbgUpvalues,
+				stringConstants:    container.StringConstants,
+			}
+			return newLFunctionL(proto, ls.currentEnv(), 0), nil
+		}
+	}
+
+	chunk, err := parse.Parse(b, name)
 	if err != nil {
 		return nil, newApiErrorE(ApiErrorSyntax, err)
 	}
@@ -1518,6 +1550,7 @@ func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 	if err != nil {
 		return nil, newApiErrorE(ApiErrorSyntax, err)
 	}
+
 	return newLFunctionL(proto, ls.currentEnv(), 0), nil
 }
 
