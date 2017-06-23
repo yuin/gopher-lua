@@ -411,3 +411,23 @@ func TestContextWithCroutine(t *testing.T) {
 	errorIfFalse(t, strings.Contains(err.Error(), "context canceled"), "coroutine execution must be canceled when the parent context is canceled")
 
 }
+
+func TestPCallAfterFail(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	errFn := L.NewFunction(func(L *LState) int {
+		L.RaiseError("error!")
+		return 0
+	})
+	changeError := L.NewFunction(func(L *LState) int {
+		L.Push(errFn)
+		err := L.PCall(0, 0, nil)
+		if err != nil {
+			L.RaiseError("A New Error")
+		}
+		return 0
+	})
+	L.Push(changeError)
+	err := L.PCall(0, 0, nil)
+	errorIfFalse(t, strings.Contains(err.Error(), "A New Error"), "error not propogated correctly")
+}
