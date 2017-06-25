@@ -1,7 +1,6 @@
 package lua
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/yuin/gopher-lua/parse"
 	"os"
@@ -78,43 +77,6 @@ func testScriptDir(t *testing.T, tests []string, directory string) {
 	}
 }
 
-func testDumpScriptDir(t *testing.T, tests []string, directory string) {
-	if err := os.Chdir(directory); err != nil {
-		t.Error(err)
-	}
-	defer os.Chdir("..")
-	for _, script := range tests {
-		fmt.Printf("testing %s/%s\n", directory, script)
-		LD := NewState(Options{
-			RegistrySize:  1024 * 20,
-			CallStackSize: 1024,
-		})
-		LD.SetMx(maxMemory)
-
-		buf := new(bytes.Buffer)
-
-		if fn, err := LD.LoadFile(script); err != nil {
-			t.Error(err)
-		} else {
-			LD.Push(fn)
-			LD.Dump(buf)
-		}
-
-		L := NewState(Options{
-			RegistrySize:  1024 * 20,
-			CallStackSize: 1024,
-		})
-		L.SetMx(maxMemory)
-		if err := L.DoString(buf.String()); err != nil {
-			t.Error(err)
-		}
-		L.Close()
-
-		LD.Close()
-	}
-}
-
-
 func TestGlua(t *testing.T) {
 	defer os.Unsetenv("_____GLUATEST______")
 	testScriptDir(t, gluaTests, "_glua-tests")
@@ -122,13 +84,4 @@ func TestGlua(t *testing.T) {
 
 func TestLua(t *testing.T) {
 	testScriptDir(t, luaTests, "_lua5.1-tests")
-}
-
-func TestDumpGlua(t *testing.T) {
-	defer os.Unsetenv("_____GLUATEST______")
-	testDumpScriptDir(t, gluaTests, "_glua-tests")
-}
-
-func TestDumpLua(t *testing.T) {
-	testDumpScriptDir(t, luaTests, "_lua5.1-tests")
 }
