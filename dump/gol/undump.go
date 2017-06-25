@@ -1,13 +1,13 @@
-package lua
+package goldump
 
 import (
 	"encoding/binary"
 	"errors"
+	"github.com/yuin/gopher-lua"
 	"io"
 )
 
 type undumpState struct {
-	l     *LState
 	in    io.Reader
 	order binary.ByteOrder
 	err   error
@@ -62,13 +62,13 @@ func (ud *undumpState) readCode() (code []uint32, err error) {
 	return
 }
 
-func (ud *undumpState) readConstants() (constants []LValue, err error) {
+func (ud *undumpState) readConstants() (constants []lua.LValue, err error) {
 	n, err := ud.readInt()
 	if err != nil || n == 0 {
 		return
 	}
 
-	constants = make([]LValue, n)
+	constants = make([]lua.LValue, n)
 
 	for i := 0; i < int(n); i++ {
 		if b, berr := ud.readByte(); berr != nil {
@@ -76,28 +76,28 @@ func (ud *undumpState) readConstants() (constants []LValue, err error) {
 			return
 		} else {
 			switch b {
-			case byte(LTNil):
-				constants[i] = LNil
-			case byte(LTBool):
+			case byte(lua.LTNil):
+				constants[i] = lua.LNil
+			case byte(lua.LTBool):
 				if bval, berr := ud.readBool(); berr != nil {
 					err = berr
 					return
 				} else {
-					constants[i] = LBool(bval)
+					constants[i] = lua.LBool(bval)
 				}
-			case byte(LTNumber):
+			case byte(lua.LTNumber):
 				if nval, berr := ud.readNumber(); berr != nil {
 					err = berr
 					return
 				} else {
-					constants[i] = LNumber(nval)
+					constants[i] = lua.LNumber(nval)
 				}
-			case byte(LTString):
+			case byte(lua.LTString):
 				if sval, berr := ud.readString(); berr != nil {
 					err = berr
 					return
 				} else {
-					constants[i] = LString(sval)
+					constants[i] = lua.LString(sval)
 				}
 			default:
 				return
@@ -124,9 +124,7 @@ func (ud *undumpState) readHeader() error {
 	return errors.New("incompatible input")
 }
 
-func (ud *undumpState) readFunction() (p *FunctionProto, errs error) {
-	p = newFunctionProto("")
-
+func (ud *undumpState) readFunction(p *lua.FunctionProto) (errs error) {
 	if p.SourceName, errs = ud.readString(); errs != nil {
 		return
 	}
@@ -187,10 +185,10 @@ func (ud *undumpState) readFunction() (p *FunctionProto, errs error) {
 		p.Constants = constants
 		for _, clv := range p.Constants {
 			sv := ""
-			if slv, ok := clv.(LString); ok {
+			if slv, ok := clv.(lua.LString); ok {
 				sv = string(slv)
 			}
-			p.stringConstants = append(p.stringConstants, sv)
+			p.StringConstants = append(p.StringConstants, sv)
 		}
 	}
 
@@ -199,10 +197,11 @@ func (ud *undumpState) readFunction() (p *FunctionProto, errs error) {
 		return
 	}
 
-	p.FunctionPrototypes = make([]*FunctionProto, numFunctions)
+	p.FunctionPrototypes = make([]*lua.FunctionProto, numFunctions)
 
 	for i := 0; i < int(numFunctions); i++ {
-		if f, err := ud.readFunction(); err == nil {
+		f := lua.NewFunctionProto("")
+		if err := ud.readFunction(f); err == nil {
 			p.FunctionPrototypes[i] = f
 		} else {
 			errs = err
@@ -229,13 +228,13 @@ func (ud *undumpState) readFunction() (p *FunctionProto, errs error) {
 	if numDebugLocals, err := ud.readInt(); err != nil {
 		return
 	} else {
-		p.DbgLocals = make([]*DbgLocalInfo, numDebugLocals)
+		p.DbgLocals = make([]*lua.DbgLocalInfo, numDebugLocals)
 		for i := 0; i < int(numDebugLocals); i++ {
 			name, _ := ud.readString()
 			startpc, _ := ud.readInt()
 			endpc, _ := ud.readInt()
 
-			p.DbgLocals[i] = &DbgLocalInfo{
+			p.DbgLocals[i] = &lua.DbgLocalInfo{
 				Name:    name,
 				StartPc: int(startpc),
 				EndPc:   int(endpc),
@@ -261,12 +260,12 @@ func (ud *undumpState) readFunction() (p *FunctionProto, errs error) {
 	if numDebugCalls, err := ud.readInt(); err != nil {
 		return
 	} else {
-		p.DbgCalls = make([]DbgCall, numDebugCalls)
+		p.DbgCalls = make([]lua.DbgCall, numDebugCalls)
 		for i := 0; i < int(numDebugCalls); i++ {
 			name, _ := ud.readString()
 			pc, _ := ud.readInt()
 
-			p.DbgCalls[i] = DbgCall{
+			p.DbgCalls[i] = lua.DbgCall{
 				Name: name,
 				Pc:   int(pc),
 			}
@@ -274,17 +273,4 @@ func (ud *undumpState) readFunction() (p *FunctionProto, errs error) {
 	}
 
 	return
-}
-
-func (l *LState) Undump(in io.Reader, name string) (fp *FunctionProto, err error) {
-	undumpState := undumpState{l: l, in: in, order: binary.LittleEndian}
-
-	if err = undumpState.readHeader(); err != nil {
-		return nil, err
-	}
-	if fp, err = undumpState.readFunction(); err != nil {
-		return nil, err
-	}
-
-	return fp, nil
 }

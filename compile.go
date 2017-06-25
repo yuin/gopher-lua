@@ -343,7 +343,7 @@ type funcContext struct {
 
 func newFuncContext(sourcename string, parent *funcContext) *funcContext {
 	fc := &funcContext{
-		Proto:    newFunctionProto(sourcename),
+		Proto:    NewFunctionProto(sourcename),
 		Code:     &codeStore{make([]uint32, 0, 1024), make([]int, 0, 1024), 0},
 		Parent:   parent,
 		Upvalues: newVarNamePool(0),
@@ -1147,7 +1147,7 @@ func compileFunctionExpr(context *funcContext, funcexpr *ast.FunctionExpr, ec *e
 		if slv, ok := clv.(LString); ok {
 			sv = string(slv)
 		}
-		context.Proto.stringConstants = append(context.Proto.stringConstants, sv)
+		context.Proto.StringConstants = append(context.Proto.StringConstants, sv)
 	}
 	patchCode(context)
 } // }}}

@@ -1,10 +1,9 @@
 package lua
 
 import (
-	"bytes"
 	"fmt"
-	"strings"
 	"github.com/yuin/gopher-lua/pm"
+	"strings"
 )
 
 func OpenString(L *LState) int {
@@ -81,9 +80,20 @@ func strChar(L *LState) int {
 }
 
 func strDump(L *LState) int {
-	bytes := new(bytes.Buffer)
-	L.Dump(bytes)
-	L.Push(LString(bytes.String()))
+	f := L.CheckFunction(1)
+	if f.IsG {
+		L.RaiseError("function must be a lua function")
+	}
+
+	if L.Options.DumpCodec == nil {
+		L.RaiseError("dump function is not configured")
+	} else {
+		if bytes, err := L.Options.DumpCodec.Encode(f.Proto); err != nil {
+			L.RaiseError(err.Error())
+		} else {
+			L.Push(LString(string(bytes)))
+		}
+	}
 
 	return 1
 }

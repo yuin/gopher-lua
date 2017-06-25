@@ -1,42 +1,18 @@
-package lua
+package goldump
 
 import (
 	"encoding/binary"
 	"errors"
+	"github.com/yuin/gopher-lua"
 	"io"
 )
 
-const Signature = "\033GoL"
-const (
-	VersionMajor = 5
-	VersionMinor = 1
-)
-
-var header struct {
-	Signature                            [4]byte
-	Version, Format, Endianness, IntSize byte
-	PointerSize, InstructionSize         byte
-	NumberSize, IntegralNumber           byte
-}
-
 type dumpState struct {
-	l     *LState
+	//l     *LState
 	out   io.Writer
 	order binary.ByteOrder
 	strip bool
 	err   error
-}
-
-func init() {
-	copy(header.Signature[:], Signature)
-	header.Version = VersionMajor<<4 | VersionMinor
-	header.Format = 0
-	header.Endianness = 1 // binary.LittleEndian
-	header.IntSize = 4
-	header.PointerSize = byte(1+^uintptr(0)>>32&1) * 4
-	header.InstructionSize = byte(1+^uint32(0)>>32&1) * 4
-	header.NumberSize = 8
-	header.IntegralNumber = 0
 }
 
 func (d *dumpState) write(data interface{}) {
@@ -49,7 +25,7 @@ func (d *dumpState) writeInt(i uint32) {
 	d.write(uint32(i))
 }
 
-func (d *dumpState) writeCode(p *FunctionProto) {
+func (d *dumpState) writeCode(p *lua.FunctionProto) {
 	d.writeInt(uint32(len(p.Code)))
 	for _, code := range p.Code {
 		d.writeInt(code)
@@ -72,7 +48,7 @@ func (d *dumpState) writeNumber(f float64) {
 	d.write(f)
 }
 
-func (d *dumpState) writeConstants(p *FunctionProto) {
+func (d *dumpState) writeConstants(p *lua.FunctionProto) {
 	d.writeInt(uint32(len(p.Constants)))
 
 	for _, constant := range p.Constants {
@@ -80,17 +56,15 @@ func (d *dumpState) writeConstants(p *FunctionProto) {
 		d.writeByte(cst)
 
 		switch constant.Type() {
-		case LTNil:
-		case LTBool:
-			d.writeBool(LVAsBool(constant))
-		case LTNumber:
-			f, _ := constant.assertFloat64()
-			d.writeNumber(f)
-		case LTString:
-			s, _ := constant.assertString()
-			d.writeString(s)
+		case lua.LTNil:
+		case lua.LTBool:
+			d.writeBool(lua.LVAsBool(constant))
+		case lua.LTNumber:
+			d.writeNumber(float64(lua.LVAsNumber(constant)))
+		case lua.LTString:
+			d.writeString(lua.LVAsString(constant))
 		default:
-			d.l.Panic(d.l)
+			d.err = errors.New("invalid constat in encoder")
 		}
 	}
 
@@ -125,7 +99,7 @@ func (d *dumpState) writeString(s string) {
 	}
 }
 
-func (d *dumpState) writeDebug(p *FunctionProto) {
+func (d *dumpState) writeDebug(p *lua.FunctionProto) {
 	var length uint32
 	if length = uint32(len(p.DbgSourcePositions)); d.strip {
 		length = 0
@@ -162,7 +136,6 @@ func (d *dumpState) writeDebug(p *FunctionProto) {
 		}
 	}
 
-	/* GopherLua specific */
 	if length = uint32(len(p.DbgCalls)); d.strip {
 		length = 0
 	}
@@ -176,7 +149,7 @@ func (d *dumpState) writeDebug(p *FunctionProto) {
 	}
 }
 
-func (d *dumpState) dumpFunction(p *FunctionProto) {
+func (d *dumpState) dumpFunction(p *lua.FunctionProto) {
 	if d.strip == false {
 		d.writeString(p.SourceName)
 	} else {
@@ -196,23 +169,4 @@ func (d *dumpState) dumpFunction(p *FunctionProto) {
 
 func (d *dumpState) dumpHeader() {
 	d.err = binary.Write(d.out, d.order, header)
-}
-
-func (l *LState) dump(p *FunctionProto, w io.Writer) error {
-	d := dumpState{l: l, out: w, order: binary.LittleEndian, strip: false}
-	d.dumpHeader()
-	d.dumpFunction(p)
-
-	return d.err
-}
-
-func (l *LState) Dump(w io.Writer) error {
-	fn := l.CheckFunction(1)
-	fp := fn.Proto
-
-	if err := l.dump(fp, w); err != nil {
-		return err
-	}
-
-	return nil
 }

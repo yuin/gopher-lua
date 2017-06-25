@@ -10,6 +10,7 @@ import (
 	"github.com/yuin/gopher-lua/parse"
 	"golang.org/x/net/context"
 	"io"
+	"io/ioutil"
 	"math"
 	"os"
 	"runtime"
@@ -76,6 +77,16 @@ const (
 
 /* }}} */
 
+/* FunctionProtoCodec {{{ */
+
+type FunctionProtoCodec interface {
+	Signature() string
+	Encode(*FunctionProto) ([]byte, error)
+	Decode([]byte, *FunctionProto) error
+}
+
+/* }}} */
+
 /* P {{{ */
 
 type P struct {
@@ -99,6 +110,8 @@ type Options struct {
 	SkipOpenLibs bool
 	// Tells whether a Go stacktrace should be included in a Lua stacktrace when panics occur.
 	IncludeGoStackTrace bool
+	// Handles the dump format.
+	DumpCodec FunctionProtoCodec
 }
 
 /* }}} */
@@ -571,7 +584,7 @@ func (ls *LState) rkValue(idx int) LValue {
 
 func (ls *LState) rkString(idx int) string {
 	if (idx & opBitRk) != 0 {
-		return ls.currentFrame.Fn.Proto.stringConstants[idx & ^opBitRk]
+		return ls.currentFrame.Fn.Proto.StringConstants[idx & ^opBitRk]
 	}
 	return string(ls.reg.array[ls.currentFrame.LocalBase+idx].(LString))
 }
@@ -1017,6 +1030,7 @@ func NewState(opts ...Options) *LState {
 		ls = newLState(Options{
 			CallStackSize: CallStackSize,
 			RegistrySize:  RegistrySize,
+			DumpCodec:     nil,
 		})
 		ls.OpenLibs()
 	} else {
@@ -1596,22 +1610,22 @@ func (ls *LState) Register(name string, fn LGFunction) {
 /* load and function call operations {{{ */
 
 func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
-	binary_mode := false
-
 	b := bufio.NewReader(reader)
 
-	if sbuf, err := b.Peek(4); err == nil {
-		if string(sbuf) == Signature {
-			binary_mode = true
-		}
-	}
+	if ls.Options.DumpCodec != nil {
+		if sbuf, err := b.Peek(4); err == nil && string(sbuf) == ls.Options.DumpCodec.Signature() {
+			proto := NewFunctionProto("")
+			buf, err := ioutil.ReadAll(b)
+			if err != nil {
+				ls.RaiseError(err.Error())
+			}
 
-	if binary_mode {
-		proto, err := ls.Undump(b, "=?")
-		if err != nil {
-			return nil, newApiErrorE(ApiErrorSyntax, err)
+			if err = ls.Options.DumpCodec.Decode(buf, proto); err != nil {
+				ls.RaiseError(err.Error())
+			}
+
+			return newLFunctionL(proto, ls.currentEnv(), 0), nil
 		}
-		return newLFunctionL(proto, ls.currentEnv(), 0), nil
 	}
 
 	chunk, err := parse.Parse(b, name)
