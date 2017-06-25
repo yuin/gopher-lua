@@ -8,7 +8,6 @@ import (
 )
 
 type dumpState struct {
-	//l     *LState
 	out   io.Writer
 	order binary.ByteOrder
 	strip bool
