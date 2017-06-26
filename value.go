@@ -2,8 +2,9 @@ package lua
 
 import (
 	"fmt"
-	"golang.org/x/net/context"
 	"os"
+
+	"golang.org/x/net/context"
 )
 
 type LValueType int
@@ -218,6 +219,8 @@ type LState struct {
 	hasErrorFunc bool
 	mainLoop     func(*LState, *callFrame)
 	ctx          context.Context
+	lhook        Hooker
+	prevline     int
 }
 
 func (ls *LState) String() string                     { return fmt.Sprintf("thread: %p", ls) }

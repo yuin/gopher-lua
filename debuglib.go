@@ -22,11 +22,22 @@ var debugFuncs = map[string]LGFunction{
 	"setmetatable": debugSetMetatable,
 	"setupvalue":   debugSetUpvalue,
 	"traceback":    debugTraceback,
+	"sethook":      debugSetHook,
 }
 
 func debugGetFEnv(L *LState) int {
 	L.Push(L.GetFEnv(L.CheckAny(1)))
 	return 1
+}
+
+func debugSetHook(L *LState) int {
+	L.CheckTypes(1, LTFunction)
+	L.CheckTypes(2, LTString)
+	callbackArg := L.OptFunction(1, nil)
+	eventArg := L.OptString(2, "")
+	L.Pop(2)
+	_ = L.SetHook(callbackArg, eventArg)
+	return 0
 }
 
 func debugGetInfo(L *LState) int {
