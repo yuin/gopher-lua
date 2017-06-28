@@ -36,18 +36,20 @@ func (lh *LHook) String() string {
 
 type CHook struct {
 	callback *LFunction
-	line     int
 }
 
-func newCHook(callback *LFunction, line int) *CHook {
+func newCHook(callback *LFunction) *CHook {
 	return &CHook{
 		callback: callback,
-		line:     line,
 	}
 }
 
 func (ch *CHook) call(L *LState, cf *callFrame) {
-
+	if ch.callback != cf.Fn {
+		L.reg.Push(ch.callback)
+		L.reg.Push(LString("call"))
+		L.callR(1, 0, -1)
+	}
 }
 
 func (ch *CHook) String() string {

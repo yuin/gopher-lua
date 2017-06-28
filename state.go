@@ -1451,6 +1451,7 @@ func (ls *LState) SetHook(callback *LFunction, event string) error {
 		case 'l':
 			ls.lhook = newLHook(callback, frame.Fn.Proto.DbgSourcePositions[frame.Pc-1])
 		case 'c':
+			ls.chook = newCHook(callback)
 		case 'r':
 		default:
 			return newApiErrorS(ApiErrorRun, fmt.Sprintf("invalid hook event: %c", c))

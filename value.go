@@ -220,6 +220,7 @@ type LState struct {
 	mainLoop     func(*LState, *callFrame)
 	ctx          context.Context
 	lhook        Hooker
+	chook        Hooker
 	prevline     int
 }
 

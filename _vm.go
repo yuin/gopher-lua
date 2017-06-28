@@ -537,6 +537,9 @@ func init() {
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_CALL
+			if L.chook != nil {
+				L.chook.call(L, baseframe)
+			}
 			reg := L.reg
 			cf := L.currentFrame
 			lbase := cf.LocalBase
