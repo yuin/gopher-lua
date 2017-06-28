@@ -31,6 +31,9 @@ func mainLoop(L *LState, baseframe *callFrame) {
 		if L.lhook != nil {
 			L.lhook.call(L, cf)
 		}
+		if L.cthook != nil {
+			L.cthook.call(L, cf)
+		}
 		if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
 			return
 		}
@@ -62,6 +65,9 @@ func mainLoopWithContext(L *LState, baseframe *callFrame) {
 		default:
 			if L.lhook != nil {
 				L.lhook.call(L, cf)
+			}
+			if L.cthook != nil {
+				L.cthook.call(L, cf)
 			}
 			if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
 				return

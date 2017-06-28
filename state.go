@@ -1444,8 +1444,11 @@ func (ls *LState) SetUpvalue(fn *LFunction, no int, lv LValue) string {
 	return ""
 }
 
-func (ls *LState) SetHook(callback *LFunction, event string) error {
+func (ls *LState) SetHook(callback *LFunction, event string, count int) error {
 	frame := ls.stack.At(0)
+	if count > 0 {
+		ls.cthook = newCTHook(callback, count)
+	}
 	for _, c := range event {
 		switch c {
 		case 'l':

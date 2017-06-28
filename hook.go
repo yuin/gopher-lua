@@ -34,6 +34,33 @@ func (lh *LHook) String() string {
 	return fmt.Sprintf("hook: %p", lh)
 }
 
+type CTHook struct {
+	callback     *LFunction
+	count        int
+	currentCount int
+}
+
+func newCTHook(callback *LFunction, count int) *CTHook {
+	return &CTHook{
+		callback: callback,
+		count:    count,
+	}
+}
+
+func (ct *CTHook) call(L *LState, cf *callFrame) {
+	ct.currentCount++
+	if ct.currentCount == ct.count {
+		L.reg.Push(ct.callback)
+		L.reg.Push(LString("count"))
+		L.callR(1, 0, -1)
+		ct.currentCount = 0
+	}
+}
+
+func (ct *CTHook) String() string {
+	return fmt.Sprintf("hook: %p", ct)
+}
+
 type CHook struct {
 	callback *LFunction
 }

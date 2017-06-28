@@ -33,10 +33,12 @@ func debugGetFEnv(L *LState) int {
 func debugSetHook(L *LState) int {
 	L.CheckTypes(1, LTFunction)
 	L.CheckTypes(2, LTString)
+	L.CheckTypes(3, LTNumber)
 	callbackArg := L.OptFunction(1, nil)
 	eventArg := L.OptString(2, "")
-	L.Pop(2)
-	_ = L.SetHook(callbackArg, eventArg)
+	countArg := L.OptInt(3, 0)
+	L.Pop(3)
+	_ = L.SetHook(callbackArg, eventArg, countArg)
 	return 0
 }
 

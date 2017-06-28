@@ -222,6 +222,7 @@ type LState struct {
 	lhook        Hooker
 	chook        Hooker
 	rhook        Hooker
+	cthook       Hooker
 	prevline     int
 }
 
