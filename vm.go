@@ -884,6 +884,9 @@ func init() {
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_RETURN
+			if L.rhook != nil {
+				L.rhook.call(L, baseframe)
+			}
 			reg := L.reg
 			cf := L.currentFrame
 			lbase := cf.LocalBase

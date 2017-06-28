@@ -221,6 +221,7 @@ type LState struct {
 	ctx          context.Context
 	lhook        Hooker
 	chook        Hooker
+	rhook        Hooker
 	prevline     int
 }
 

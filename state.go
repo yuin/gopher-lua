@@ -1453,6 +1453,7 @@ func (ls *LState) SetHook(callback *LFunction, event string) error {
 		case 'c':
 			ls.chook = newCHook(callback)
 		case 'r':
+			ls.rhook = newRHook(callback)
 		default:
 			return newApiErrorS(ApiErrorRun, fmt.Sprintf("invalid hook event: %c", c))
 		}
