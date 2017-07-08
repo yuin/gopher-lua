@@ -389,6 +389,8 @@ func baseSetMetatable(L *LState) int {
 
 func baseToNumber(L *LState) int {
 	base := L.OptInt(2, 10)
+	noBase := L.Get(2) == LNil
+
 	switch lv := L.CheckAny(1).(type) {
 	case LNumber:
 		L.Push(lv)
@@ -401,6 +403,9 @@ func baseToNumber(L *LState) int {
 				L.Push(LNumber(v))
 			}
 		} else {
+			if noBase && strings.HasPrefix(strings.ToLower(str), "0x") {
+				base, str = 16, str[2:] // Hex number
+			}
 			if v, err := strconv.ParseInt(str, base, LNumberBit); err != nil {
 				L.Push(LNil)
 			} else {
