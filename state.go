@@ -6,8 +6,6 @@ package lua
 
 import (
 	"fmt"
-	"github.com/yuin/gopher-lua/parse"
-	"golang.org/x/net/context"
 	"io"
 	"math"
 	"os"
@@ -15,6 +13,9 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/yuin/gopher-lua/parse"
+	"golang.org/x/net/context"
 )
 
 const MultRet = -1
@@ -1441,6 +1442,26 @@ func (ls *LState) SetUpvalue(fn *LFunction, no int, lv LValue) string {
 		return fn.Proto.DbgUpvalues[no]
 	}
 	return ""
+}
+
+func (ls *LState) SetHook(callback *LFunction, event string, count int) error {
+	frame := ls.stack.At(0)
+	if count > 0 {
+		ls.cthook = newCTHook(callback, count)
+	}
+	for _, c := range event {
+		switch c {
+		case 'l':
+			ls.lhook = newLHook(callback, frame.Fn.Proto.DbgSourcePositions[frame.Pc-1])
+		case 'c':
+			ls.chook = newCHook(callback)
+		case 'r':
+			ls.rhook = newRHook(callback)
+		default:
+			return newApiErrorS(ApiErrorRun, fmt.Sprintf("invalid hook event: %c", c))
+		}
+	}
+	return nil
 }
 
 /* }}} */

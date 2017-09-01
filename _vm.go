@@ -24,6 +24,12 @@ func mainLoop(L *LState, baseframe *callFrame) {
 		cf = L.currentFrame
 		inst = cf.Fn.Proto.Code[cf.Pc]
 		cf.Pc++
+		if L.lhook != nil {
+			L.lhook.call(L, cf)
+		}
+		if L.cthook != nil {
+			L.cthook.call(L, cf)
+		}
 		if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
 			return
 		}
@@ -53,6 +59,12 @@ func mainLoopWithContext(L *LState, baseframe *callFrame) {
 			L.RaiseError(L.ctx.Err().Error())
 			return
 		default:
+			if L.lhook != nil {
+				L.lhook.call(L, cf)
+			}
+			if L.cthook != nil {
+				L.cthook.call(L, cf)
+			}
 			if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
 				return
 			}
@@ -531,6 +543,9 @@ func init() {
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_CALL
+			if L.chook != nil {
+				L.chook.call(L, baseframe)
+			}
 			reg := L.reg
 			cf := L.currentFrame
 			lbase := cf.LocalBase
@@ -624,6 +639,9 @@ func init() {
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_RETURN
+			if L.rhook != nil {
+				L.rhook.call(L, baseframe)
+			}
 			reg := L.reg
 			cf := L.currentFrame
 			lbase := cf.LocalBase
