@@ -1,8 +1,3 @@
-
-local ok, msg = pcall(function()
-  string.dump()
-end)
-assert(not ok and string.find(msg, "GopherLua does not support the string.dump"))
 assert(string.find("","aaa") == nil)
 assert(string.gsub("hello world", "(%w+)", "%1 %1 %c") == "hello hello %c world world %c")
 local ok, msg = pcall(function()

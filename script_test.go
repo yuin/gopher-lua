@@ -78,6 +78,7 @@ func testScriptDir(t *testing.T, tests []string, directory string) {
 }
 
 func TestGlua(t *testing.T) {
+	defer os.Unsetenv("_____GLUATEST______")
 	testScriptDir(t, gluaTests, "_glua-tests")
 }
 

@@ -39,7 +39,7 @@ type FunctionProto struct {
 	DbgCalls           []DbgCall
 	DbgUpvalues        []string
 
-	stringConstants []string
+	StringConstants []string
 }
 
 /* Upvalue {{{ */
@@ -87,7 +87,7 @@ func UpvalueIndex(i int) int {
 
 /* FunctionProto {{{ */
 
-func newFunctionProto(name string) *FunctionProto {
+func NewFunctionProto(name string) *FunctionProto {
 	return &FunctionProto{
 		SourceName:         name,
 		LineDefined:        0,
@@ -105,7 +105,7 @@ func newFunctionProto(name string) *FunctionProto {
 		DbgCalls:           make([]DbgCall, 0, 128),
 		DbgUpvalues:        make([]string, 0, 16),
 
-		stringConstants: make([]string, 0, 32),
+		StringConstants: make([]string, 0, 32),
 	}
 }
 
