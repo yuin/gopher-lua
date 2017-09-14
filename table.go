@@ -36,8 +36,6 @@ func newLTable(acap int, hcap int) *LTable {
 		hcap = 0
 	}
 	tb := &LTable{}
-	tb.keys = nil
-	tb.k2i = nil
 	tb.Metatable = LNil
 	if acap != 0 {
 		tb.array = make([]LValue, 0, acap)
@@ -189,10 +187,21 @@ func (tb *LTable) RawSetString(key string, value LValue) {
 	if tb.strdict == nil {
 		tb.strdict = make(map[string]LValue, defaultHashCap)
 	}
+	if tb.keys == nil {
+		tb.keys = []LValue{}
+		tb.k2i = map[LValue]int{}
+	}
+
 	if value == LNil {
+		// TODO tb.keys and tb.k2i should also be removed
 		delete(tb.strdict, key)
 	} else {
 		tb.strdict[key] = value
+		lkey := LString(key)
+		if _, ok := tb.k2i[lkey]; !ok {
+			tb.k2i[lkey] = len(tb.keys)
+			tb.keys = append(tb.keys, lkey)
+		}
 	}
 }
 
@@ -205,11 +214,20 @@ func (tb *LTable) RawSetH(key LValue, value LValue) {
 	if tb.dict == nil {
 		tb.dict = make(map[LValue]LValue, len(tb.strdict))
 	}
+	if tb.keys == nil {
+		tb.keys = []LValue{}
+		tb.k2i = map[LValue]int{}
+	}
 
 	if value == LNil {
+		// TODO tb.keys and tb.k2i should also be removed
 		delete(tb.dict, key)
 	} else {
 		tb.dict[key] = value
+		if _, ok := tb.k2i[key]; !ok {
+			tb.k2i[key] = len(tb.keys)
+			tb.keys = append(tb.keys, key)
+		}
 	}
 }
 
@@ -315,41 +333,10 @@ func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 
 // This function is equivalent to lua_next ( http://www.lua.org/manual/5.1/manual.html#lua_next ).
 func (tb *LTable) Next(key LValue) (LValue, LValue) {
-	// TODO: inefficient way
 	init := false
 	if key == LNil {
-		tb.keys = nil
-		tb.k2i = nil
 		key = LNumber(0)
 		init = true
-	}
-
-	length := 0
-	if tb.dict != nil {
-		length += len(tb.dict)
-	}
-	if tb.strdict != nil {
-		length += len(tb.strdict)
-	}
-
-	if tb.keys == nil {
-		tb.keys = make([]LValue, length)
-		tb.k2i = make(map[LValue]int)
-		i := 0
-		if tb.dict != nil {
-			for k, _ := range tb.dict {
-				tb.keys[i] = k
-				tb.k2i[k] = i
-				i++
-			}
-		}
-		if tb.strdict != nil {
-			for k, _ := range tb.strdict {
-				tb.keys[i] = LString(k)
-				tb.k2i[LString(k)] = i
-				i++
-			}
-		}
 	}
 
 	if init || key != LNumber(0) {
@@ -364,8 +351,6 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 			}
 			if tb.array == nil || index == len(tb.array) {
 				if (tb.dict == nil || len(tb.dict) == 0) && (tb.strdict == nil || len(tb.strdict) == 0) {
-					tb.keys = nil
-					tb.k2i = nil
 					return LNil, LNil
 				}
 				key = tb.keys[0]
@@ -376,13 +361,11 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 		}
 	}
 
-	for i := tb.k2i[key] + 1; i < length; i++ {
-		key = tb.keys[tb.k2i[key]+1]
+	for i := tb.k2i[key] + 1; i < len(tb.keys); i++ {
+		key := tb.keys[i]
 		if v := tb.RawGetH(key); v != LNil {
 			return key, v
 		}
 	}
-	tb.keys = nil
-	tb.k2i = nil
 	return LNil, LNil
 }
