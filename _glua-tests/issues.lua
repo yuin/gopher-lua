@@ -165,3 +165,12 @@ assert(s:match("([^-]+)-world") == "hello")
 local t = {}
 local ok, msg = pcall(function() t.notfound() end)
 assert(not ok and string.find(msg, "attempt to call a non-function object", 1, true))
+
+-- issue 150
+local util = {
+  fn = function() end
+}
+local b
+local x = util.fn(
+  1,
+  (b or {}).x)

@@ -300,6 +300,8 @@ redo:
 
 	if ch == '(' && lexer.PrevTokenType == ')' {
 		lexer.PNewLine = newline
+	} else {
+		lexer.PNewLine = false
 	}
 
 	var _buf bytes.Buffer
