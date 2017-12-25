@@ -7,6 +7,8 @@ import (
 	"github.com/yuin/gopher-lua/pm"
 )
 
+const emptyLString LString = LString("")
+
 func OpenString(L *LState) int {
 	var mod *LTable
 	//_, ok := L.G.builtinMts[int(LTString)]
@@ -391,7 +393,7 @@ func strRep(L *LState) int {
 	str := L.CheckString(1)
 	n := L.CheckInt(2)
 	if n < 0 {
-		L.Push(LString(""))
+		L.Push(emptyLString)
 	} else {
 		L.Push(LString(strings.Repeat(str, n)))
 	}
@@ -415,7 +417,7 @@ func strSub(L *LState) int {
 	end := luaIndex2StringIndex(str, L.OptInt(3, -1), false)
 	l := len(str)
 	if start >= l || end < start {
-		L.Push(LString(""))
+		L.Push(emptyLString)
 	} else {
 		L.Push(LString(str[start:end]))
 	}

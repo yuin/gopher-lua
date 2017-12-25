@@ -56,14 +56,14 @@ func tableConcat(L *LState) int {
 	j := L.OptInt(4, tbl.Len())
 	if L.GetTop() == 3 {
 		if i > tbl.Len() || i < 1 {
-			L.Push(LString(""))
+			L.Push(emptyLString)
 			return 1
 		}
 	}
 	i = intMax(intMin(i, tbl.Len()), 1)
 	j = intMin(intMin(j, tbl.Len()), tbl.Len())
 	if i > j {
-		L.Push(LString(""))
+		L.Push(emptyLString)
 		return 1
 	}
 	//TODO should flushing?

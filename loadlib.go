@@ -63,7 +63,7 @@ func OpenPackage(L *LState) int {
 	L.SetField(L.Get(RegistryIndex), "_LOADED", loaded)
 
 	L.SetField(packagemod, "path", LString(loGetPath(LuaPath, LuaPathDefault)))
-	L.SetField(packagemod, "cpath", LString(""))
+	L.SetField(packagemod, "cpath", emptyLString)
 
 	L.Push(packagemod)
 	return 1
