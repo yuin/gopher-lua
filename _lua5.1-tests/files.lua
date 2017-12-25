@@ -20,8 +20,8 @@ assert(io.output():seek("end") == string.len("alo joao"))
 
 assert(io.output():seek("set") == 0)
 
-assert(io.write('"?lo"', "{a}\n", "second line\n", "third line \n"))
-assert(io.write('?fourth_line'))
+assert(io.write('"álo"', "{a}\n", "second line\n", "third line \n"))
+assert(io.write('çfourth_line'))
 io.output():close()
 io.output(io.stdout)
 -- collectgarbage()  -- file should be closed by GC
@@ -82,14 +82,14 @@ do  -- test error returns
   assert(not a and type(b) == "string" and type(c) == "number")
 end
 assert(io.read(0) == "")   -- not eof
-assert(io.read(5, '*l') == '"?lo"')
+assert(io.read(5, '*l') == '"álo"')
 assert(io.read(0) == "")
 assert(io.read() == "second line")
 local x = io.input():seek()
 assert(io.read() == "third line ")
 assert(io.input():seek("set", x))
 assert(io.read('*l') == "third line ")
-assert(io.read(1) == "?")
+assert(io.read(1) == "ç")
 assert(io.read(string.len"fourth_line") == "fourth_line")
 assert(io.input():seek("cur", -string.len"fourth_line"))
 assert(io.read() == "fourth_line")
@@ -311,4 +311,3 @@ local s = os.date('%S')
 io.write(string.format('test done on %2.2d/%2.2d/%d', d, m, a))
 io.write(string.format(', at %2.2d:%2.2d:%2.2d\n', h, min, s))
 io.write(string.format('%s\n', _VERSION))
-io.write(string.format('%s\n', _GOPHER_LUA_VERSION))
