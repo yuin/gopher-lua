@@ -166,7 +166,7 @@ func TestTableForEach(t *testing.T) {
 				errorIfNotEqual(t, LNumber(2), value)
 			case 3:
 				errorIfNotEqual(t, LNumber(3), value)
-			case 5:
+			case 4:
 				errorIfNotEqual(t, LNumber(5), value)
 			default:
 				t.Fail()

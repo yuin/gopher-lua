@@ -15,6 +15,7 @@ type LNumber float64
 
 const LNumberBit = 64
 const LNumberScanFormat = "%f"
+const LuaVersion = "Lua 5.1"
 
 var LuaPath = "LUA_PATH"
 var LuaLDir string

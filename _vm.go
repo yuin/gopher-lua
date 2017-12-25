@@ -402,7 +402,12 @@ func init() {
 					reg.Push(op)
 					reg.Push(lv)
 					L.Call(1, 1)
-					reg.Set(RA, reg.Pop())
+					ret := reg.Pop()
+					if ret.Type() == LTNumber {
+						reg.SetNumber(RA, ret.(LNumber))
+					} else {
+						reg.SetNumber(RA, LNumber(0))
+					}
 				} else if lv.Type() == LTTable {
 					reg.SetNumber(RA, LNumber(lv.(*LTable).Len()))
 				} else {

@@ -529,7 +529,8 @@ func compileAssignStmtLeft(context *funcContext, stmt *ast.AssignStmt) (int, []*
 		case *ast.AttrGetExpr:
 			ac := &assigncontext{&expcontext{ecTable, regNotDefined, 0}, 0, 0, false, false}
 			compileExprWithKMVPropagation(context, st.Object, &reg, &ac.ec.reg)
-			compileExprWithKMVPropagation(context, st.Key, &reg, &ac.keyrk)
+			ac.keyrk = reg
+			reg += compileExpr(context, reg, st.Key, ecnone(0))
 			if _, ok := st.Key.(*ast.StringExpr); ok {
 				ac.keyks = true
 			}

@@ -390,7 +390,11 @@ func strMatch(L *LState) int {
 func strRep(L *LState) int {
 	str := L.CheckString(1)
 	n := L.CheckInt(2)
-	L.Push(LString(strings.Repeat(str, n)))
+	if n < 0 {
+		L.Push(LString(""))
+	} else {
+		L.Push(LString(strings.Repeat(str, n)))
+	}
 	return 1
 }
 

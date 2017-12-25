@@ -14,7 +14,8 @@ import (
 func OpenBase(L *LState) int {
 	global := L.Get(GlobalsIndex).(*LTable)
 	L.SetGlobal("_G", global)
-	L.SetGlobal("_VERSION", LString(PackageName+" "+PackageVersion))
+	L.SetGlobal("_VERSION", LString(LuaVersion))
+	L.SetGlobal("_GOPHER_LUA_VERSION", LString(PackageName+" "+PackageVersion))
 	basemod := L.RegisterModule("_G", baseFuncs)
 	global.RawSetString("ipairs", L.NewClosure(baseIpairs, L.NewFunction(ipairsaux)))
 	global.RawSetString("pairs", L.NewClosure(basePairs, L.NewFunction(pairsaux)))
@@ -50,6 +51,8 @@ var baseFuncs = map[string]LGFunction{
 	// loadlib
 	"module":  loModule,
 	"require": loRequire,
+	// hidden features
+	"newproxy": baseNewProxy,
 }
 
 func baseAssert(L *LState) int {
@@ -559,6 +562,22 @@ loopbreak:
 	} else {
 		L.Push(modv)
 	}
+	return 1
+}
+
+/* }}} */
+
+/* hidden features {{{ */
+
+func baseNewProxy(L *LState) int {
+	ud := L.NewUserData()
+	L.SetTop(1)
+	if L.Get(1) == LTrue {
+		L.SetMetatable(ud, L.NewTable())
+	} else if d, ok := L.Get(1).(*LUserData); ok {
+		L.SetMetatable(ud, L.GetMetatable(d))
+	}
+	L.Push(ud)
 	return 1
 }
 

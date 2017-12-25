@@ -64,6 +64,9 @@ func (tb *LTable) Len() int {
 
 // Append appends a given LValue to this LTable.
 func (tb *LTable) Append(value LValue) {
+	if value == LNil {
+		return
+	}
 	if tb.array == nil {
 		tb.array = make([]LValue, 0, defaultArrayCap)
 	}

@@ -69,7 +69,11 @@ func tableConcat(L *LState) int {
 	//TODO should flushing?
 	retbottom := L.GetTop()
 	for ; i <= j; i++ {
-		L.Push(tbl.RawGetInt(i))
+		v := tbl.RawGetInt(i)
+		if !LVCanConvToString(v) {
+			L.RaiseError("invalid value (%s) at index %d in table for concat", v.Type().String(), i)
+		}
+		L.Push(v)
 		if i != j {
 			L.Push(sep)
 		}
