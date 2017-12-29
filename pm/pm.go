@@ -312,14 +312,13 @@ func parseClass(sc *scanner, allowset bool) class {
 	case '.':
 		if allowset {
 			return &dotClass{}
-		} else {
-			return &charClass{ch}
 		}
+		return &charClass{ch}
 	case '[':
-		if !allowset {
-			panic(newError(sc.CurrentPos(), "invalid '['"))
+		if allowset {
+			return parseClassSet(sc)
 		}
-		return parseClassSet(sc)
+		return &charClass{ch}
 	//case '^' '$', '(', ')', ']', '*', '+', '-', '?':
 	//	panic(newError(sc.CurrentPos(), "invalid %c", ch))
 	case EOS:
@@ -339,13 +338,16 @@ func parseClassSet(sc *scanner) class {
 	for {
 		ch := sc.Peek()
 		switch ch {
-		case '[':
-			panic(newError(sc.CurrentPos(), "'[' can not be nested"))
-		case ']':
-			sc.Next()
-			goto exit
+		// case '[':
+		// 	panic(newError(sc.CurrentPos(), "'[' can not be nested"))
 		case EOS:
 			panic(newError(sc.CurrentPos(), "unexpected EOS"))
+		case ']':
+			if len(set.Classes) > 0 {
+				sc.Next()
+				goto exit
+			}
+			fallthrough
 		case '-':
 			if len(set.Classes) > 0 {
 				sc.Next()
@@ -398,10 +400,10 @@ func parsePattern(sc *scanner, toplevel bool) *seqPattern {
 				sc.Restore()
 				pat.Patterns = append(pat.Patterns, &singlePattern{parseClass(sc, true)})
 			}
-		case '.', '[':
+		case '.', '[', ']':
 			pat.Patterns = append(pat.Patterns, &singlePattern{parseClass(sc, true)})
-		case ']':
-			panic(newError(sc.CurrentPos(), "invalid ']'"))
+		//case ']':
+		//	panic(newError(sc.CurrentPos(), "invalid ']'"))
 		case ')':
 			if toplevel {
 				panic(newError(sc.CurrentPos(), "invalid ')'"))

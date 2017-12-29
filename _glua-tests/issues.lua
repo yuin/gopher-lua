@@ -174,3 +174,11 @@ local b
 local x = util.fn(
   1,
   (b or {}).x)
+
+local s = [=[["a"]['b'][9] - ["a"]['b'][8] > ]=]
+local result = {}
+for i in s:gmatch([=[[[][^%s,]*[]]]=]) do 
+  table.insert(result, i)
+end
+assert(result[1] == [=[["a"]['b'][9]]=])
+assert(result[2] == [=[["a"]['b'][8]]=])
