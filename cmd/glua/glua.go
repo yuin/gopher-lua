@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
+	"github.com/chzyer/readline"
 	"github.com/yuin/gopher-lua"
 	"github.com/yuin/gopher-lua/parse"
 	"os"
@@ -122,9 +122,13 @@ Available options are:
 
 // do read/eval/print/loop
 func doREPL(L *lua.LState) {
-	reader := bufio.NewReader(os.Stdin)
+	rl, err := readline.New("> ")
+	if err != nil {
+		panic(err)
+	}
+	defer rl.Close()
 	for {
-		if str, err := loadline(reader, L); err == nil {
+		if str, err := loadline(rl, L); err == nil {
 			if err := L.DoString(str); err != nil {
 				fmt.Println(err)
 			}
@@ -144,28 +148,28 @@ func incomplete(err error) bool {
 	return false
 }
 
-func loadline(reader *bufio.Reader, L *lua.LState) (string, error) {
-	fmt.Print("> ")
-	if line, err := reader.ReadString('\n'); err == nil {
+func loadline(rl *readline.Instance, L *lua.LState) (string, error) {
+	rl.SetPrompt("> ")
+	if line, err := rl.Readline(); err == nil {
 		if _, err := L.LoadString("return " + line); err == nil { // try add return <...> then compile
 			return line, nil
 		} else {
-			return multiline(line, reader, L)
+			return multiline(line, rl, L)
 		}
 	} else {
 		return "", err
 	}
 }
 
-func multiline(ml string, reader *bufio.Reader, L *lua.LState) (string, error) {
+func multiline(ml string, rl *readline.Instance, L *lua.LState) (string, error) {
 	for {
 		if _, err := L.LoadString(ml); err == nil { // try compile
 			return ml, nil
 		} else if !incomplete(err) { // syntax error , but not EOF
 			return ml, nil
 		} else {
-			fmt.Print(">> ")
-			if line, err := reader.ReadString('\n'); err == nil {
+			rl.SetPrompt(">> ")
+			if line, err := rl.Readline(); err == nil {
 				ml = ml + "\n" + line
 			} else {
 				return "", err
