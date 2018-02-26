@@ -1250,7 +1250,7 @@ func (ls *LState) ToInt(n int) int {
 		return int(lv)
 	}
 	if lv, ok := ls.Get(n).(LString); ok {
-		if num, err := parseNumber(string(lv)); err == nil {
+		if num, err := parseInt64(string(lv)); err == nil {
 			return int(num)
 		}
 	}
@@ -1262,8 +1262,8 @@ func (ls *LState) ToInt64(n int) int64 {
 		return int64(lv)
 	}
 	if lv, ok := ls.Get(n).(LString); ok {
-		if num, err := parseNumber(string(lv)); err == nil {
-			return int64(num)
+		if num, err := parseInt64(string(lv)); err == nil {
+			return num
 		}
 	}
 	return 0
