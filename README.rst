@@ -55,7 +55,7 @@ Installation
 
    go get github.com/yuin/gopher-lua
 
-GopherLua supports >= Go1.7.
+GopherLua supports >= Go1.8.
 
 ----------------------------------------------------------------
 Usage
