@@ -130,7 +130,7 @@ You can test an object type in Go way(type assertion) or using a ``Type()`` valu
        // lv is LString
        fmt.Println(string(str))
    }
-   if lv.Type() != lua.LTString {
+   if lv.Type() != lua.LString {
        panic("string required.")
    }
 
