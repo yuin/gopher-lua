@@ -883,18 +883,13 @@ func (ls *LState) callR(nargs, nret, rbase int) {
 func (ls *LState) getField(obj LValue, key LValue) LValue {
 	curobj := obj
 	for i := 0; i < MaxTableGetLoop; i++ {
-		tb, istable := curobj.(*LTable)
-		if istable {
-			ret := tb.RawGet(key)
-			if ret != LNil {
-				return ret
-			}
-		}
 		metaindex := ls.metaOp1(curobj, "__index")
 		if metaindex == LNil {
-			if !istable {
-				ls.RaiseError("attempt to index a non-table object(%v)", curobj.Type().String())
+			tb, istable := curobj.(*LTable)
+			if istable {
+				return tb.RawGet(key)
 			}
+			ls.RaiseError("attempt to index a non-table object(%v)", curobj.Type().String())
 			return LNil
 		}
 		if metaindex.Type() == LTFunction {
@@ -914,18 +909,13 @@ func (ls *LState) getField(obj LValue, key LValue) LValue {
 func (ls *LState) getFieldString(obj LValue, key string) LValue {
 	curobj := obj
 	for i := 0; i < MaxTableGetLoop; i++ {
-		tb, istable := curobj.(*LTable)
-		if istable {
-			ret := tb.RawGetString(key)
-			if ret != LNil {
-				return ret
-			}
-		}
 		metaindex := ls.metaOp1(curobj, "__index")
 		if metaindex == LNil {
-			if !istable {
-				ls.RaiseError("attempt to index a non-table object(%v)", curobj.Type().String())
+			tb, istable := curobj.(*LTable)
+			if istable {
+				return tb.RawGetString(key)
 			}
+			ls.RaiseError("attempt to index a non-table object(%v)", curobj.Type().String())
 			return LNil
 		}
 		if metaindex.Type() == LTFunction {
