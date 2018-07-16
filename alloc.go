@@ -16,6 +16,14 @@ const preloadLimit LNumber = 128
 var _fv float64
 var _uv uintptr
 
+var preloads [int(preloadLimit)]LValue
+
+func init() {
+	for i := 0; i < int(preloadLimit); i++ {
+		preloads[i] = LNumber(i)
+	}
+}
+
 // allocator is a fast bulk memory allocator for the LValue.
 type allocator struct {
 	top         int
@@ -25,7 +33,6 @@ type allocator struct {
 	fptrs       []float64
 	fheader     *reflect.SliceHeader
 	itabLNumber unsafe.Pointer
-	preloads    [int(preloadLimit)]LValue
 }
 
 func newAllocator(size int) *allocator {
@@ -44,15 +51,12 @@ func newAllocator(size int) *allocator {
 	var v LValue = LNumber(0)
 	vp := (*iface)(unsafe.Pointer(&v))
 	al.itabLNumber = vp.itab
-	for i := 0; i < int(preloadLimit); i++ {
-		al.preloads[i] = LNumber(i)
-	}
 	return al
 }
 
 func (al *allocator) LNumber2I(v LNumber) LValue {
 	if v >= 0 && v < preloadLimit && float64(v) == float64(int64(v)) {
-		return al.preloads[int(v)]
+		return preloads[int(v)]
 	}
 	if al.top == len(al.nptrs)-1 {
 		al.top = 0
