@@ -26,7 +26,6 @@ func init() {
 
 // allocator is a fast bulk memory allocator for the LValue.
 type allocator struct {
-	top     int
 	size    int
 	fptrs   []float64
 	fheader *reflect.SliceHeader
@@ -37,9 +36,8 @@ type allocator struct {
 
 func newAllocator(size int) *allocator {
 	al := &allocator{
-		top:     0,
 		size:    size,
-		fptrs:   make([]float64, size),
+		fptrs:   make([]float64, 0, size),
 		fheader: nil,
 	}
 	al.fheader = (*reflect.SliceHeader)(unsafe.Pointer(&al.fptrs))
@@ -63,16 +61,14 @@ func (al *allocator) LNumber2I(v LNumber) LValue {
 	}
 
 	// check if we need a new alloc page
-	if al.top == len(al.fptrs)-1 {
-		al.top = 0
-		al.fptrs = make([]float64, al.size)
+	if cap(al.fptrs) == len(al.fptrs) {
+		al.fptrs = make([]float64, 0, al.size)
 		al.fheader = (*reflect.SliceHeader)(unsafe.Pointer(&al.fptrs))
 	}
 
 	// alloc a new float, and store our value into it
-	fptr := (*float64)(unsafe.Pointer(al.fheader.Data + uintptr(al.top)*unsafe.Sizeof(_fv)))
-	al.top++
-	*fptr = float64(v)
+	al.fptrs = append(al.fptrs, float64(v))
+	fptr := (*float64)(unsafe.Pointer(al.fheader.Data + uintptr(len(al.fptrs)-1)*unsafe.Sizeof(_fv)))
 
 	// hack our scratch LValue to point to our allocated value
 	// this scratch lvalue is copied when this function returns meaning the scratch value can be reused
