@@ -1216,6 +1216,10 @@ func (ls *LState) NewThread() (*LState, context.CancelFunc) {
 	return thread, f
 }
 
+func (ls *LState) NewFunctionFromProto(proto *FunctionProto) *LFunction {
+	return newLFunctionL(proto, ls.Env, int(proto.NumUpvalues))
+}
+
 func (ls *LState) NewUserData() *LUserData {
 	return &LUserData{
 		Env:       ls.currentEnv(),

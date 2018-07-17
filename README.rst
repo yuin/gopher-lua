@@ -524,6 +524,54 @@ With coroutines
     9227465
     0.01s user 0.01s system 0% cpu 5.306 total
 
++++++++++++++++++++++++++++++++++++++++++
+Sharing Lua byte code between LStates
++++++++++++++++++++++++++++++++++++++++++
+Calling ``DoFile`` will load a Lua script, compile it to byte code and run the byte code in a ``LState``.
+
+If you have multiple ``LStates`` which are all required to run the same script, you can share the byte code between them,
+which will save on memory.
+Sharing byte code is safe as it is read only and cannot be altered by lua scripts.
+
+.. code-block:: go
+
+    // CompileLua reads the passed lua file from disk and compiles it.
+    func CompileLua(filePath string) (*lua.FunctionProto, error) {
+        file, err := os.Open(filePath)
+        defer file.Close()
+        if err != nil {
+            return nil, err
+        }
+        reader := bufio.NewReader(file)
+        chunk, err := parse.Parse(reader, filePath)
+        if err != nil {
+            return nil, err
+        }
+        proto, err := lua.Compile(chunk, filePath)
+        if err != nil {
+            return nil, err
+        }
+        return proto, nil
+    }
+
+    // DoCompiledFile takes a FunctionProto, as returned by CompileLua, and runs it in the LState. It is equivalent
+    // to calling DoFile on the LState with the original source file.
+    func DoCompiledFile(L *lua.LState, proto *lua.FunctionProto) error {
+        lfunc := &L.NewFunctionFromProto(proto)
+        L.Push(lfunc)
+        return L.PCall(0, lua.MultRet, nil)
+    }
+
+    // Example shows how to share the compiled byte code from a lua script between multiple VMs.
+    func Example() {
+        codeToShare := CompileLua("mylua.lua")
+        a := lua.NewState()
+        b := lua.NewState()
+        c := lua.NewState()
+        DoCompiledFile(a, codeToShare)
+        DoCompiledFile(b, codeToShare)
+        DoCompiledFile(c, codeToShare)
+    }
 
 +++++++++++++++++++++++++++++++++++++++++
 Goroutines
