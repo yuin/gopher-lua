@@ -772,7 +772,7 @@ See `Guidlines for contributors <https://github.com/yuin/gopher-lua/tree/master/
 Libraries for GopherLua
 ----------------------------------------------------------------
 
-- `gopher-luar <https://github.com/layeh/gopher-luar>`_ : Custom type reflection for gopher-lua
+- `gopher-luar <https://github.com/layeh/gopher-luar>`_ : Simplifies data passing to and from gopher-lua
 - `gluamapper <https://github.com/yuin/gluamapper>`_ : Mapping a Lua table to a Go struct
 - `gluare <https://github.com/yuin/gluare>`_ : Regular expressions for gopher-lua
 - `gluahttp <https://github.com/cjoudrey/gluahttp>`_ : HTTP request module for gopher-lua
