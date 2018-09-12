@@ -1,3 +1,4 @@
+
 ===============================================================================
 GopherLua: VM and compiler for Lua in Go.
 ===============================================================================
@@ -557,7 +558,7 @@ Sharing byte code is safe as it is read only and cannot be altered by lua script
     // DoCompiledFile takes a FunctionProto, as returned by CompileLua, and runs it in the LState. It is equivalent
     // to calling DoFile on the LState with the original source file.
     func DoCompiledFile(L *lua.LState, proto *lua.FunctionProto) error {
-        lfunc := &L.NewFunctionFromProto(proto)
+        lfunc := L.NewFunctionFromProto(proto)
         L.Push(lfunc)
         return L.PCall(0, lua.MultRet, nil)
     }
