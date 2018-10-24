@@ -189,3 +189,15 @@ local expected = 1
 local result = math.random(1)
 
 assert(result == expected)
+
+-- issue 202
+local t = {}
+ok, res = pcall(table.remove, t)
+if not ok or not res then
+    table.insert(t, {})
+else
+    assert(false)
+end
+ok, res = pcall(table.remove, t)
+ok, res = pcall(table.remove, t)
+assert(not ok or not res)
