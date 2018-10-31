@@ -201,3 +201,17 @@ end
 ok, res = pcall(table.remove, t)
 ok, res = pcall(table.remove, t)
 assert(not ok or not res)
+
+-- issue 204
+local ok, message = pcall(nil)
+assert(not ok)
+assert(message == "attempt to call a nil value")
+
+local ok, message = pcall(1)
+assert(not ok)
+assert(message == "attempt to call a number value")
+
+ok, message = pcall(function()
+  pcall()
+end)
+assert(not ok and string.find(message, "bad argument #1 to pcall", 1, true))
