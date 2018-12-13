@@ -838,6 +838,7 @@ Libraries for GopherLua
 - `gluacrypto <https://github.com/tengattack/gluacrypto>`_ : A native Go implementation of crypto library for the GopherLua VM.
 - `gluasql <https://github.com/tengattack/gluasql>`_ : A native Go implementation of SQL client for the GopherLua VM.
 - `purr <https://github.com/leyafo/purr>`_ : A http mock testing tool.
+- `vadv/gopher-lua-libs <https://github.com/vadv/gopher-lua-libs>`_ : Some usefull libraries for GopherLua VM.
 ----------------------------------------------------------------
 Donation
 ----------------------------------------------------------------
