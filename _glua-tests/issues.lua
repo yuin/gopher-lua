@@ -229,3 +229,15 @@ local function test(foo)
 end
 
 assert(test(nil) == nil)
+
+-- issue 220
+function test() 
+  function f(v)
+    return v
+  end
+  local tbl = {y=0}
+  local a,b
+  a, b = f(10), f(20)
+  assert(tbl.y == 0)
+end
+test()
