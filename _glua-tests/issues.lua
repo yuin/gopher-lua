@@ -241,3 +241,26 @@ function test()
   assert(tbl.y == 0)
 end
 test()
+
+-- issue 222
+function test()
+  local m = {n=2}
+  
+  function m:f1()
+    return self:f3() >= self.n
+  end
+  
+  function m:f2()
+    local v1, v2, v3 = m:f1()
+    assert(v1 == true)
+    assert(v2 == nil)
+    assert(v3 == nil)
+  end
+  
+  function m:f3()
+    return 3
+  end
+  
+  m:f2()
+end
+test()
