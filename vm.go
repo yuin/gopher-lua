@@ -91,6 +91,19 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 			}
 			rg.top = regv + n
 		}
+		if b > 1 && n > (b-1) {
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) FillNil(regm, n int) ' in '_state.go'
+			{
+				rg := L.reg
+				regm := regv + b - 1
+				n := n - (b - 1)
+				for i := 0; i < n; i++ {
+					rg.array[regm+i] = LNil
+				}
+				rg.top = regm + n
+			}
+		}
 	}
 } // +inline-end
 
@@ -948,6 +961,19 @@ func init() {
 							}
 							rg.top = regv + n
 						}
+						if b > 1 && n > (b-1) {
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) FillNil(regm, n int) ' in '_state.go'
+							{
+								rg := L.reg
+								regm := regv + b - 1
+								n := n - (b - 1)
+								for i := 0; i < n; i++ {
+									rg.array[regm+i] = LNil
+								}
+								rg.top = regm + n
+							}
+						}
 					}
 				}
 				switchToParentThread(L, n, false, true)
@@ -985,6 +1011,19 @@ func init() {
 							}
 						}
 						rg.top = regv + n
+					}
+					if b > 1 && n > (b-1) {
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) FillNil(regm, n int) ' in '_state.go'
+						{
+							rg := L.reg
+							regm := regv + b - 1
+							n := n - (b - 1)
+							for i := 0; i < n; i++ {
+								rg.array[regm+i] = LNil
+							}
+							rg.top = regm + n
+						}
 					}
 				}
 			}

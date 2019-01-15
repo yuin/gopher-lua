@@ -65,6 +65,9 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 		// +inline-call L.reg.FillNil  regv n
 	} else {
 		// +inline-call L.reg.CopyRange regv start -1 n
+		if b > 1 && n > (b-1) {
+			// +inline-call L.reg.FillNil  regv+b-1 n-(b-1)
+		}
 	}
 } // +inline-end
 
