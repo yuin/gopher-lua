@@ -1107,10 +1107,7 @@ func constFold(exp ast.Expr) ast.Expr { // {{{
 				panic(fmt.Sprintf("unknown binop: %v", expr.Operator))
 			}
 		} else {
-			retexpr := *expr
-			retexpr.Lhs = constFold(expr.Lhs)
-			retexpr.Rhs = constFold(expr.Rhs)
-			return &retexpr
+			return expr
 		}
 	case *ast.UnaryMinusOpExpr:
 		expr.Expr = constFold(expr.Expr)
