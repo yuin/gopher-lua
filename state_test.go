@@ -332,6 +332,65 @@ func TestCoroutineApi1(t *testing.T) {
 	errorIfNil(t, err)
 	errorIfFalse(t, strings.Contains(err.Error(), "can not resume a dead thread"), "can not resume a dead thread")
 
+	errorIfScriptFail(t, L, `
+      function coro_iter_factory()
+        return function()
+          return coroutine.yield("next")
+        end
+      end
+      function test_with_while()
+        local iter = coro_iter_factory()
+        while true do
+          local elem = iter()
+          if elem == nil then break end
+          assert(elem, "ELEMENT")
+	end
+      end
+      function test_with_for()
+	for elem in coro_iter_factory() do
+          assert(elem, "ELEMENT")
+	end
+     end
+    `)
+	fn = L.GetGlobal("test_with_while").(*LFunction)
+	co, _ = L.NewThread()
+	st, err, values = L.Resume(co, fn)
+	errorIfNotEqual(t, ResumeYield, st)
+	errorIfNotNil(t, err)
+	errorIfNotEqual(t, 1, len(values))
+	errorIfNotEqual(t, LString("next"), values[0].(LString))
+
+	st, err, values = L.Resume(co, fn, LString("ELEMENT"))
+	errorIfNotEqual(t, ResumeYield, st)
+	errorIfNotNil(t, err)
+	errorIfNotEqual(t, 1, len(values))
+	errorIfNotEqual(t, LString("next"), values[0].(LString))
+
+	st, err, values = L.Resume(co, fn)
+	errorIfNotEqual(t, ResumeOK, st)
+	errorIfNotNil(t, err)
+	errorIfNotEqual(t, 1, len(values))
+	errorIfNotEqual(t, LNil, values[0])
+
+	fn = L.GetGlobal("test_with_for").(*LFunction)
+	co, _ = L.NewThread()
+	st, err, values = L.Resume(co, fn)
+	errorIfNotEqual(t, ResumeYield, st)
+	errorIfNotNil(t, err)
+	errorIfNotEqual(t, 1, len(values))
+	errorIfNotEqual(t, LString("next"), values[0].(LString))
+
+	st, err, values = L.Resume(co, fn, LString("ELEMENT"))
+	errorIfNotEqual(t, ResumeYield, st)
+	errorIfNotNil(t, err)
+	errorIfNotEqual(t, 1, len(values))
+	errorIfNotEqual(t, LString("next"), values[0].(LString))
+
+	st, err, values = L.Resume(co, fn)
+	errorIfNotEqual(t, ResumeOK, st)
+	errorIfNotNil(t, err)
+	errorIfNotEqual(t, 1, len(values))
+	errorIfNotEqual(t, LNil, values[0])
 }
 
 func TestContextTimeout(t *testing.T) {
