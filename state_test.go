@@ -448,6 +448,20 @@ func BenchmarkCallFrameStackPushPop(t *testing.B) {
 	}
 }
 
+func BenchmarkCallFrameStackUnwind(t *testing.B) {
+	stack := newCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		stack.SetSp(0)
+	}
+}
+
 // test pushing and popping from the registry
 func BenchmarkRegistryPushPop(t *testing.B) {
 	al := newAllocator(32)
@@ -464,5 +478,18 @@ func BenchmarkRegistryPushPop(t *testing.B) {
 		for i := 0; i < sz; i++ {
 			reg.Pop()
 		}
+	}
+}
+
+func BenchmarkRegistrySetTop(t *testing.B) {
+	al := newAllocator(32)
+	sz := 256 * 20
+	reg := newRegistry(sz, al)
+
+	t.ResetTimer()
+
+	for j := 0; j < t.N; j++ {
+		reg.SetTop(sz)
+		reg.SetTop(0)
 	}
 }
