@@ -137,6 +137,11 @@ type callFrameStack struct {
 	sp    int
 }
 
+type callFrameStackI interface {
+	Push(v callFrame)
+	Pop() *callFrame
+}
+
 func newCallFrameStack(size int) *callFrameStack {
 	return &callFrameStack{
 		array: make([]callFrame, size),

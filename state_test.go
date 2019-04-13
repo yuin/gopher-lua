@@ -429,3 +429,21 @@ func TestPCallAfterFail(t *testing.T) {
 	err := L.PCall(0, 0, nil)
 	errorIfFalse(t, strings.Contains(err.Error(), "A New Error"), "error not propogated correctly")
 }
+
+// test pushing and popping from the callstack using direct calls and via an interface redirect
+func BenchmarkCallFrameStackPushPop(t *testing.B) {
+	stack := newCallFrameStack(256) // direct calls
+	//var stack callFrameStackI = newCallFrameStack(256)	// interface calls
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		for i := 0; i < Iterations; i++ {
+			stack.Pop()
+		}
+	}
+}
