@@ -447,3 +447,22 @@ func BenchmarkCallFrameStackPushPop(t *testing.B) {
 		}
 	}
 }
+
+// test pushing and popping from the registry
+func BenchmarkRegistryPushPop(t *testing.B) {
+	al := newAllocator(32)
+	sz := 256 * 20
+	reg := newRegistry(sz, al)
+	value := LString("test")
+
+	t.ResetTimer()
+
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < sz; i++ {
+			reg.Push(value)
+		}
+		for i := 0; i < sz; i++ {
+			reg.Pop()
+		}
+	}
+}
