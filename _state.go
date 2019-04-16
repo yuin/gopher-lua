@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -90,6 +91,12 @@ type Options struct {
 	CallStackSize int
 	// Data stack size. This defaults to `lua.RegistrySize`.
 	RegistrySize int
+	// Allow the registry to grow from the registry size specified up to a value of RegistryMaxSize. A value of 0
+	// indicates no growth is permitted.
+	RegistryMaxSize int
+	// If growth is enabled, step up by an additional `RegistryGrowStep` each time to avoid having to resize too often.
+	// This defaults to `lua.RegistryGrowStep`
+	RegistryGrowStep int
 	// Controls whether or not libraries are opened by default
 	SkipOpenLibs bool
 	// Tells whether a Go stacktrace should be included in a Lua stacktrace when panics occur.
@@ -128,99 +135,241 @@ type callFrame struct {
 	TailCall   int
 }
 
+// FramesPerSegment should be a power of 2 constant for performance reasons. It will allow the go compiler to change
+// the divs and mods into bitshifts.
+const FramesPerSegment = 8
+
+type callFrameStackSegment struct {
+	array [FramesPerSegment]callFrame
+	sp    uint8 // FIXME - it would make sense to move this into the callFrameStack
+}
+type segIdx uint16
 type callFrameStack struct {
-	array []callFrame
-	sp    int
+	segments []*callFrameStackSegment
+	segIdx   segIdx
 }
 
-func newCallFrameStack(size int) *callFrameStack {
-	return &callFrameStack{
-		array: make([]callFrame, size),
-		sp:    0,
+var segmentPool sync.Pool
+
+func newCallFrameStackSegment() *callFrameStackSegment {
+	seg := segmentPool.Get()
+	if seg == nil {
+		return &callFrameStackSegment{}
+	}
+	return seg.(*callFrameStackSegment)
+}
+
+func freeCallFrameStackSegment(seg *callFrameStackSegment) {
+	seg.sp = 0
+	segmentPool.Put(seg)
+}
+
+// newCallFrameStack allocates a new stack for a lua state, which will auto grow up to a max size of at least maxSize.
+// it will actually grow up to the next segment size multiple after maxSize, where the segment size is dictated by
+// FramesPerSegment.
+func newCallFrameStack(maxSize int) *callFrameStack {
+	cs := &callFrameStack{
+		segments: make([]*callFrameStackSegment, (maxSize+(FramesPerSegment-1))/FramesPerSegment),
+		segIdx:   0,
+	}
+	cs.segments[0] = newCallFrameStackSegment()
+	return cs
+}
+
+func (cs *callFrameStack) IsEmpty() bool {
+	return cs.segIdx == 0 && cs.segments[0].sp == 0
+}
+
+// IsFull returns true if the stack cannot receive any more stack pushes without overflowing
+func (cs *callFrameStack) IsFull() bool {
+	return int(cs.segIdx) == len(cs.segments) && cs.segments[cs.segIdx].sp >= FramesPerSegment
+}
+func (cs *callFrameStack) Clear() {
+	for i := segIdx(1); i <= cs.segIdx; i++ {
+		freeCallFrameStackSegment(cs.segments[i])
+		cs.segments[i] = nil
+	}
+	cs.segIdx = 0
+	cs.segments[0].sp = 0
+}
+
+func (cs *callFrameStack) FreeAll() {
+	for i := segIdx(0); i <= cs.segIdx; i++ {
+		freeCallFrameStackSegment(cs.segments[i])
+		cs.segments[i] = nil
 	}
 }
 
-func (cs *callFrameStack) IsEmpty() bool { return cs.sp == 0 }
-
-func (cs *callFrameStack) Clear() {
-	cs.sp = 0
-}
-
+// Push pushes the passed callFrame onto the stack. it panics if the stack is full, caller should call IsFull() before
+// invoking this to avoid this.
 func (cs *callFrameStack) Push(v callFrame) { // +inline-start
-	cs.array[cs.sp] = v
-	cs.array[cs.sp].Idx = cs.sp
-	cs.sp++
+	curSeg := cs.segments[cs.segIdx]
+	if curSeg.sp >= FramesPerSegment {
+		// segment full, push new segment if allowed
+		if cs.segIdx < segIdx(len(cs.segments)-1) {
+			curSeg = newCallFrameStackSegment()
+			cs.segIdx++
+			cs.segments[cs.segIdx] = curSeg
+		} else {
+			panic("lua callstack overflow")
+		}
+	}
+	curSeg.array[curSeg.sp] = v
+	curSeg.array[curSeg.sp].Idx = int(curSeg.sp) + FramesPerSegment*int(cs.segIdx)
+	curSeg.sp++
 } // +inline-end
 
-func (cs *callFrameStack) Remove(sp int) {
-	psp := sp - 1
-	nsp := sp + 1
-	var pre *callFrame
-	var next *callFrame
-	if psp > 0 {
-		pre = &cs.array[psp]
-	}
-	if nsp < cs.sp {
-		next = &cs.array[nsp]
-	}
-	if next != nil {
-		next.Parent = pre
-	}
-	for i := sp; i+1 < cs.sp; i++ {
-		cs.array[i] = cs.array[i+1]
-		cs.array[i].Idx = i
-		cs.sp = i
-	}
-	cs.sp++
+// RemoveCallerFrame removes the stack frame above the current stack frame. This is useful in tail calls. It returns
+// the new current frame.
+func (cs *callFrameStack) RemoveCallerFrame() *callFrame {
+	sp := cs.Sp()
+	parentFrame := cs.At(sp - 2)
+	currentFrame := cs.At(sp - 1)
+	parentsParentFrame := parentFrame.Parent
+	*parentFrame = *currentFrame
+	parentFrame.Parent = parentsParentFrame
+	parentFrame.Idx = sp - 2
+	cs.Pop()
+	return parentFrame
+	/*
+		sp := cs.Sp() - 2
+		psp := sp - 1
+		nsp := sp + 1
+		var pre *callFrame
+		var next *callFrame
+		if psp > 0 {
+			pre = &cs.array[psp]
+		}
+		if nsp < cs.sp {
+			next = &cs.array[nsp]
+		}
+		if next != nil {
+			next.Parent = pre
+		}
+		for i := sp; i+1 < cs.sp; i++ {
+			cs.array[i] = cs.array[i+1]
+			cs.array[i].Idx = i
+			cs.sp = i
+		}
+		cs.sp++
+	*/
 }
 
+// Sp retrieves the current stack depth, which is the number of frames currently pushed on the stack.
 func (cs *callFrameStack) Sp() int {
-	return cs.sp
+	return int(cs.segments[cs.segIdx].sp) + int(cs.segIdx)*FramesPerSegment
 }
 
+// SetSp can be used to rapidly unwind the stack, freeing all stack frames on the way. It should not be used to
+// allocate new stack space, use Push() for that.
 func (cs *callFrameStack) SetSp(sp int) {
-	cs.sp = sp
+	desiredSegIdx := segIdx(sp / FramesPerSegment)
+	desiredFramesInLastSeg := uint8(sp % FramesPerSegment)
+	for {
+		if cs.segIdx <= desiredSegIdx {
+			break
+		}
+		freeCallFrameStackSegment(cs.segments[cs.segIdx])
+		cs.segments[cs.segIdx] = nil
+		cs.segIdx--
+	}
+	cs.segments[cs.segIdx].sp = desiredFramesInLastSeg
 }
 
 func (cs *callFrameStack) Last() *callFrame {
-	if cs.sp == 0 {
-		return nil
+	curSeg := cs.segments[cs.segIdx]
+	if curSeg.sp == 0 {
+		if cs.segIdx == 0 {
+			return nil
+		}
+		curSeg = cs.segments[cs.segIdx-1]
 	}
-	return &cs.array[cs.sp-1]
+	return &curSeg.array[curSeg.sp-1]
 }
 
 func (cs *callFrameStack) At(sp int) *callFrame {
-	return &cs.array[sp]
+	segIdx := segIdx(sp / FramesPerSegment)
+	frameIdx := uint8(sp % FramesPerSegment)
+	return &cs.segments[segIdx].array[frameIdx]
 }
 
+// Pop pops off the most recent stack frame and returns it
 func (cs *callFrameStack) Pop() *callFrame {
-	cs.sp--
-	return &cs.array[cs.sp]
+	curSeg := cs.segments[cs.segIdx]
+	if curSeg.sp == 0 {
+		if cs.segIdx == 0 {
+			// stack empty
+			return nil
+		}
+		freeCallFrameStackSegment(curSeg)
+		cs.segments[cs.segIdx] = nil
+		cs.segIdx--
+		curSeg = cs.segments[cs.segIdx]
+	}
+	curSeg.sp--
+	return &curSeg.array[curSeg.sp]
 }
 
 /* }}} */
 
 /* registry {{{ */
 
+type registryHandler interface {
+	registryOverflow()
+}
 type registry struct {
-	array []LValue
-	top   int
-	alloc *allocator
+	array   []LValue
+	top     int
+	growBy  int
+	maxSize int
+	alloc   *allocator
+	handler registryHandler
 }
 
-func newRegistry(size int, alloc *allocator) *registry {
-	return &registry{make([]LValue, size), 0, alloc}
+func newRegistry(handler registryHandler, initialSize int, growBy int, maxSize int, alloc *allocator) *registry {
+	return &registry{make([]LValue, initialSize), 0, growBy, maxSize, alloc, handler}
 }
 
+// FIXME inline this
+func (rg *registry) checkSize(requiredSize int) {
+	if requiredSize > cap(rg.array) {
+		rg.resize(requiredSize)
+	}
+}
+func (rg *registry) resize(requiredSize int) {
+	newSize := requiredSize + rg.growBy // give some padding
+	if newSize > rg.maxSize {
+		newSize = rg.maxSize
+	}
+	if newSize < requiredSize {
+		rg.handler.registryOverflow()
+		return
+	}
+	rg.forceResize(newSize)
+}
+func (rg *registry) forceResize(newSize int) {
+	newSlice := make([]LValue, newSize)
+	copy(newSlice, rg.array[:rg.top]) // should we copy the area beyond top? there shouldn't be any valid values there so it shouldn't be necessary.
+	rg.array = newSlice
+}
 func (rg *registry) SetTop(top int) {
+	rg.checkSize(top)
 	oldtop := rg.top
 	rg.top = top
 	for i := oldtop; i < rg.top; i++ {
 		rg.array[i] = LNil
 	}
-	for i := rg.top; i < oldtop; i++ {
-		rg.array[i] = LNil
+	// values beyond top don't need to be valid LValues, so setting them to nil is fine
+	// setting them to nil rather than LNil lets us invoke the golang memclr opto
+	if rg.top < oldtop {
+		nilRange := rg.array[rg.top:oldtop]
+		for i := range nilRange {
+			nilRange[i] = nil
+		}
 	}
+	//for i := rg.top; i < oldtop; i++ {
+	//	rg.array[i] = LNil
+	//}
 }
 
 func (rg *registry) Top() int {
@@ -228,6 +377,7 @@ func (rg *registry) Top() int {
 }
 
 func (rg *registry) Push(v LValue) {
+	rg.checkSize(rg.top + 1)
 	rg.array[rg.top] = v
 	rg.top++
 }
@@ -244,6 +394,7 @@ func (rg *registry) Get(reg int) LValue {
 }
 
 func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
+	rg.checkSize(regv + n)
 	for i := 0; i < n; i++ {
 		if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 			rg.array[regv+i] = LNil
@@ -255,6 +406,7 @@ func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
 } // +inline-end
 
 func (rg *registry) FillNil(regm, n int) { // +inline-start
+	rg.checkSize(regm + n)
 	for i := 0; i < n; i++ {
 		rg.array[regm+i] = LNil
 	}
@@ -269,12 +421,14 @@ func (rg *registry) Insert(value LValue, reg int) {
 	}
 	top--
 	for ; top >= reg; top-- {
+		// FIXME consider using copy() here if Insert() is called enough
 		rg.Set(top+1, rg.Get(top))
 	}
 	rg.Set(reg, value)
 }
 
 func (rg *registry) Set(reg int, val LValue) {
+	rg.checkSize(reg + 1)
 	rg.array[reg] = val
 	if reg >= rg.top {
 		rg.top = reg + 1
@@ -282,11 +436,18 @@ func (rg *registry) Set(reg int, val LValue) {
 }
 
 func (rg *registry) SetNumber(reg int, val LNumber) {
+	rg.checkSize(reg + 1)
 	rg.array[reg] = rg.alloc.LNumber2I(val)
 	if reg >= rg.top {
 		rg.top = reg + 1
 	}
-} /* }}} */
+}
+
+func (rg *registry) IsFull() bool {
+	return rg.top >= cap(rg.array)
+}
+
+/* }}} */
 
 /* Global {{{ */
 
@@ -325,7 +486,6 @@ func newLState(options Options) *LState {
 		Options: options,
 
 		stop:         0,
-		reg:          newRegistry(options.RegistrySize, al),
 		stack:        newCallFrameStack(options.CallStackSize),
 		alloc:        al,
 		currentFrame: nil,
@@ -335,6 +495,7 @@ func newLState(options Options) *LState {
 		mainLoop:     mainLoop,
 		ctx:          nil,
 	}
+	ls.reg = newRegistry(ls, options.RegistrySize, options.RegistryGrowStep, options.RegistryMaxSize, al)
 	ls.Env = ls.G.Global
 	return ls
 }
@@ -392,6 +553,10 @@ func (ls *LState) raiseError(level int, format string, args ...interface{}) {
 	}
 	if level > 0 {
 		message = fmt.Sprintf("%v %v", ls.where(level-1, true), message)
+	}
+	if ls.reg.IsFull() {
+		// if the registry is full then it won't be possible to push a value, in this case, force a larger size
+		ls.reg.forceResize(ls.reg.Top() + 1)
 	}
 	ls.reg.Push(LString(message))
 	ls.Panic(ls)
@@ -683,6 +848,7 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 		proto := cf.Fn.Proto
 		nargs := cf.NArgs
 		np := int(proto.NumParameters)
+		ls.reg.checkSize(cf.LocalBase + np)
 		for i := nargs; i < np; i++ {
 			ls.reg.array[cf.LocalBase+i] = LNil
 			nargs = np
@@ -692,6 +858,7 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 			if nargs < int(proto.NumUsedRegisters) {
 				nargs = int(proto.NumUsedRegisters)
 			}
+			ls.reg.checkSize(cf.LocalBase + nargs)
 			for i := np; i < nargs; i++ {
 				ls.reg.array[cf.LocalBase+i] = LNil
 			}
@@ -756,7 +923,7 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 	if cf.Fn == nil {
 		ls.RaiseError("attempt to call a non-function object")
 	}
-	if ls.stack.sp == ls.Options.CallStackSize {
+	if ls.stack.IsFull() {
 		ls.RaiseError("stack overflow")
 	}
 	// +inline-call ls.stack.Push cf
@@ -940,6 +1107,14 @@ func NewState(opts ...Options) *LState {
 		if opts[0].RegistrySize < 128 {
 			opts[0].RegistrySize = RegistrySize
 		}
+		if opts[0].RegistryMaxSize < RegistrySize {
+			opts[0].RegistryMaxSize = 0 // disable growth if max size is smaller than initial size
+		} else {
+			// if growth enabled, grow step is set
+			if opts[0].RegistryGrowStep < 1 {
+				opts[0].RegistryGrowStep = RegistryGrowStep
+			}
+		}
 		ls = newLState(opts[0])
 		if !opts[0].SkipOpenLibs {
 			ls.OpenLibs()
@@ -955,6 +1130,8 @@ func (ls *LState) Close() {
 		file.Close()
 		os.Remove(file.Name())
 	}
+	ls.stack.FreeAll()
+	ls.stack = nil
 }
 
 /* registry operations {{{ */
@@ -1054,6 +1231,7 @@ func (ls *LState) Get(idx int) LValue {
 			return LNil
 		}
 	}
+	return LNil
 }
 
 func (ls *LState) Push(value LValue) {
@@ -1226,6 +1404,10 @@ func (ls *LState) ToThread(n int) *LState {
 /* }}} */
 
 /* error & debug operations {{{ */
+
+func (ls *LState) registryOverflow() {
+	ls.RaiseError("registry overflow")
+}
 
 // This function is equivalent to luaL_error( http://www.lua.org/manual/5.1/manual.html#luaL_error ).
 func (ls *LState) RaiseError(format string, args ...interface{}) {

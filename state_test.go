@@ -13,14 +13,14 @@ func TestCallStackOverflow(t *testing.T) {
 	})
 	defer L.Close()
 	errorIfScriptNotFail(t, L, `
-    local function a()
-    end
-    local function b()
-      a()
+    local function recurse(count)
+      if count > 0 then
+        recurse(count - 1)
+      end
     end
     local function c()
       print(_printregs())
-      b()
+      recurse(9)
     end
     c()
     `, "stack overflow")
@@ -241,6 +241,7 @@ func TestPCall(t *testing.T) {
 	defer L.Close()
 	L.Register("f1", func(L *LState) int {
 		panic("panic!")
+		return 0
 	})
 	errorIfScriptNotFail(t, L, `f1()`, "panic!")
 	L.Push(L.GetGlobal("f1"))
@@ -258,6 +259,7 @@ func TestPCall(t *testing.T) {
 
 	err = L.PCall(0, 0, L.NewFunction(func(L *LState) int {
 		panic("panicc!")
+		return 1
 	}))
 	errorIfFalse(t, strings.Contains(err.Error(), "panicc!"), "")
 }
@@ -430,10 +432,15 @@ func TestPCallAfterFail(t *testing.T) {
 	errorIfFalse(t, strings.Contains(err.Error(), "A New Error"), "error not propogated correctly")
 }
 
+type callFrameStackI interface {
+	Push(v callFrame)
+	Pop() *callFrame
+}
+
 // test pushing and popping from the callstack using direct calls and via an interface redirect
 func BenchmarkCallFrameStackPushPop(t *testing.B) {
-	stack := newCallFrameStack(256) // direct calls
-	//var stack callFrameStackI = newCallFrameStack(256)	// interface calls
+	//stack := newCallFrameStack(256) // direct calls
+	var stack callFrameStackI = newCallFrameStack(256) // interface calls
 
 	t.ResetTimer()
 
@@ -462,11 +469,17 @@ func BenchmarkCallFrameStackUnwind(t *testing.B) {
 	}
 }
 
+type registryTestHandler int
+
+func (registryTestHandler) registryOverflow() {
+	panic("registry overflow")
+}
+
 // test pushing and popping from the registry
 func BenchmarkRegistryPushPop(t *testing.B) {
 	al := newAllocator(32)
 	sz := 256 * 20
-	reg := newRegistry(sz, al)
+	reg := newRegistry(registryTestHandler(0), sz, 32, sz*2, al)
 	value := LString("test")
 
 	t.ResetTimer()
@@ -484,7 +497,7 @@ func BenchmarkRegistryPushPop(t *testing.B) {
 func BenchmarkRegistrySetTop(t *testing.B) {
 	al := newAllocator(32)
 	sz := 256 * 20
-	reg := newRegistry(sz, al)
+	reg := newRegistry(registryTestHandler(0), sz, 32, sz*2, al)
 
 	t.ResetTimer()
 

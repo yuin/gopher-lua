@@ -71,6 +71,7 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 		{
 			rg := L.reg
 			regm := regv
+			rg.checkSize(regm + n)
 			for i := 0; i < n; i++ {
 				rg.array[regm+i] = LNil
 			}
@@ -82,6 +83,7 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 		{
 			rg := L.reg
 			limit := -1
+			rg.checkSize(regv + n)
 			for i := 0; i < n; i++ {
 				if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 					rg.array[regv+i] = LNil
@@ -135,8 +137,9 @@ func callGFunction(L *LState, tailcall bool) bool {
 	frame := L.currentFrame
 	gfnret := frame.Fn.GFunction(L)
 	if tailcall {
-		L.stack.Remove(L.stack.Sp() - 2) // remove caller lua function frame
-		L.currentFrame = L.stack.Last()
+		//L.stack.Remove(L.stack.Sp() - 2) // remove caller lua function frame
+		//L.currentFrame = L.stack.Last()
+		L.currentFrame = L.stack.RemoveCallerFrame()
 	}
 
 	if gfnret < 0 {
@@ -162,6 +165,7 @@ func callGFunction(L *LState, tailcall bool) bool {
 		start := L.reg.Top() - gfnret
 		limit := -1
 		n := wantret
+		rg.checkSize(regv + n)
 		for i := 0; i < n; i++ {
 			if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 				rg.array[regv+i] = LNil
@@ -625,7 +629,7 @@ func init() {
 				if cf.Fn == nil {
 					ls.RaiseError("attempt to call a non-function object")
 				}
-				if ls.stack.sp == ls.Options.CallStackSize {
+				if ls.stack.IsFull() {
 					ls.RaiseError("stack overflow")
 				}
 				// this section is inlined by go-inline
@@ -633,9 +637,20 @@ func init() {
 				{
 					cs := ls.stack
 					v := cf
-					cs.array[cs.sp] = v
-					cs.array[cs.sp].Idx = cs.sp
-					cs.sp++
+					curSeg := cs.segments[cs.segIdx]
+					if curSeg.sp >= FramesPerSegment {
+						// segment full, push new segment if allowed
+						if cs.segIdx < segIdx(len(cs.segments)-1) {
+							curSeg = newCallFrameStackSegment()
+							cs.segIdx++
+							cs.segments[cs.segIdx] = curSeg
+						} else {
+							panic("lua callstack overflow")
+						}
+					}
+					curSeg.array[curSeg.sp] = v
+					curSeg.array[curSeg.sp].Idx = int(curSeg.sp) + FramesPerSegment*int(cs.segIdx)
+					curSeg.sp++
 				}
 				newcf := ls.stack.Last()
 				// this section is inlined by go-inline
@@ -648,6 +663,7 @@ func init() {
 						proto := cf.Fn.Proto
 						nargs := cf.NArgs
 						np := int(proto.NumParameters)
+						ls.reg.checkSize(cf.LocalBase + np)
 						for i := nargs; i < np; i++ {
 							ls.reg.array[cf.LocalBase+i] = LNil
 							nargs = np
@@ -657,6 +673,7 @@ func init() {
 							if nargs < int(proto.NumUsedRegisters) {
 								nargs = int(proto.NumUsedRegisters)
 							}
+							ls.reg.checkSize(cf.LocalBase + nargs)
 							for i := np; i < nargs; i++ {
 								ls.reg.array[cf.LocalBase+i] = LNil
 							}
@@ -787,9 +804,9 @@ func init() {
 				cf.Pc = 0
 				cf.Base = RA
 				cf.LocalBase = RA + 1
-				// cf.ReturnBase = cf.ReturnBase
+				cf.ReturnBase = cf.ReturnBase
 				cf.NArgs = nargs
-				// cf.NRet = cf.NRet
+				cf.NRet = cf.NRet
 				cf.TailCall++
 				lbase := cf.LocalBase
 				if meta {
@@ -806,6 +823,7 @@ func init() {
 						proto := cf.Fn.Proto
 						nargs := cf.NArgs
 						np := int(proto.NumParameters)
+						ls.reg.checkSize(cf.LocalBase + np)
 						for i := nargs; i < np; i++ {
 							ls.reg.array[cf.LocalBase+i] = LNil
 							nargs = np
@@ -815,6 +833,7 @@ func init() {
 							if nargs < int(proto.NumUsedRegisters) {
 								nargs = int(proto.NumUsedRegisters)
 							}
+							ls.reg.checkSize(cf.LocalBase + nargs)
 							for i := np; i < nargs; i++ {
 								ls.reg.array[cf.LocalBase+i] = LNil
 							}
@@ -878,6 +897,7 @@ func init() {
 					start := RA
 					limit := -1
 					n := reg.Top() - RA - 1
+					rg.checkSize(regv + n)
 					for i := 0; i < n; i++ {
 						if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 							rg.array[regv+i] = LNil
@@ -941,6 +961,7 @@ func init() {
 						{
 							rg := L.reg
 							regm := regv
+							rg.checkSize(regm + n)
 							for i := 0; i < n; i++ {
 								rg.array[regm+i] = LNil
 							}
@@ -952,6 +973,7 @@ func init() {
 						{
 							rg := L.reg
 							limit := -1
+							rg.checkSize(regv + n)
 							for i := 0; i < n; i++ {
 								if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 									rg.array[regv+i] = LNil
@@ -992,6 +1014,7 @@ func init() {
 					{
 						rg := L.reg
 						regm := regv
+						rg.checkSize(regm + n)
 						for i := 0; i < n; i++ {
 							rg.array[regm+i] = LNil
 						}
@@ -1003,6 +1026,7 @@ func init() {
 					{
 						rg := L.reg
 						limit := -1
+						rg.checkSize(regv + n)
 						for i := 0; i < n; i++ {
 							if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 								rg.array[regv+i] = LNil
@@ -1199,6 +1223,7 @@ func init() {
 				start := cf.Base + nparams + 1
 				limit := cf.LocalBase
 				n := nwant
+				rg.checkSize(regv + n)
 				for i := 0; i < n; i++ {
 					if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 						rg.array[regv+i] = LNil
@@ -1265,6 +1290,7 @@ func numberArith(L *LState, opcode int, lhs, rhs LNumber) LNumber {
 		return LNumber(math.Pow(flhs, frhs))
 	}
 	panic("should not reach here")
+	return LNumber(0)
 }
 
 func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
