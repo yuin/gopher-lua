@@ -140,17 +140,21 @@ type callFrame struct {
 }
 
 // FramesPerSegment should be a power of 2 constant for performance reasons. It will allow the go compiler to change
-// the divs and mods into bitshifts.
+// the divs and mods into bitshifts. Max is 256 due to current use of uint8 to count how many frames in a segment are
+// used.
 const FramesPerSegment = 8
 
 type callFrameStackSegment struct {
 	array [FramesPerSegment]callFrame
-	sp    uint8
 }
 type segIdx uint16
 type callFrameStack struct {
 	segments []*callFrameStackSegment
 	segIdx   segIdx
+	// segSp is the number of frames in the current segment which are used. Full 'sp' value is segIdx * FramesPerSegment + segSp.
+	// It points to the next stack slot to use, so 0 means to use the 0th element in the segment, and a value of
+	// FramesPerSegment indicates that the segment is full and cannot accommodate another frame,
+	segSp uint8
 }
 
 var segmentPool sync.Pool
@@ -164,7 +168,6 @@ func newCallFrameStackSegment() *callFrameStackSegment {
 }
 
 func freeCallFrameStackSegment(seg *callFrameStackSegment) {
-	seg.sp = 0
 	segmentPool.Put(seg)
 }
 
@@ -181,20 +184,21 @@ func newCallFrameStack(maxSize int) *callFrameStack {
 }
 
 func (cs *callFrameStack) IsEmpty() bool {
-	return cs.segIdx == 0 && cs.segments[0].sp == 0
+	return cs.segIdx == 0 && cs.segSp == 0
 }
 
 // IsFull returns true if the stack cannot receive any more stack pushes without overflowing
 func (cs *callFrameStack) IsFull() bool {
-	return int(cs.segIdx) == len(cs.segments) && cs.segments[cs.segIdx].sp >= FramesPerSegment
+	return int(cs.segIdx) == len(cs.segments) && cs.segSp >= FramesPerSegment
 }
+
 func (cs *callFrameStack) Clear() {
 	for i := segIdx(1); i <= cs.segIdx; i++ {
 		freeCallFrameStackSegment(cs.segments[i])
 		cs.segments[i] = nil
 	}
 	cs.segIdx = 0
-	cs.segments[0].sp = 0
+	cs.segSp = 0
 }
 
 func (cs *callFrameStack) FreeAll() {
@@ -208,19 +212,20 @@ func (cs *callFrameStack) FreeAll() {
 // invoking this to avoid this.
 func (cs *callFrameStack) Push(v callFrame) { // +inline-start
 	curSeg := cs.segments[cs.segIdx]
-	if curSeg.sp >= FramesPerSegment {
+	if cs.segSp >= FramesPerSegment {
 		// segment full, push new segment if allowed
 		if cs.segIdx < segIdx(len(cs.segments)-1) {
 			curSeg = newCallFrameStackSegment()
 			cs.segIdx++
 			cs.segments[cs.segIdx] = curSeg
+			cs.segSp = 0
 		} else {
 			panic("lua callstack overflow")
 		}
 	}
-	curSeg.array[curSeg.sp] = v
-	curSeg.array[curSeg.sp].Idx = int(curSeg.sp) + FramesPerSegment*int(cs.segIdx)
-	curSeg.sp++
+	curSeg.array[cs.segSp] = v
+	curSeg.array[cs.segSp].Idx = int(cs.segSp) + FramesPerSegment*int(cs.segIdx)
+	cs.segSp++
 } // +inline-end
 
 // RemoveCallerFrame removes the stack frame above the current stack frame. This is useful in tail calls. It returns
@@ -261,7 +266,7 @@ func (cs *callFrameStack) RemoveCallerFrame() *callFrame {
 
 // Sp retrieves the current stack depth, which is the number of frames currently pushed on the stack.
 func (cs *callFrameStack) Sp() int {
-	return int(cs.segments[cs.segIdx].sp) + int(cs.segIdx)*FramesPerSegment
+	return int(cs.segSp) + int(cs.segIdx)*FramesPerSegment
 }
 
 // SetSp can be used to rapidly unwind the stack, freeing all stack frames on the way. It should not be used to
@@ -277,18 +282,20 @@ func (cs *callFrameStack) SetSp(sp int) {
 		cs.segments[cs.segIdx] = nil
 		cs.segIdx--
 	}
-	cs.segments[cs.segIdx].sp = desiredFramesInLastSeg
+	cs.segSp = desiredFramesInLastSeg
 }
 
 func (cs *callFrameStack) Last() *callFrame {
 	curSeg := cs.segments[cs.segIdx]
-	if curSeg.sp == 0 {
+	segSp := cs.segSp
+	if segSp == 0 {
 		if cs.segIdx == 0 {
 			return nil
 		}
 		curSeg = cs.segments[cs.segIdx-1]
+		segSp = FramesPerSegment
 	}
-	return &curSeg.array[curSeg.sp-1]
+	return &curSeg.array[segSp-1]
 }
 
 func (cs *callFrameStack) At(sp int) *callFrame {
@@ -300,7 +307,7 @@ func (cs *callFrameStack) At(sp int) *callFrame {
 // Pop pops off the most recent stack frame and returns it
 func (cs *callFrameStack) Pop() *callFrame {
 	curSeg := cs.segments[cs.segIdx]
-	if curSeg.sp == 0 {
+	if cs.segSp == 0 {
 		if cs.segIdx == 0 {
 			// stack empty
 			return nil
@@ -308,10 +315,11 @@ func (cs *callFrameStack) Pop() *callFrame {
 		freeCallFrameStackSegment(curSeg)
 		cs.segments[cs.segIdx] = nil
 		cs.segIdx--
+		cs.segSp = FramesPerSegment
 		curSeg = cs.segments[cs.segIdx]
 	}
-	curSeg.sp--
-	return &curSeg.array[curSeg.sp]
+	cs.segSp--
+	return &curSeg.array[cs.segSp]
 }
 
 /* }}} */
@@ -936,19 +944,20 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 		cs := ls.stack
 		v := cf
 		curSeg := cs.segments[cs.segIdx]
-		if curSeg.sp >= FramesPerSegment {
+		if cs.segSp >= FramesPerSegment {
 			// segment full, push new segment if allowed
 			if cs.segIdx < segIdx(len(cs.segments)-1) {
 				curSeg = newCallFrameStackSegment()
 				cs.segIdx++
 				cs.segments[cs.segIdx] = curSeg
+				cs.segSp = 0
 			} else {
 				panic("lua callstack overflow")
 			}
 		}
-		curSeg.array[curSeg.sp] = v
-		curSeg.array[curSeg.sp].Idx = int(curSeg.sp) + FramesPerSegment*int(cs.segIdx)
-		curSeg.sp++
+		curSeg.array[cs.segSp] = v
+		curSeg.array[cs.segSp].Idx = int(cs.segSp) + FramesPerSegment*int(cs.segIdx)
+		cs.segSp++
 	}
 	newcf := ls.stack.Last()
 	// this section is inlined by go-inline

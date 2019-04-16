@@ -638,19 +638,20 @@ func init() {
 					cs := ls.stack
 					v := cf
 					curSeg := cs.segments[cs.segIdx]
-					if curSeg.sp >= FramesPerSegment {
+					if cs.segSp >= FramesPerSegment {
 						// segment full, push new segment if allowed
 						if cs.segIdx < segIdx(len(cs.segments)-1) {
 							curSeg = newCallFrameStackSegment()
 							cs.segIdx++
 							cs.segments[cs.segIdx] = curSeg
+							cs.segSp = 0
 						} else {
 							panic("lua callstack overflow")
 						}
 					}
-					curSeg.array[curSeg.sp] = v
-					curSeg.array[curSeg.sp].Idx = int(curSeg.sp) + FramesPerSegment*int(cs.segIdx)
-					curSeg.sp++
+					curSeg.array[cs.segSp] = v
+					curSeg.array[cs.segSp].Idx = int(cs.segSp) + FramesPerSegment*int(cs.segIdx)
+					cs.segSp++
 				}
 				newcf := ls.stack.Last()
 				// this section is inlined by go-inline
