@@ -1250,7 +1250,7 @@ func NewState(opts ...Options) *LState {
 		if opts[0].RegistrySize < 128 {
 			opts[0].RegistrySize = RegistrySize
 		}
-		if opts[0].RegistryMaxSize < RegistrySize {
+		if opts[0].RegistryMaxSize < opts[0].RegistrySize {
 			opts[0].RegistryMaxSize = 0 // disable growth if max size is smaller than initial size
 		} else {
 			// if growth enabled, grow step is set
