@@ -92,7 +92,7 @@ type Options struct {
 	// Data stack size. This defaults to `lua.RegistrySize`.
 	RegistrySize int
 	// Allow the registry to grow from the registry size specified up to a value of RegistryMaxSize. A value of 0
-	// indicates no growth is permitted.
+	// indicates no growth is permitted. The registry will not shrink again after any growth.
 	RegistryMaxSize int
 	// If growth is enabled, step up by an additional `RegistryGrowStep` each time to avoid having to resize too often.
 	// This defaults to `lua.RegistryGrowStep`
@@ -101,6 +101,9 @@ type Options struct {
 	SkipOpenLibs bool
 	// Tells whether a Go stacktrace should be included in a Lua stacktrace when panics occur.
 	IncludeGoStackTrace bool
+	// If `MinimizeStackMemory` is set, the call stack will be automatically grown or shrank up to a limit of
+	// `CallStackSize` in order to minimize memory usage. This does incur a slight performance penalty.
+	MinimizeStackMemory bool
 }
 
 /* }}} */
@@ -548,9 +551,7 @@ func newLState(options Options) *LState {
 		Dead:    false,
 		Options: options,
 
-		stop: 0,
-		//stack:        newAutoGrowingCallFrameStack(options.CallStackSize),
-		stack:        newFixedCallFrameStack(options.CallStackSize),
+		stop:         0,
 		alloc:        al,
 		currentFrame: nil,
 		wrapped:      false,
@@ -558,6 +559,11 @@ func newLState(options Options) *LState {
 		hasErrorFunc: false,
 		mainLoop:     mainLoop,
 		ctx:          nil,
+	}
+	if options.MinimizeStackMemory {
+		ls.stack = newAutoGrowingCallFrameStack(options.CallStackSize)
+	} else {
+		ls.stack = newFixedCallFrameStack(options.CallStackSize)
 	}
 	ls.reg = newRegistry(ls, options.RegistrySize, options.RegistryGrowStep, options.RegistryMaxSize, al)
 	ls.Env = ls.G.Global

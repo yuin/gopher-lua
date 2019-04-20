@@ -7,11 +7,45 @@ import (
 	"time"
 )
 
-func TestCallStackOverflow(t *testing.T) {
+func TestCallStackOverflowWhenFixed(t *testing.T) {
 	L := NewState(Options{
 		CallStackSize: 3,
 	})
 	defer L.Close()
+
+	// expect fixed stack implementation by default (for backwards compatibility)
+	stack := L.stack
+	if _, ok := stack.(*fixedCallFrameStack); !ok {
+		t.Errorf("expected fixed callframe stack by default")
+	}
+
+	errorIfScriptNotFail(t, L, `
+    local function recurse(count)
+      if count > 0 then
+        recurse(count - 1)
+      end
+    end
+    local function c()
+      print(_printregs())
+      recurse(9)
+    end
+    c()
+    `, "stack overflow")
+}
+
+func TestCallStackOverflowWhenAutoGrow(t *testing.T) {
+	L := NewState(Options{
+		CallStackSize:       3,
+		MinimizeStackMemory: true,
+	})
+	defer L.Close()
+
+	// expect auto growing stack implementation when MinimizeStackMemory is set
+	stack := L.stack
+	if _, ok := stack.(*autoGrowingCallFrameStack); !ok {
+		t.Errorf("expected fixed callframe stack by default")
+	}
+
 	errorIfScriptNotFail(t, L, `
     local function recurse(count)
       if count > 0 then
