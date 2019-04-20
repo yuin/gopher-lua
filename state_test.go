@@ -432,11 +432,8 @@ func TestPCallAfterFail(t *testing.T) {
 	errorIfFalse(t, strings.Contains(err.Error(), "A New Error"), "error not propogated correctly")
 }
 
-// test pushing and popping from the callstack using direct calls and via an interface redirect
-func BenchmarkCallFrameStackPushPop(t *testing.B) {
-	//stack := newCallFrameStack(256) // direct calls
-	//var stack callFrameStackI = newAutoGrowingCallFrameStack(256) // interface calls
-	var stack callFrameStack = newFixedCallFrameStack(256) // interface calls
+func BenchmarkCallFrameStackPushPopAutoGrow(t *testing.B) {
+	stack := newAutoGrowingCallFrameStack(256)
 
 	t.ResetTimer()
 
@@ -451,8 +448,68 @@ func BenchmarkCallFrameStackPushPop(t *testing.B) {
 	}
 }
 
-func BenchmarkCallFrameStackUnwind(t *testing.B) {
+func BenchmarkCallFrameStackPushPopFixed(t *testing.B) {
 	stack := newFixedCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		for i := 0; i < Iterations; i++ {
+			stack.Pop()
+		}
+	}
+}
+
+func BenchmarkCallFrameStackPushPopFixedNoInterface(t *testing.B) {
+	stack := newFixedCallFrameStack(256).(*fixedCallFrameStack)
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		for i := 0; i < Iterations; i++ {
+			stack.Pop()
+		}
+	}
+}
+
+func BenchmarkCallFrameStackUnwindAutoGrow(t *testing.B) {
+	stack := newAutoGrowingCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		stack.SetSp(0)
+	}
+}
+
+func BenchmarkCallFrameStackUnwindFixed(t *testing.B) {
+	stack := newFixedCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		stack.SetSp(0)
+	}
+}
+
+func BenchmarkCallFrameStackUnwindFixedNoInterface(t *testing.B) {
+	stack := newFixedCallFrameStack(256).(*fixedCallFrameStack)
 
 	t.ResetTimer()
 
@@ -472,10 +529,28 @@ func (registryTestHandler) registryOverflow() {
 }
 
 // test pushing and popping from the registry
-func BenchmarkRegistryPushPop(t *testing.B) {
+func BenchmarkRegistryPushPopAutoGrow(t *testing.B) {
 	al := newAllocator(32)
 	sz := 256 * 20
-	reg := newRegistry(registryTestHandler(0), sz, 32, sz*2, al)
+	reg := newRegistry(registryTestHandler(0), sz/2, 64, sz, al)
+	value := LString("test")
+
+	t.ResetTimer()
+
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < sz; i++ {
+			reg.Push(value)
+		}
+		for i := 0; i < sz; i++ {
+			reg.Pop()
+		}
+	}
+}
+
+func BenchmarkRegistryPushPopFixed(t *testing.B) {
+	al := newAllocator(32)
+	sz := 256 * 20
+	reg := newRegistry(registryTestHandler(0), sz, 0, sz, al)
 	value := LString("test")
 
 	t.ResetTimer()
