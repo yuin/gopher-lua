@@ -432,6 +432,59 @@ func TestPCallAfterFail(t *testing.T) {
 	errorIfFalse(t, strings.Contains(err.Error(), "A New Error"), "error not propogated correctly")
 }
 
+func TestRegistryFixedOverflow(t *testing.T) {
+	state := NewState()
+	defer state.Close()
+	reg := state.reg
+	expectedPanic := false
+	// should be non auto grow by default
+	errorIfFalse(t, reg.maxSize == 0, "state should default to non-auto growing implementation")
+	// fill the stack and check we get a panic
+	test := LString("test")
+	for i := 0; i < len(reg.array); i++ {
+		reg.Push(test)
+	}
+	defer func() {
+		rcv := recover()
+		if rcv != nil {
+			if expectedPanic {
+				errorIfFalse(t, rcv.(error).Error() != "registry overflow", "expected registry overflow exception, got "+rcv.(error).Error())
+			} else {
+				t.Errorf("did not expect registry overflow")
+			}
+		} else if expectedPanic {
+			t.Errorf("expected registry overflow exception, but didn't get panic")
+		}
+	}()
+	expectedPanic = true
+	reg.Push(test)
+}
+
+func TestRegistryAutoGrow(t *testing.T) {
+	state := NewState(Options{RegistryMaxSize: 300, RegistrySize: 200, RegistryGrowStep: 25})
+	defer state.Close()
+	expectedPanic := false
+	defer func() {
+		rcv := recover()
+		if rcv != nil {
+			if expectedPanic {
+				errorIfFalse(t, rcv.(error).Error() != "registry overflow", "expected registry overflow exception, got "+rcv.(error).Error())
+			} else {
+				t.Errorf("did not expect registry overflow")
+			}
+		} else if expectedPanic {
+			t.Errorf("expected registry overflow exception, but didn't get panic")
+		}
+	}()
+	reg := state.reg
+	test := LString("test")
+	for i := 0; i < 300; i++ {
+		reg.Push(test)
+	}
+	expectedPanic = true
+	reg.Push(test)
+}
+
 func BenchmarkCallFrameStackPushPopAutoGrow(t *testing.B) {
 	stack := newAutoGrowingCallFrameStack(256)
 
