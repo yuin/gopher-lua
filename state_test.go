@@ -551,6 +551,39 @@ func BenchmarkCallFrameStackPushPopFixed(t *testing.B) {
 	}
 }
 
+// this test will intentionally not incur stack growth in order to bench the performance when no allocations happen
+func BenchmarkCallFrameStackPushPopShallowAutoGrow(t *testing.B) {
+	stack := newAutoGrowingCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 8
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		for i := 0; i < Iterations; i++ {
+			stack.Pop()
+		}
+	}
+}
+
+func BenchmarkCallFrameStackPushPopShallowFixed(t *testing.B) {
+	stack := newFixedCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 8
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		for i := 0; i < Iterations; i++ {
+			stack.Pop()
+		}
+	}
+}
+
 func BenchmarkCallFrameStackPushPopFixedNoInterface(t *testing.B) {
 	stack := newFixedCallFrameStack(256).(*fixedCallFrameStack)
 
