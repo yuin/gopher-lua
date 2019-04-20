@@ -440,7 +440,7 @@ type callFrameStackI interface {
 // test pushing and popping from the callstack using direct calls and via an interface redirect
 func BenchmarkCallFrameStackPushPop(t *testing.B) {
 	//stack := newCallFrameStack(256) // direct calls
-	var stack callFrameStackI = newCallFrameStack(256) // interface calls
+	var stack callFrameStackI = newAutoGrowingCallFrameStack(256) // interface calls
 
 	t.ResetTimer()
 
@@ -456,7 +456,7 @@ func BenchmarkCallFrameStackPushPop(t *testing.B) {
 }
 
 func BenchmarkCallFrameStackUnwind(t *testing.B) {
-	stack := newCallFrameStack(256)
+	stack := newAutoGrowingCallFrameStack(256)
 
 	t.ResetTimer()
 

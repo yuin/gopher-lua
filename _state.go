@@ -135,6 +135,22 @@ type callFrame struct {
 	TailCall   int
 }
 
+type callFrameStack interface {
+	Push(v callFrame)
+	Pop() *callFrame
+	Last() *callFrame
+
+	SetSp(sp int)
+	Sp() int
+	At(sp int) *callFrame
+
+	IsFull() bool
+	IsEmpty() bool
+
+	FreeAll()
+	RemoveCallerFrame() *callFrame
+}
+
 // FramesPerSegment should be a power of 2 constant for performance reasons. It will allow the go compiler to change
 // the divs and mods into bitshifts. Max is 256 due to current use of uint8 to count how many frames in a segment are
 // used.
@@ -144,7 +160,7 @@ type callFrameStackSegment struct {
 	array [FramesPerSegment]callFrame
 }
 type segIdx uint16
-type callFrameStack struct {
+type autoGrowingCallFrameStack struct {
 	segments []*callFrameStackSegment
 	segIdx   segIdx
 	// segSp is the number of frames in the current segment which are used. Full 'sp' value is segIdx * FramesPerSegment + segSp.
@@ -170,8 +186,8 @@ func freeCallFrameStackSegment(seg *callFrameStackSegment) {
 // newCallFrameStack allocates a new stack for a lua state, which will auto grow up to a max size of at least maxSize.
 // it will actually grow up to the next segment size multiple after maxSize, where the segment size is dictated by
 // FramesPerSegment.
-func newCallFrameStack(maxSize int) *callFrameStack {
-	cs := &callFrameStack{
+func newAutoGrowingCallFrameStack(maxSize int) callFrameStack {
+	cs := &autoGrowingCallFrameStack{
 		segments: make([]*callFrameStackSegment, (maxSize+(FramesPerSegment-1))/FramesPerSegment),
 		segIdx:   0,
 	}
@@ -179,16 +195,16 @@ func newCallFrameStack(maxSize int) *callFrameStack {
 	return cs
 }
 
-func (cs *callFrameStack) IsEmpty() bool {
+func (cs *autoGrowingCallFrameStack) IsEmpty() bool {
 	return cs.segIdx == 0 && cs.segSp == 0
 }
 
 // IsFull returns true if the stack cannot receive any more stack pushes without overflowing
-func (cs *callFrameStack) IsFull() bool {
+func (cs *autoGrowingCallFrameStack) IsFull() bool {
 	return int(cs.segIdx) == len(cs.segments) && cs.segSp >= FramesPerSegment
 }
 
-func (cs *callFrameStack) Clear() {
+func (cs *autoGrowingCallFrameStack) Clear() {
 	for i := segIdx(1); i <= cs.segIdx; i++ {
 		freeCallFrameStackSegment(cs.segments[i])
 		cs.segments[i] = nil
@@ -197,7 +213,7 @@ func (cs *callFrameStack) Clear() {
 	cs.segSp = 0
 }
 
-func (cs *callFrameStack) FreeAll() {
+func (cs *autoGrowingCallFrameStack) FreeAll() {
 	for i := segIdx(0); i <= cs.segIdx; i++ {
 		freeCallFrameStackSegment(cs.segments[i])
 		cs.segments[i] = nil
@@ -206,7 +222,7 @@ func (cs *callFrameStack) FreeAll() {
 
 // Push pushes the passed callFrame onto the stack. it panics if the stack is full, caller should call IsFull() before
 // invoking this to avoid this.
-func (cs *callFrameStack) Push(v callFrame) { // +inline-start
+func (cs *autoGrowingCallFrameStack) Push(v callFrame) {
 	curSeg := cs.segments[cs.segIdx]
 	if cs.segSp >= FramesPerSegment {
 		// segment full, push new segment if allowed
@@ -222,11 +238,11 @@ func (cs *callFrameStack) Push(v callFrame) { // +inline-start
 	curSeg.array[cs.segSp] = v
 	curSeg.array[cs.segSp].Idx = int(cs.segSp) + FramesPerSegment*int(cs.segIdx)
 	cs.segSp++
-} // +inline-end
+}
 
 // RemoveCallerFrame removes the stack frame above the current stack frame. This is useful in tail calls. It returns
 // the new current frame.
-func (cs *callFrameStack) RemoveCallerFrame() *callFrame {
+func (cs *autoGrowingCallFrameStack) RemoveCallerFrame() *callFrame {
 	sp := cs.Sp()
 	parentFrame := cs.At(sp - 2)
 	currentFrame := cs.At(sp - 1)
@@ -261,13 +277,13 @@ func (cs *callFrameStack) RemoveCallerFrame() *callFrame {
 }
 
 // Sp retrieves the current stack depth, which is the number of frames currently pushed on the stack.
-func (cs *callFrameStack) Sp() int {
+func (cs *autoGrowingCallFrameStack) Sp() int {
 	return int(cs.segSp) + int(cs.segIdx)*FramesPerSegment
 }
 
 // SetSp can be used to rapidly unwind the stack, freeing all stack frames on the way. It should not be used to
 // allocate new stack space, use Push() for that.
-func (cs *callFrameStack) SetSp(sp int) {
+func (cs *autoGrowingCallFrameStack) SetSp(sp int) {
 	desiredSegIdx := segIdx(sp / FramesPerSegment)
 	desiredFramesInLastSeg := uint8(sp % FramesPerSegment)
 	for {
@@ -281,7 +297,7 @@ func (cs *callFrameStack) SetSp(sp int) {
 	cs.segSp = desiredFramesInLastSeg
 }
 
-func (cs *callFrameStack) Last() *callFrame {
+func (cs *autoGrowingCallFrameStack) Last() *callFrame {
 	curSeg := cs.segments[cs.segIdx]
 	segSp := cs.segSp
 	if segSp == 0 {
@@ -294,14 +310,14 @@ func (cs *callFrameStack) Last() *callFrame {
 	return &curSeg.array[segSp-1]
 }
 
-func (cs *callFrameStack) At(sp int) *callFrame {
+func (cs *autoGrowingCallFrameStack) At(sp int) *callFrame {
 	segIdx := segIdx(sp / FramesPerSegment)
 	frameIdx := uint8(sp % FramesPerSegment)
 	return &cs.segments[segIdx].array[frameIdx]
 }
 
 // Pop pops off the most recent stack frame and returns it
-func (cs *callFrameStack) Pop() *callFrame {
+func (cs *autoGrowingCallFrameStack) Pop() *callFrame {
 	curSeg := cs.segments[cs.segIdx]
 	if cs.segSp == 0 {
 		if cs.segIdx == 0 {
@@ -494,7 +510,7 @@ func newLState(options Options) *LState {
 		Options: options,
 
 		stop:         0,
-		stack:        newCallFrameStack(options.CallStackSize),
+		stack:        newAutoGrowingCallFrameStack(options.CallStackSize),
 		alloc:        al,
 		currentFrame: nil,
 		wrapped:      false,
@@ -934,7 +950,7 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 	if ls.stack.IsFull() {
 		ls.RaiseError("stack overflow")
 	}
-	// +inline-call ls.stack.Push cf
+	ls.stack.Push(cf)
 	newcf := ls.stack.Last()
 	// +inline-call ls.initCallFrame newcf
 	ls.currentFrame = newcf

@@ -632,27 +632,7 @@ func init() {
 				if ls.stack.IsFull() {
 					ls.RaiseError("stack overflow")
 				}
-				// this section is inlined by go-inline
-				// source function is 'func (cs *callFrameStack) Push(v callFrame) ' in '_state.go'
-				{
-					cs := ls.stack
-					v := cf
-					curSeg := cs.segments[cs.segIdx]
-					if cs.segSp >= FramesPerSegment {
-						// segment full, push new segment if allowed
-						if cs.segIdx < segIdx(len(cs.segments)-1) {
-							curSeg = newCallFrameStackSegment()
-							cs.segIdx++
-							cs.segments[cs.segIdx] = curSeg
-							cs.segSp = 0
-						} else {
-							panic("lua callstack overflow")
-						}
-					}
-					curSeg.array[cs.segSp] = v
-					curSeg.array[cs.segSp].Idx = int(cs.segSp) + FramesPerSegment*int(cs.segIdx)
-					cs.segSp++
-				}
+				ls.stack.Push(cf)
 				newcf := ls.stack.Last()
 				// this section is inlined by go-inline
 				// source function is 'func (ls *LState) initCallFrame(cf *callFrame) ' in '_state.go'
