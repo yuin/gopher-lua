@@ -432,15 +432,11 @@ func TestPCallAfterFail(t *testing.T) {
 	errorIfFalse(t, strings.Contains(err.Error(), "A New Error"), "error not propogated correctly")
 }
 
-type callFrameStackI interface {
-	Push(v callFrame)
-	Pop() *callFrame
-}
-
 // test pushing and popping from the callstack using direct calls and via an interface redirect
 func BenchmarkCallFrameStackPushPop(t *testing.B) {
 	//stack := newCallFrameStack(256) // direct calls
-	var stack callFrameStackI = newAutoGrowingCallFrameStack(256) // interface calls
+	//var stack callFrameStackI = newAutoGrowingCallFrameStack(256) // interface calls
+	var stack callFrameStack = newFixedCallFrameStack(256) // interface calls
 
 	t.ResetTimer()
 
@@ -456,7 +452,7 @@ func BenchmarkCallFrameStackPushPop(t *testing.B) {
 }
 
 func BenchmarkCallFrameStackUnwind(t *testing.B) {
-	stack := newAutoGrowingCallFrameStack(256)
+	stack := newFixedCallFrameStack(256)
 
 	t.ResetTimer()
 

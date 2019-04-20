@@ -148,7 +148,82 @@ type callFrameStack interface {
 	IsEmpty() bool
 
 	FreeAll()
-	RemoveCallerFrame() *callFrame
+}
+
+type fixedCallFrameStack struct {
+	array []callFrame
+	sp    int
+}
+
+func newFixedCallFrameStack(size int) callFrameStack {
+	return &fixedCallFrameStack{
+		array: make([]callFrame, size),
+		sp:    0,
+	}
+}
+
+func (cs *fixedCallFrameStack) IsEmpty() bool { return cs.sp == 0 }
+
+func (cs *fixedCallFrameStack) IsFull() bool { return cs.sp == len(cs.array) }
+
+func (cs *fixedCallFrameStack) Clear() {
+	cs.sp = 0
+}
+
+func (cs *fixedCallFrameStack) Push(v callFrame) {
+	cs.array[cs.sp] = v
+	cs.array[cs.sp].Idx = cs.sp
+	cs.sp++
+}
+
+func (cs *fixedCallFrameStack) Remove(sp int) {
+	psp := sp - 1
+	nsp := sp + 1
+	var pre *callFrame
+	var next *callFrame
+	if psp > 0 {
+		pre = &cs.array[psp]
+	}
+	if nsp < cs.sp {
+		next = &cs.array[nsp]
+	}
+	if next != nil {
+		next.Parent = pre
+	}
+	for i := sp; i+1 < cs.sp; i++ {
+		cs.array[i] = cs.array[i+1]
+		cs.array[i].Idx = i
+		cs.sp = i
+	}
+	cs.sp++
+}
+
+func (cs *fixedCallFrameStack) Sp() int {
+	return cs.sp
+}
+
+func (cs *fixedCallFrameStack) SetSp(sp int) {
+	cs.sp = sp
+}
+
+func (cs *fixedCallFrameStack) Last() *callFrame {
+	if cs.sp == 0 {
+		return nil
+	}
+	return &cs.array[cs.sp-1]
+}
+
+func (cs *fixedCallFrameStack) At(sp int) *callFrame {
+	return &cs.array[sp]
+}
+
+func (cs *fixedCallFrameStack) Pop() *callFrame {
+	cs.sp--
+	return &cs.array[cs.sp]
+}
+
+func (cs *fixedCallFrameStack) FreeAll() {
+	// nothing to do for fixed callframestack
 }
 
 // FramesPerSegment should be a power of 2 constant for performance reasons. It will allow the go compiler to change
@@ -238,42 +313,6 @@ func (cs *autoGrowingCallFrameStack) Push(v callFrame) {
 	curSeg.array[cs.segSp] = v
 	curSeg.array[cs.segSp].Idx = int(cs.segSp) + FramesPerSegment*int(cs.segIdx)
 	cs.segSp++
-}
-
-// RemoveCallerFrame removes the stack frame above the current stack frame. This is useful in tail calls. It returns
-// the new current frame.
-func (cs *autoGrowingCallFrameStack) RemoveCallerFrame() *callFrame {
-	sp := cs.Sp()
-	parentFrame := cs.At(sp - 2)
-	currentFrame := cs.At(sp - 1)
-	parentsParentFrame := parentFrame.Parent
-	*parentFrame = *currentFrame
-	parentFrame.Parent = parentsParentFrame
-	parentFrame.Idx = sp - 2
-	cs.Pop()
-	return parentFrame
-	/*
-		sp := cs.Sp() - 2
-		psp := sp - 1
-		nsp := sp + 1
-		var pre *callFrame
-		var next *callFrame
-		if psp > 0 {
-			pre = &cs.array[psp]
-		}
-		if nsp < cs.sp {
-			next = &cs.array[nsp]
-		}
-		if next != nil {
-			next.Parent = pre
-		}
-		for i := sp; i+1 < cs.sp; i++ {
-			cs.array[i] = cs.array[i+1]
-			cs.array[i].Idx = i
-			cs.sp = i
-		}
-		cs.sp++
-	*/
 }
 
 // Sp retrieves the current stack depth, which is the number of frames currently pushed on the stack.
@@ -509,8 +548,9 @@ func newLState(options Options) *LState {
 		Dead:    false,
 		Options: options,
 
-		stop:         0,
-		stack:        newAutoGrowingCallFrameStack(options.CallStackSize),
+		stop: 0,
+		//stack:        newAutoGrowingCallFrameStack(options.CallStackSize),
+		stack:        newFixedCallFrameStack(options.CallStackSize),
 		alloc:        al,
 		currentFrame: nil,
 		wrapped:      false,
@@ -1987,6 +2027,21 @@ func (ls *LState) ToChannel(n int) chan LValue {
 		return (chan LValue)(lv)
 	}
 	return nil
+}
+
+// RemoveCallerFrame removes the stack frame above the current stack frame. This is useful in tail calls. It returns
+// the new current frame.
+func (ls *LState) RemoveCallerFrame() *callFrame {
+	cs := ls.stack
+	sp := cs.Sp()
+	parentFrame := cs.At(sp - 2)
+	currentFrame := cs.At(sp - 1)
+	parentsParentFrame := parentFrame.Parent
+	*parentFrame = *currentFrame
+	parentFrame.Parent = parentsParentFrame
+	parentFrame.Idx = sp - 2
+	cs.Pop()
+	return parentFrame
 }
 
 /* }}} */

@@ -99,9 +99,7 @@ func callGFunction(L *LState, tailcall bool) bool {
 	frame := L.currentFrame
 	gfnret := frame.Fn.GFunction(L)
 	if tailcall {
-		//L.stack.Remove(L.stack.Sp() - 2) // remove caller lua function frame
-		//L.currentFrame = L.stack.Last()
-		L.currentFrame = L.stack.RemoveCallerFrame()
+		L.currentFrame = L.RemoveCallerFrame()
 	}
 
 	if gfnret < 0 {
