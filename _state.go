@@ -396,13 +396,13 @@ func newRegistry(handler registryHandler, initialSize int, growBy int, maxSize i
 	return &registry{make([]LValue, initialSize), 0, growBy, maxSize, alloc, handler}
 }
 
-// FIXME inline this
-func (rg *registry) checkSize(requiredSize int) {
+func (rg *registry) checkSize(requiredSize int) { // +inline-start
 	if requiredSize > cap(rg.array) {
 		rg.resize(requiredSize)
 	}
-}
-func (rg *registry) resize(requiredSize int) {
+} // +inline-end
+
+func (rg *registry) resize(requiredSize int) { // +inline-start
 	newSize := requiredSize + rg.growBy // give some padding
 	if newSize > rg.maxSize {
 		newSize = rg.maxSize
@@ -412,14 +412,15 @@ func (rg *registry) resize(requiredSize int) {
 		return
 	}
 	rg.forceResize(newSize)
-}
+} // +inline-end
+
 func (rg *registry) forceResize(newSize int) {
 	newSlice := make([]LValue, newSize)
 	copy(newSlice, rg.array[:rg.top]) // should we copy the area beyond top? there shouldn't be any valid values there so it shouldn't be necessary.
 	rg.array = newSlice
 }
 func (rg *registry) SetTop(top int) {
-	rg.checkSize(top)
+	// +inline-call rg.checkSize top
 	oldtop := rg.top
 	rg.top = top
 	for i := oldtop; i < rg.top; i++ {
@@ -443,7 +444,8 @@ func (rg *registry) Top() int {
 }
 
 func (rg *registry) Push(v LValue) {
-	rg.checkSize(rg.top + 1)
+	newSize := rg.top + 1
+	// +inline-call rg.checkSize newSize
 	rg.array[rg.top] = v
 	rg.top++
 }
@@ -460,7 +462,8 @@ func (rg *registry) Get(reg int) LValue {
 }
 
 func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
-	rg.checkSize(regv + n)
+	newSize := regv + n
+	// +inline-call rg.checkSize newSize
 	for i := 0; i < n; i++ {
 		if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 			rg.array[regv+i] = LNil
@@ -472,7 +475,8 @@ func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
 } // +inline-end
 
 func (rg *registry) FillNil(regm, n int) { // +inline-start
-	rg.checkSize(regm + n)
+	newSize := regm + n
+	// +inline-call rg.checkSize newSize
 	for i := 0; i < n; i++ {
 		rg.array[regm+i] = LNil
 	}
@@ -494,7 +498,8 @@ func (rg *registry) Insert(value LValue, reg int) {
 }
 
 func (rg *registry) Set(reg int, val LValue) {
-	rg.checkSize(reg + 1)
+	newSize := reg + 1
+	// +inline-call rg.checkSize newSize
 	rg.array[reg] = val
 	if reg >= rg.top {
 		rg.top = reg + 1
@@ -502,7 +507,8 @@ func (rg *registry) Set(reg int, val LValue) {
 }
 
 func (rg *registry) SetNumber(reg int, val LNumber) {
-	rg.checkSize(reg + 1)
+	newSize := reg + 1
+	// +inline-call rg.checkSize newSize
 	rg.array[reg] = rg.alloc.LNumber2I(val)
 	if reg >= rg.top {
 		rg.top = reg + 1
@@ -918,7 +924,8 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 		proto := cf.Fn.Proto
 		nargs := cf.NArgs
 		np := int(proto.NumParameters)
-		ls.reg.checkSize(cf.LocalBase + np)
+		newSize := cf.LocalBase + np
+		// +inline-call ls.reg.checkSize newSize
 		for i := nargs; i < np; i++ {
 			ls.reg.array[cf.LocalBase+i] = LNil
 			nargs = np
@@ -928,7 +935,8 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 			if nargs < int(proto.NumUsedRegisters) {
 				nargs = int(proto.NumUsedRegisters)
 			}
-			ls.reg.checkSize(cf.LocalBase + nargs)
+			newSize = cf.LocalBase + nargs
+			// +inline-call ls.reg.checkSize newSize
 			for i := np; i < nargs; i++ {
 				ls.reg.array[cf.LocalBase+i] = LNil
 			}
