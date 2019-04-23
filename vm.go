@@ -116,6 +116,15 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 				rg := L.reg
 				regm := regv + b - 1
 				n := n - (b - 1)
+				newSize := regm + n
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
 				for i := 0; i < n; i++ {
 					rg.array[regm+i] = LNil
 				}
@@ -1053,6 +1062,15 @@ func init() {
 								rg := L.reg
 								regm := regv + b - 1
 								n := n - (b - 1)
+								newSize := regm + n
+								// this section is inlined by go-inline
+								// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+								{
+									requiredSize := newSize
+									if requiredSize > cap(rg.array) {
+										rg.resize(requiredSize)
+									}
+								}
 								for i := 0; i < n; i++ {
 									rg.array[regm+i] = LNil
 								}
@@ -1122,6 +1140,15 @@ func init() {
 							rg := L.reg
 							regm := regv + b - 1
 							n := n - (b - 1)
+							newSize := regm + n
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
 							for i := 0; i < n; i++ {
 								rg.array[regm+i] = LNil
 							}
