@@ -7,20 +7,54 @@ import (
 	"time"
 )
 
-func TestCallStackOverflow(t *testing.T) {
+func TestCallStackOverflowWhenFixed(t *testing.T) {
 	L := NewState(Options{
 		CallStackSize: 3,
 	})
 	defer L.Close()
+
+	// expect fixed stack implementation by default (for backwards compatibility)
+	stack := L.stack
+	if _, ok := stack.(*fixedCallFrameStack); !ok {
+		t.Errorf("expected fixed callframe stack by default")
+	}
+
 	errorIfScriptNotFail(t, L, `
-    local function a()
-    end
-    local function b()
-      a()
+    local function recurse(count)
+      if count > 0 then
+        recurse(count - 1)
+      end
     end
     local function c()
       print(_printregs())
-      b()
+      recurse(9)
+    end
+    c()
+    `, "stack overflow")
+}
+
+func TestCallStackOverflowWhenAutoGrow(t *testing.T) {
+	L := NewState(Options{
+		CallStackSize:       3,
+		MinimizeStackMemory: true,
+	})
+	defer L.Close()
+
+	// expect auto growing stack implementation when MinimizeStackMemory is set
+	stack := L.stack
+	if _, ok := stack.(*autoGrowingCallFrameStack); !ok {
+		t.Errorf("expected fixed callframe stack by default")
+	}
+
+	errorIfScriptNotFail(t, L, `
+    local function recurse(count)
+      if count > 0 then
+        recurse(count - 1)
+      end
+    end
+    local function c()
+      print(_printregs())
+      recurse(9)
     end
     c()
     `, "stack overflow")
@@ -241,6 +275,7 @@ func TestPCall(t *testing.T) {
 	defer L.Close()
 	L.Register("f1", func(L *LState) int {
 		panic("panic!")
+		return 0
 	})
 	errorIfScriptNotFail(t, L, `f1()`, "panic!")
 	L.Push(L.GetGlobal("f1"))
@@ -258,6 +293,7 @@ func TestPCall(t *testing.T) {
 
 	err = L.PCall(0, 0, L.NewFunction(func(L *LState) int {
 		panic("panicc!")
+		return 1
 	}))
 	errorIfFalse(t, strings.Contains(err.Error(), "panicc!"), "")
 }
@@ -428,4 +464,236 @@ func TestPCallAfterFail(t *testing.T) {
 	L.Push(changeError)
 	err := L.PCall(0, 0, nil)
 	errorIfFalse(t, strings.Contains(err.Error(), "A New Error"), "error not propogated correctly")
+}
+
+func TestRegistryFixedOverflow(t *testing.T) {
+	state := NewState()
+	defer state.Close()
+	reg := state.reg
+	expectedPanic := false
+	// should be non auto grow by default
+	errorIfFalse(t, reg.maxSize == 0, "state should default to non-auto growing implementation")
+	// fill the stack and check we get a panic
+	test := LString("test")
+	for i := 0; i < len(reg.array); i++ {
+		reg.Push(test)
+	}
+	defer func() {
+		rcv := recover()
+		if rcv != nil {
+			if expectedPanic {
+				errorIfFalse(t, rcv.(error).Error() != "registry overflow", "expected registry overflow exception, got "+rcv.(error).Error())
+			} else {
+				t.Errorf("did not expect registry overflow")
+			}
+		} else if expectedPanic {
+			t.Errorf("expected registry overflow exception, but didn't get panic")
+		}
+	}()
+	expectedPanic = true
+	reg.Push(test)
+}
+
+func TestRegistryAutoGrow(t *testing.T) {
+	state := NewState(Options{RegistryMaxSize: 300, RegistrySize: 200, RegistryGrowStep: 25})
+	defer state.Close()
+	expectedPanic := false
+	defer func() {
+		rcv := recover()
+		if rcv != nil {
+			if expectedPanic {
+				errorIfFalse(t, rcv.(error).Error() != "registry overflow", "expected registry overflow exception, got "+rcv.(error).Error())
+			} else {
+				t.Errorf("did not expect registry overflow")
+			}
+		} else if expectedPanic {
+			t.Errorf("expected registry overflow exception, but didn't get panic")
+		}
+	}()
+	reg := state.reg
+	test := LString("test")
+	for i := 0; i < 300; i++ {
+		reg.Push(test)
+	}
+	expectedPanic = true
+	reg.Push(test)
+}
+
+func BenchmarkCallFrameStackPushPopAutoGrow(t *testing.B) {
+	stack := newAutoGrowingCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		for i := 0; i < Iterations; i++ {
+			stack.Pop()
+		}
+	}
+}
+
+func BenchmarkCallFrameStackPushPopFixed(t *testing.B) {
+	stack := newFixedCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		for i := 0; i < Iterations; i++ {
+			stack.Pop()
+		}
+	}
+}
+
+// this test will intentionally not incur stack growth in order to bench the performance when no allocations happen
+func BenchmarkCallFrameStackPushPopShallowAutoGrow(t *testing.B) {
+	stack := newAutoGrowingCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 8
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		for i := 0; i < Iterations; i++ {
+			stack.Pop()
+		}
+	}
+}
+
+func BenchmarkCallFrameStackPushPopShallowFixed(t *testing.B) {
+	stack := newFixedCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 8
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		for i := 0; i < Iterations; i++ {
+			stack.Pop()
+		}
+	}
+}
+
+func BenchmarkCallFrameStackPushPopFixedNoInterface(t *testing.B) {
+	stack := newFixedCallFrameStack(256).(*fixedCallFrameStack)
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		for i := 0; i < Iterations; i++ {
+			stack.Pop()
+		}
+	}
+}
+
+func BenchmarkCallFrameStackUnwindAutoGrow(t *testing.B) {
+	stack := newAutoGrowingCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		stack.SetSp(0)
+	}
+}
+
+func BenchmarkCallFrameStackUnwindFixed(t *testing.B) {
+	stack := newFixedCallFrameStack(256)
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		stack.SetSp(0)
+	}
+}
+
+func BenchmarkCallFrameStackUnwindFixedNoInterface(t *testing.B) {
+	stack := newFixedCallFrameStack(256).(*fixedCallFrameStack)
+
+	t.ResetTimer()
+
+	const Iterations = 256
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < Iterations; i++ {
+			stack.Push(callFrame{})
+		}
+		stack.SetSp(0)
+	}
+}
+
+type registryTestHandler int
+
+func (registryTestHandler) registryOverflow() {
+	panic("registry overflow")
+}
+
+// test pushing and popping from the registry
+func BenchmarkRegistryPushPopAutoGrow(t *testing.B) {
+	al := newAllocator(32)
+	sz := 256 * 20
+	reg := newRegistry(registryTestHandler(0), sz/2, 64, sz, al)
+	value := LString("test")
+
+	t.ResetTimer()
+
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < sz; i++ {
+			reg.Push(value)
+		}
+		for i := 0; i < sz; i++ {
+			reg.Pop()
+		}
+	}
+}
+
+func BenchmarkRegistryPushPopFixed(t *testing.B) {
+	al := newAllocator(32)
+	sz := 256 * 20
+	reg := newRegistry(registryTestHandler(0), sz, 0, sz, al)
+	value := LString("test")
+
+	t.ResetTimer()
+
+	for j := 0; j < t.N; j++ {
+		for i := 0; i < sz; i++ {
+			reg.Push(value)
+		}
+		for i := 0; i < sz; i++ {
+			reg.Pop()
+		}
+	}
+}
+
+func BenchmarkRegistrySetTop(t *testing.B) {
+	al := newAllocator(32)
+	sz := 256 * 20
+	reg := newRegistry(registryTestHandler(0), sz, 32, sz*2, al)
+
+	t.ResetTimer()
+
+	for j := 0; j < t.N; j++ {
+		reg.SetTop(sz)
+		reg.SetTop(0)
+	}
 }

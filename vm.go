@@ -71,6 +71,15 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 		{
 			rg := L.reg
 			regm := regv
+			newSize := regm + n
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+			{
+				requiredSize := newSize
+				if requiredSize > cap(rg.array) {
+					rg.resize(requiredSize)
+				}
+			}
 			for i := 0; i < n; i++ {
 				rg.array[regm+i] = LNil
 			}
@@ -82,6 +91,15 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 		{
 			rg := L.reg
 			limit := -1
+			newSize := regv + n
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+			{
+				requiredSize := newSize
+				if requiredSize > cap(rg.array) {
+					rg.resize(requiredSize)
+				}
+			}
 			for i := 0; i < n; i++ {
 				if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 					rg.array[regv+i] = LNil
@@ -98,6 +116,15 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 				rg := L.reg
 				regm := regv + b - 1
 				n := n - (b - 1)
+				newSize := regm + n
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
 				for i := 0; i < n; i++ {
 					rg.array[regm+i] = LNil
 				}
@@ -135,8 +162,7 @@ func callGFunction(L *LState, tailcall bool) bool {
 	frame := L.currentFrame
 	gfnret := frame.Fn.GFunction(L)
 	if tailcall {
-		L.stack.Remove(L.stack.Sp() - 2) // remove caller lua function frame
-		L.currentFrame = L.stack.Last()
+		L.currentFrame = L.RemoveCallerFrame()
 	}
 
 	if gfnret < 0 {
@@ -162,6 +188,15 @@ func callGFunction(L *LState, tailcall bool) bool {
 		start := L.reg.Top() - gfnret
 		limit := -1
 		n := wantret
+		newSize := regv + n
+		// this section is inlined by go-inline
+		// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+		{
+			requiredSize := newSize
+			if requiredSize > cap(rg.array) {
+				rg.resize(requiredSize)
+			}
+		}
 		for i := 0; i < n; i++ {
 			if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 				rg.array[regv+i] = LNil
@@ -625,18 +660,10 @@ func init() {
 				if cf.Fn == nil {
 					ls.RaiseError("attempt to call a non-function object")
 				}
-				if ls.stack.sp == ls.Options.CallStackSize {
+				if ls.stack.IsFull() {
 					ls.RaiseError("stack overflow")
 				}
-				// this section is inlined by go-inline
-				// source function is 'func (cs *callFrameStack) Push(v callFrame) ' in '_state.go'
-				{
-					cs := ls.stack
-					v := cf
-					cs.array[cs.sp] = v
-					cs.array[cs.sp].Idx = cs.sp
-					cs.sp++
-				}
+				ls.stack.Push(cf)
 				newcf := ls.stack.Last()
 				// this section is inlined by go-inline
 				// source function is 'func (ls *LState) initCallFrame(cf *callFrame) ' in '_state.go'
@@ -648,6 +675,16 @@ func init() {
 						proto := cf.Fn.Proto
 						nargs := cf.NArgs
 						np := int(proto.NumParameters)
+						newSize := cf.LocalBase + np
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+						{
+							rg := ls.reg
+							requiredSize := newSize
+							if requiredSize > cap(rg.array) {
+								rg.resize(requiredSize)
+							}
+						}
 						for i := nargs; i < np; i++ {
 							ls.reg.array[cf.LocalBase+i] = LNil
 							nargs = np
@@ -656,6 +693,16 @@ func init() {
 						if (proto.IsVarArg & VarArgIsVarArg) == 0 {
 							if nargs < int(proto.NumUsedRegisters) {
 								nargs = int(proto.NumUsedRegisters)
+							}
+							newSize = cf.LocalBase + nargs
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								rg := ls.reg
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
 							}
 							for i := np; i < nargs; i++ {
 								ls.reg.array[cf.LocalBase+i] = LNil
@@ -787,9 +834,9 @@ func init() {
 				cf.Pc = 0
 				cf.Base = RA
 				cf.LocalBase = RA + 1
-				// cf.ReturnBase = cf.ReturnBase
+				cf.ReturnBase = cf.ReturnBase
 				cf.NArgs = nargs
-				// cf.NRet = cf.NRet
+				cf.NRet = cf.NRet
 				cf.TailCall++
 				lbase := cf.LocalBase
 				if meta {
@@ -806,6 +853,16 @@ func init() {
 						proto := cf.Fn.Proto
 						nargs := cf.NArgs
 						np := int(proto.NumParameters)
+						newSize := cf.LocalBase + np
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+						{
+							rg := ls.reg
+							requiredSize := newSize
+							if requiredSize > cap(rg.array) {
+								rg.resize(requiredSize)
+							}
+						}
 						for i := nargs; i < np; i++ {
 							ls.reg.array[cf.LocalBase+i] = LNil
 							nargs = np
@@ -814,6 +871,16 @@ func init() {
 						if (proto.IsVarArg & VarArgIsVarArg) == 0 {
 							if nargs < int(proto.NumUsedRegisters) {
 								nargs = int(proto.NumUsedRegisters)
+							}
+							newSize = cf.LocalBase + nargs
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								rg := ls.reg
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
 							}
 							for i := np; i < nargs; i++ {
 								ls.reg.array[cf.LocalBase+i] = LNil
@@ -878,6 +945,15 @@ func init() {
 					start := RA
 					limit := -1
 					n := reg.Top() - RA - 1
+					newSize := regv + n
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
 					for i := 0; i < n; i++ {
 						if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 							rg.array[regv+i] = LNil
@@ -941,6 +1017,15 @@ func init() {
 						{
 							rg := L.reg
 							regm := regv
+							newSize := regm + n
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
 							for i := 0; i < n; i++ {
 								rg.array[regm+i] = LNil
 							}
@@ -952,6 +1037,15 @@ func init() {
 						{
 							rg := L.reg
 							limit := -1
+							newSize := regv + n
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
 							for i := 0; i < n; i++ {
 								if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 									rg.array[regv+i] = LNil
@@ -968,6 +1062,15 @@ func init() {
 								rg := L.reg
 								regm := regv + b - 1
 								n := n - (b - 1)
+								newSize := regm + n
+								// this section is inlined by go-inline
+								// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+								{
+									requiredSize := newSize
+									if requiredSize > cap(rg.array) {
+										rg.resize(requiredSize)
+									}
+								}
 								for i := 0; i < n; i++ {
 									rg.array[regm+i] = LNil
 								}
@@ -992,6 +1095,15 @@ func init() {
 					{
 						rg := L.reg
 						regm := regv
+						newSize := regm + n
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+						{
+							requiredSize := newSize
+							if requiredSize > cap(rg.array) {
+								rg.resize(requiredSize)
+							}
+						}
 						for i := 0; i < n; i++ {
 							rg.array[regm+i] = LNil
 						}
@@ -1003,6 +1115,15 @@ func init() {
 					{
 						rg := L.reg
 						limit := -1
+						newSize := regv + n
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+						{
+							requiredSize := newSize
+							if requiredSize > cap(rg.array) {
+								rg.resize(requiredSize)
+							}
+						}
 						for i := 0; i < n; i++ {
 							if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 								rg.array[regv+i] = LNil
@@ -1019,6 +1140,15 @@ func init() {
 							rg := L.reg
 							regm := regv + b - 1
 							n := n - (b - 1)
+							newSize := regm + n
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
 							for i := 0; i < n; i++ {
 								rg.array[regm+i] = LNil
 							}
@@ -1199,6 +1329,15 @@ func init() {
 				start := cf.Base + nparams + 1
 				limit := cf.LocalBase
 				n := nwant
+				newSize := regv + n
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
 				for i := 0; i < n; i++ {
 					if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
 						rg.array[regv+i] = LNil
@@ -1265,6 +1404,7 @@ func numberArith(L *LState, opcode int, lhs, rhs LNumber) LNumber {
 		return LNumber(math.Pow(flhs, frhs))
 	}
 	panic("should not reach here")
+	return LNumber(0)
 }
 
 func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
