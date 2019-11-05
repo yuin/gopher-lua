@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/yuin/gopher-lua/parse"
-	"golang.org/x/net/context"
 )
 
 const MultRet = -1

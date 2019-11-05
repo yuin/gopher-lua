@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/yuin/gopher-lua/parse"
-	"golang.org/x/net/context"
 )
 
 const MultRet = -1
@@ -1779,6 +1778,14 @@ func (ls *LState) SetUpvalue(fn *LFunction, no int, lv LValue) string {
 }
 
 func (ls *LState) SetHook(callback *LFunction, event string, count int) error {
+	if event == "" {
+		ls.cthook = nil
+		ls.lhook = nil
+		ls.chook = nil
+		ls.rhook = nil
+		return nil
+	}
+
 	frame := ls.stack.At(0)
 	if count > 0 {
 		ls.cthook = newCTHook(callback, count)
