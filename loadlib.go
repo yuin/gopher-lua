@@ -2,6 +2,7 @@ package lua
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,25 @@ import (
 /* load lib {{{ */
 
 var loLoaders = []LGFunction{loLoaderPreload, loLoaderLua}
+
+const (
+	InsertPosFirst = 0             // insert loader at first position
+	InsertPosLast  = math.MaxInt64 // insert loader at last position
+)
+
+func InsertLoader(idx int, loader LGFunction) {
+	if idx >= len(loLoaders) {
+		loLoaders = append(loLoaders, loader)
+		return
+	}
+	if idx < 0 {
+		idx = 0
+	}
+
+	loLoaders = append(loLoaders, nil)
+	copy(loLoaders[idx+1:], loLoaders[idx:])
+	loLoaders[idx] = loader
+}
 
 func loGetPath(env string, defpath string) string {
 	path := os.Getenv(env)
