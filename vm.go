@@ -186,7 +186,6 @@ func callGFunction(L *LState, tailcall bool) bool {
 		rg := L.reg
 		regv := frame.ReturnBase
 		start := L.reg.Top() - gfnret
-		limit := -1
 		n := wantret
 		newSize := regv + n
 		// this section is inlined by go-inline
@@ -198,7 +197,7 @@ func callGFunction(L *LState, tailcall bool) bool {
 			}
 		}
 		for i := 0; i < n; i++ {
-			if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
+			if tidx := start + i; tidx >= rg.top || tidx < 0 {
 				rg.array[regv+i] = LNil
 			} else {
 				rg.array[regv+i] = rg.array[tidx]
