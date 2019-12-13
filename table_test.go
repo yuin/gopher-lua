@@ -27,6 +27,28 @@ func TestTableLen(t *testing.T) {
 	errorIfNotEqual(t, 3, tbl.Len())
 }
 
+func TestTableAppend(t *testing.T) {
+	tbl := newLTable(0, 0)
+	tbl.RawSetInt(1, LNumber(1))
+	tbl.RawSetInt(2, LNumber(2))
+	tbl.RawSetInt(3, LNumber(3))
+	errorIfNotEqual(t, 3, tbl.Len())
+
+	tbl.RawSetInt(1, LNil)
+	tbl.RawSetInt(2, LNil)
+	errorIfNotEqual(t, 3, tbl.Len())
+
+	tbl.Append(LNumber(4))
+	errorIfNotEqual(t, 4, tbl.Len())
+
+	tbl.RawSetInt(3, LNil)
+	tbl.RawSetInt(4, LNil)
+	errorIfNotEqual(t, 0, tbl.Len())
+
+	tbl.Append(LNumber(5))
+	errorIfNotEqual(t, 1, tbl.Len())
+}
+
 func TestTableInsert(t *testing.T) {
 	tbl := newLTable(0, 0)
 	tbl.Append(LTrue)
