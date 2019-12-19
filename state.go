@@ -467,7 +467,15 @@ func (rg *registry) Get(reg int) LValue {
 // are nilled out. (So top will be regv+n)
 // CopyRange should ideally be renamed to MoveRange.
 func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
-	rg.checkSize(regv + n)
+	newSize := regv + n
+	// this section is inlined by go-inline
+	// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+	{
+		requiredSize := newSize
+		if requiredSize > cap(rg.array) {
+			rg.resize(requiredSize)
+		}
+	}
 	if limit == -1 || limit > rg.top {
 		limit = rg.top
 	}

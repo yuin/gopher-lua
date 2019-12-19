@@ -107,7 +107,15 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 		{
 			rg := L.reg
 			limit := -1
-			rg.checkSize(regv + n)
+			newSize := regv + n
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+			{
+				requiredSize := newSize
+				if requiredSize > cap(rg.array) {
+					rg.resize(requiredSize)
+				}
+			}
 			if limit == -1 || limit > rg.top {
 				limit = rg.top
 			}
@@ -219,7 +227,15 @@ func callGFunction(L *LState, tailcall bool) bool {
 		start := L.reg.Top() - gfnret
 		limit := -1
 		n := wantret
-		rg.checkSize(regv + n)
+		newSize := regv + n
+		// this section is inlined by go-inline
+		// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+		{
+			requiredSize := newSize
+			if requiredSize > cap(rg.array) {
+				rg.resize(requiredSize)
+			}
+		}
 		if limit == -1 || limit > rg.top {
 			limit = rg.top
 		}
@@ -982,7 +998,15 @@ func init() {
 					start := RA
 					limit := -1
 					n := reg.Top() - RA - 1
-					rg.checkSize(regv + n)
+					newSize := regv + n
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
 					if limit == -1 || limit > rg.top {
 						limit = rg.top
 					}
@@ -1089,7 +1113,15 @@ func init() {
 						{
 							rg := L.reg
 							limit := -1
-							rg.checkSize(regv + n)
+							newSize := regv + n
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
 							if limit == -1 || limit > rg.top {
 								limit = rg.top
 							}
@@ -1191,7 +1223,15 @@ func init() {
 					{
 						rg := L.reg
 						limit := -1
-						rg.checkSize(regv + n)
+						newSize := regv + n
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+						{
+							requiredSize := newSize
+							if requiredSize > cap(rg.array) {
+								rg.resize(requiredSize)
+							}
+						}
 						if limit == -1 || limit > rg.top {
 							limit = rg.top
 						}
@@ -1420,7 +1460,15 @@ func init() {
 				start := cf.Base + nparams + 1
 				limit := cf.LocalBase
 				n := nwant
-				rg.checkSize(regv + n)
+				newSize := regv + n
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
 				if limit == -1 || limit > rg.top {
 					limit = rg.top
 				}
