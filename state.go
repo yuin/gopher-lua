@@ -464,7 +464,7 @@ func (rg *registry) Get(reg int) LValue {
 // pass a value <= rg.top.
 // If start+n is beyond the limit, then nil values will be copied to the destination slots.
 // After the copy, the registry is truncated to be at the end of the copied range, ie the original of the copied values
-// are nilled out.
+// are nilled out. (So top will be regv+n)
 // CopyRange should ideally be renamed to MoveRange.
 func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
 	rg.checkSize(regv + n)
@@ -492,6 +492,7 @@ func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
 	}
 } // +inline-end
 
+// FillNil fills the registry with nil values from regm to regm+n and then sets the registry top to regm+n
 func (rg *registry) FillNil(regm, n int) { // +inline-start
 	newSize := regm + n
 	// this section is inlined by go-inline
@@ -505,7 +506,16 @@ func (rg *registry) FillNil(regm, n int) { // +inline-start
 	for i := 0; i < n; i++ {
 		rg.array[regm+i] = LNil
 	}
+	// values beyond top don't need to be valid LValues, so setting them to nil is fine
+	// setting them to nil rather than LNil lets us invoke the golang memclr opto
+	oldtop := rg.top
 	rg.top = regm + n
+	if rg.top < oldtop {
+		nilRange := rg.array[rg.top:oldtop]
+		for i := range nilRange {
+			nilRange[i] = nil
+		}
+	}
 } // +inline-end
 
 func (rg *registry) Insert(value LValue, reg int) {
