@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"github.com/yuin/gopher-lua/parse"
 	"os"
+	"runtime"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 const maxMemory = 40
@@ -76,6 +79,61 @@ func testScriptDir(t *testing.T, tests []string, directory string) {
 			t.Error(err)
 		}
 		L.Close()
+	}
+}
+
+var numActiveUserDatas int32 = 0
+
+type finalizerStub struct{ x byte }
+
+func allocFinalizerUserData(L *LState) int {
+	ud := L.NewUserData()
+	atomic.AddInt32(&numActiveUserDatas, 1)
+	a := finalizerStub{}
+	ud.Value = &a
+	runtime.SetFinalizer(&a, func(aa *finalizerStub) {
+		atomic.AddInt32(&numActiveUserDatas, -1)
+	})
+	L.Push(ud)
+	return 1
+}
+
+func sleep(L *LState) int {
+	time.Sleep(time.Duration(L.CheckInt(1)) * time.Millisecond)
+	return 0
+}
+
+func countFinalizers(L *LState) int {
+	L.Push(LNumber(numActiveUserDatas))
+	return 1
+}
+
+// TestLocalVarFree verifies that tables and user user datas which are no longer referenced by the lua script are
+// correctly gc-ed. There was a bug in gopher lua where local vars were not being gc-ed in all circumstances.
+func TestLocalVarFree(t *testing.T) {
+	s := `
+		function Test(a, b, c)
+			local a = { v = allocFinalizer() }
+			local b = { v = allocFinalizer() }
+			return a
+		end
+		Test(1,2,3)
+		for i = 1, 100 do
+			collectgarbage()
+			if countFinalizers() == 0 then
+				return
+			end
+			sleep(100)
+		end
+		error("user datas not finalized after 100 gcs")
+`
+	L := NewState()
+	L.SetGlobal("allocFinalizer", L.NewFunction(allocFinalizerUserData))
+	L.SetGlobal("sleep", L.NewFunction(sleep))
+	L.SetGlobal("countFinalizers", L.NewFunction(countFinalizers))
+	defer L.Close()
+	if err := L.DoString(s); err != nil {
+		t.Error(err)
 	}
 }
 
