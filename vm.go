@@ -76,6 +76,13 @@ func mainLoopWithContext(L *LState, baseframe *callFrame) {
 	}
 }
 
+// regv is the first target register to copy the return values to.
+// It can be reg.top, indicating that the copied values are going into new registers, or it can be below reg.top
+// Indicating that the values should be within the existing registers.
+// b is the available number of return values + 1.
+// n is the desired number of return values.
+// If n more than the available return values then the extra values are set to nil.
+// When this function returns the top of the registry will be set to regv+n.
 func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 	if b == 1 {
 		// this section is inlined by go-inline
@@ -95,7 +102,16 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 			for i := 0; i < n; i++ {
 				rg.array[regm+i] = LNil
 			}
+			// values beyond top don't need to be valid LValues, so setting them to nil is fine
+			// setting them to nil rather than LNil lets us invoke the golang memclr opto
+			oldtop := rg.top
 			rg.top = regm + n
+			if rg.top < oldtop {
+				nilRange := rg.array[rg.top:oldtop]
+				for i := range nilRange {
+					nilRange[i] = nil
+				}
+			}
 		}
 	} else {
 		// this section is inlined by go-inline
@@ -112,14 +128,28 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 					rg.resize(requiredSize)
 				}
 			}
+			if limit == -1 || limit > rg.top {
+				limit = rg.top
+			}
 			for i := 0; i < n; i++ {
-				if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
+				srcIdx := start + i
+				if srcIdx >= limit || srcIdx < 0 {
 					rg.array[regv+i] = LNil
 				} else {
-					rg.array[regv+i] = rg.array[tidx]
+					rg.array[regv+i] = rg.array[srcIdx]
 				}
 			}
+
+			// values beyond top don't need to be valid LValues, so setting them to nil is fine
+			// setting them to nil rather than LNil lets us invoke the golang memclr opto
+			oldtop := rg.top
 			rg.top = regv + n
+			if rg.top < oldtop {
+				nilRange := rg.array[rg.top:oldtop]
+				for i := range nilRange {
+					nilRange[i] = nil
+				}
+			}
 		}
 		if b > 1 && n > (b-1) {
 			// this section is inlined by go-inline
@@ -140,7 +170,16 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 				for i := 0; i < n; i++ {
 					rg.array[regm+i] = LNil
 				}
+				// values beyond top don't need to be valid LValues, so setting them to nil is fine
+				// setting them to nil rather than LNil lets us invoke the golang memclr opto
+				oldtop := rg.top
 				rg.top = regm + n
+				if rg.top < oldtop {
+					nilRange := rg.array[rg.top:oldtop]
+					for i := range nilRange {
+						nilRange[i] = nil
+					}
+				}
 			}
 		}
 	}
@@ -209,14 +248,28 @@ func callGFunction(L *LState, tailcall bool) bool {
 				rg.resize(requiredSize)
 			}
 		}
+		if limit == -1 || limit > rg.top {
+			limit = rg.top
+		}
 		for i := 0; i < n; i++ {
-			if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
+			srcIdx := start + i
+			if srcIdx >= limit || srcIdx < 0 {
 				rg.array[regv+i] = LNil
 			} else {
-				rg.array[regv+i] = rg.array[tidx]
+				rg.array[regv+i] = rg.array[srcIdx]
 			}
 		}
+
+		// values beyond top don't need to be valid LValues, so setting them to nil is fine
+		// setting them to nil rather than LNil lets us invoke the golang memclr opto
+		oldtop := rg.top
 		rg.top = regv + n
+		if rg.top < oldtop {
+			nilRange := rg.array[rg.top:oldtop]
+			for i := range nilRange {
+				nilRange[i] = nil
+			}
+		}
 	}
 	L.stack.Pop()
 	L.currentFrame = L.stack.Last()
@@ -969,14 +1022,28 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
+					if limit == -1 || limit > rg.top {
+						limit = rg.top
+					}
 					for i := 0; i < n; i++ {
-						if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
+						srcIdx := start + i
+						if srcIdx >= limit || srcIdx < 0 {
 							rg.array[regv+i] = LNil
 						} else {
-							rg.array[regv+i] = rg.array[tidx]
+							rg.array[regv+i] = rg.array[srcIdx]
 						}
 					}
+
+					// values beyond top don't need to be valid LValues, so setting them to nil is fine
+					// setting them to nil rather than LNil lets us invoke the golang memclr opto
+					oldtop := rg.top
 					rg.top = regv + n
+					if rg.top < oldtop {
+						nilRange := rg.array[rg.top:oldtop]
+						for i := range nilRange {
+							nilRange[i] = nil
+						}
+					}
 				}
 				cf.Base = base
 				cf.LocalBase = base + (cf.LocalBase - lbase + 1)
@@ -1047,7 +1114,16 @@ func init() {
 							for i := 0; i < n; i++ {
 								rg.array[regm+i] = LNil
 							}
+							// values beyond top don't need to be valid LValues, so setting them to nil is fine
+							// setting them to nil rather than LNil lets us invoke the golang memclr opto
+							oldtop := rg.top
 							rg.top = regm + n
+							if rg.top < oldtop {
+								nilRange := rg.array[rg.top:oldtop]
+								for i := range nilRange {
+									nilRange[i] = nil
+								}
+							}
 						}
 					} else {
 						// this section is inlined by go-inline
@@ -1064,14 +1140,28 @@ func init() {
 									rg.resize(requiredSize)
 								}
 							}
+							if limit == -1 || limit > rg.top {
+								limit = rg.top
+							}
 							for i := 0; i < n; i++ {
-								if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
+								srcIdx := start + i
+								if srcIdx >= limit || srcIdx < 0 {
 									rg.array[regv+i] = LNil
 								} else {
-									rg.array[regv+i] = rg.array[tidx]
+									rg.array[regv+i] = rg.array[srcIdx]
 								}
 							}
+
+							// values beyond top don't need to be valid LValues, so setting them to nil is fine
+							// setting them to nil rather than LNil lets us invoke the golang memclr opto
+							oldtop := rg.top
 							rg.top = regv + n
+							if rg.top < oldtop {
+								nilRange := rg.array[rg.top:oldtop]
+								for i := range nilRange {
+									nilRange[i] = nil
+								}
+							}
 						}
 						if b > 1 && n > (b-1) {
 							// this section is inlined by go-inline
@@ -1092,7 +1182,16 @@ func init() {
 								for i := 0; i < n; i++ {
 									rg.array[regm+i] = LNil
 								}
+								// values beyond top don't need to be valid LValues, so setting them to nil is fine
+								// setting them to nil rather than LNil lets us invoke the golang memclr opto
+								oldtop := rg.top
 								rg.top = regm + n
+								if rg.top < oldtop {
+									nilRange := rg.array[rg.top:oldtop]
+									for i := range nilRange {
+										nilRange[i] = nil
+									}
+								}
 							}
 						}
 					}
@@ -1125,7 +1224,16 @@ func init() {
 						for i := 0; i < n; i++ {
 							rg.array[regm+i] = LNil
 						}
+						// values beyond top don't need to be valid LValues, so setting them to nil is fine
+						// setting them to nil rather than LNil lets us invoke the golang memclr opto
+						oldtop := rg.top
 						rg.top = regm + n
+						if rg.top < oldtop {
+							nilRange := rg.array[rg.top:oldtop]
+							for i := range nilRange {
+								nilRange[i] = nil
+							}
+						}
 					}
 				} else {
 					// this section is inlined by go-inline
@@ -1142,14 +1250,28 @@ func init() {
 								rg.resize(requiredSize)
 							}
 						}
+						if limit == -1 || limit > rg.top {
+							limit = rg.top
+						}
 						for i := 0; i < n; i++ {
-							if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
+							srcIdx := start + i
+							if srcIdx >= limit || srcIdx < 0 {
 								rg.array[regv+i] = LNil
 							} else {
-								rg.array[regv+i] = rg.array[tidx]
+								rg.array[regv+i] = rg.array[srcIdx]
 							}
 						}
+
+						// values beyond top don't need to be valid LValues, so setting them to nil is fine
+						// setting them to nil rather than LNil lets us invoke the golang memclr opto
+						oldtop := rg.top
 						rg.top = regv + n
+						if rg.top < oldtop {
+							nilRange := rg.array[rg.top:oldtop]
+							for i := range nilRange {
+								nilRange[i] = nil
+							}
+						}
 					}
 					if b > 1 && n > (b-1) {
 						// this section is inlined by go-inline
@@ -1170,7 +1292,16 @@ func init() {
 							for i := 0; i < n; i++ {
 								rg.array[regm+i] = LNil
 							}
+							// values beyond top don't need to be valid LValues, so setting them to nil is fine
+							// setting them to nil rather than LNil lets us invoke the golang memclr opto
+							oldtop := rg.top
 							rg.top = regm + n
+							if rg.top < oldtop {
+								nilRange := rg.array[rg.top:oldtop]
+								for i := range nilRange {
+									nilRange[i] = nil
+								}
+							}
 						}
 					}
 				}
@@ -1356,14 +1487,28 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
+				if limit == -1 || limit > rg.top {
+					limit = rg.top
+				}
 				for i := 0; i < n; i++ {
-					if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
+					srcIdx := start + i
+					if srcIdx >= limit || srcIdx < 0 {
 						rg.array[regv+i] = LNil
 					} else {
-						rg.array[regv+i] = rg.array[tidx]
+						rg.array[regv+i] = rg.array[srcIdx]
 					}
 				}
+
+				// values beyond top don't need to be valid LValues, so setting them to nil is fine
+				// setting them to nil rather than LNil lets us invoke the golang memclr opto
+				oldtop := rg.top
 				rg.top = regv + n
+				if rg.top < oldtop {
+					nilRange := rg.array[rg.top:oldtop]
+					for i := range nilRange {
+						nilRange[i] = nil
+					}
+				}
 			}
 			return 0
 		},
