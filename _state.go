@@ -104,6 +104,14 @@ type Options struct {
 	// If `MinimizeStackMemory` is set, the call stack will be automatically grown or shrank up to a limit of
 	// `CallStackSize` in order to minimize memory usage. This does incur a slight performance penalty.
 	MinimizeStackMemory bool
+	// MaxTables and MaxTotalTableKey are used to apply memory quotas to LStates.
+	// Set them to a number to have an LState raise an error if too many tables, or too many keys (across all tables)
+	// are created. If set to 0 no tracking will be done. Tracking incurs a slight performance overhead to script
+	// execution time and may increase the number of GC cycles needed to fully collect garbage.
+	// You can set them to MaxInt32 if you want tracking enabled but don't want to particularly enforce a quota.
+	// They both default to 0, meaning to tracking / quota is enforced by default.
+	MaxTables         int32
+	MaxTotalTableKeys int32
 }
 
 /* }}} */
@@ -582,6 +590,9 @@ func newLState(options Options) *LState {
 	} else {
 		ls.stack = newFixedCallFrameStack(options.CallStackSize)
 	}
+	if options.MaxTables != 0 || options.MaxTotalTableKeys != 0 {
+		ls.tblAllocInfo = &LTableAllocInfo{maxKeys: options.MaxTotalTableKeys, maxTables: options.MaxTables}
+	}
 	ls.reg = newRegistry(ls, options.RegistrySize, options.RegistryGrowStep, options.RegistryMaxSize, al)
 	ls.Env = ls.G.Global
 	return ls
@@ -986,7 +997,7 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 			if CompatVarArg {
 				ls.reg.SetTop(cf.LocalBase + nargs + np + 1)
 				if (proto.IsVarArg & VarArgNeedsArg) != 0 {
-					argtb := newLTable(nvarargs, 0)
+					argtb := ls.CreateTable(nvarargs, 0)
 					for i := 0; i < nvarargs; i++ {
 						argtb.RawSetInt(i+1, ls.reg.Get(cf.LocalBase+np+i))
 					}
@@ -1120,6 +1131,7 @@ func (ls *LState) setField(obj LValue, key LValue, value LValue) {
 		if istable {
 			if tb.RawGet(key) != LNil {
 				ls.RawSet(tb, key, value)
+				// no need to check table quotas after this RawSet, as the key already existed
 				return
 			}
 		}
@@ -1129,6 +1141,8 @@ func (ls *LState) setField(obj LValue, key LValue, value LValue) {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key.String())
 			}
 			ls.RawSet(tb, key, value)
+			// potentially a new key was created, so check the quota
+			tb.CheckQuota(ls)
 			return
 		}
 		if metaindex.Type() == LTFunction {
@@ -1152,6 +1166,7 @@ func (ls *LState) setFieldString(obj LValue, key string, value LValue) {
 		if istable {
 			if tb.RawGetString(key) != LNil {
 				tb.RawSetString(key, value)
+				// no need to check table quotas after this RawSet, as the key already existed
 				return
 			}
 		}
@@ -1161,6 +1176,8 @@ func (ls *LState) setFieldString(obj LValue, key string, value LValue) {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key)
 			}
 			tb.RawSetString(key, value)
+			// potentially a new key was created, so check the quota
+			tb.CheckQuota(ls)
 			return
 		}
 		if metaindex.Type() == LTFunction {
@@ -1376,11 +1393,15 @@ func (ls *LState) Remove(index int) {
 /* object allocation {{{ */
 
 func (ls *LState) NewTable() *LTable {
-	return newLTable(defaultArrayCap, defaultHashCap)
+	return ls.CreateTable(defaultArrayCap, defaultHashCap)
 }
 
 func (ls *LState) CreateTable(acap, hcap int) *LTable {
-	return newLTable(acap, hcap)
+	tbl := newLTable(acap, hcap)
+	if ls.tblAllocInfo != nil {
+		tbl.SetAllocInfo(ls, ls.tblAllocInfo)
+	}
+	return tbl
 }
 
 // NewThread returns a new LState that shares with the original state all global objects.
@@ -1720,6 +1741,12 @@ func (ls *LState) SetGlobal(name string, value LValue) {
 
 func (ls *LState) Next(tb *LTable, key LValue) (LValue, LValue) {
 	return tb.Next(key)
+}
+
+// GetTableAllocInfo returns the info on table usage for this LState. It can return nil if the LState
+// has not been configured to track the table data (see `Options` config struct)
+func (ls *LState) GetTableAllocInfo() *LTableAllocInfo {
+	return ls.tblAllocInfo
 }
 
 /* }}} */

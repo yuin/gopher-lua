@@ -1,5 +1,10 @@
 package lua
 
+import (
+	"runtime"
+	"sync/atomic"
+)
+
 const defaultArrayCap = 32
 const defaultHashCap = 32
 
@@ -28,6 +33,8 @@ func (lv lValueArraySorter) Less(i, j int) bool {
 	return lessThan(lv.L, lv.Values[i], lv.Values[j])
 }
 
+// newLTable creates an LTable without setting up the memory tracking on it. See L.CreateTable() for memory tracked
+// version.
 func newLTable(acap int, hcap int) *LTable {
 	if acap < 0 {
 		acap = 0
@@ -72,6 +79,9 @@ func (tb *LTable) Append(value LValue) {
 	}
 	if len(tb.array) == 0 || tb.array[len(tb.array)-1] != LNil {
 		tb.array = append(tb.array, value)
+		if tb.finalizer != nil {
+			tb.finalizer.adjustKeys(1)
+		}
 	} else {
 		i := len(tb.array) - 2
 		for ; i >= 0; i-- {
@@ -100,6 +110,9 @@ func (tb *LTable) Insert(i int, value LValue) {
 	tb.array = append(tb.array, LNil)
 	copy(tb.array[i+1:], tb.array[i:])
 	tb.array[i] = value
+	if tb.finalizer != nil {
+		tb.finalizer.adjustKeys(1)
+	}
 }
 
 // MaxN returns a maximum number key that nil value does not exist before it.
@@ -129,6 +142,7 @@ func (tb *LTable) Remove(pos int) LValue {
 	switch {
 	case i >= larray:
 		// nothing to do
+		return oldval
 	case i == larray-1 || i < 0:
 		oldval = tb.array[larray-1]
 		tb.array = tb.array[:larray-1]
@@ -137,6 +151,9 @@ func (tb *LTable) Remove(pos int) LValue {
 		copy(tb.array[i:], tb.array[i+1:])
 		tb.array[larray-1] = nil
 		tb.array = tb.array[:larray-1]
+	}
+	if tb.finalizer != nil {
+		tb.finalizer.adjustKeys(-1)
 	}
 	return oldval
 }
@@ -147,23 +164,8 @@ func (tb *LTable) Remove(pos int) LValue {
 func (tb *LTable) RawSet(key LValue, value LValue) {
 	switch v := key.(type) {
 	case LNumber:
-		if isArrayKey(v) {
-			if tb.array == nil {
-				tb.array = make([]LValue, 0, defaultArrayCap)
-			}
-			index := int(v) - 1
-			alen := len(tb.array)
-			switch {
-			case index == alen:
-				tb.array = append(tb.array, value)
-			case index > alen:
-				for i := 0; i < (index - alen); i++ {
-					tb.array = append(tb.array, LNil)
-				}
-				tb.array = append(tb.array, value)
-			case index < alen:
-				tb.array[index] = value
-			}
+		if isInteger(v) {
+			tb.RawSetInt(int(v), value)
 			return
 		}
 	case LString:
@@ -181,7 +183,7 @@ func (tb *LTable) RawSetInt(key int, value LValue) {
 		return
 	}
 	if tb.array == nil {
-		tb.array = make([]LValue, 0, 32)
+		tb.array = make([]LValue, 0, defaultArrayCap)
 	}
 	index := key - 1
 	alen := len(tb.array)
@@ -195,6 +197,13 @@ func (tb *LTable) RawSetInt(key int, value LValue) {
 		tb.array = append(tb.array, value)
 	case index < alen:
 		tb.array[index] = value
+		return // no need to check for key count adjustment when replacing an existing key
+	}
+	if tb.finalizer != nil {
+		delta := int32(len(tb.array) - alen)
+		if delta != 0 {
+			tb.finalizer.adjustKeys(delta)
+		}
 	}
 }
 
@@ -210,9 +219,25 @@ func (tb *LTable) RawSetString(key string, value LValue) {
 
 	if value == LNil {
 		// TODO tb.keys and tb.k2i should also be removed
-		delete(tb.strdict, key)
+		if tb.finalizer != nil {
+			_, existed := tb.strdict[key]
+			if existed {
+				delete(tb.strdict, key)
+				tb.finalizer.adjustKeys(-1)
+			}
+		} else {
+			delete(tb.strdict, key)
+		}
 	} else {
-		tb.strdict[key] = value
+		if tb.finalizer != nil {
+			_, existed := tb.strdict[key]
+			tb.strdict[key] = value
+			if !existed {
+				tb.finalizer.adjustKeys(1)
+			}
+		} else {
+			tb.strdict[key] = value
+		}
 		lkey := LString(key)
 		if _, ok := tb.k2i[lkey]; !ok {
 			tb.k2i[lkey] = len(tb.keys)
@@ -237,9 +262,25 @@ func (tb *LTable) RawSetH(key LValue, value LValue) {
 
 	if value == LNil {
 		// TODO tb.keys and tb.k2i should also be removed
-		delete(tb.dict, key)
+		if tb.finalizer != nil {
+			_, existed := tb.dict[key]
+			if existed {
+				delete(tb.dict, key)
+				tb.finalizer.adjustKeys(-1)
+			}
+		} else {
+			delete(tb.dict, key)
+		}
 	} else {
-		tb.dict[key] = value
+		if tb.finalizer != nil {
+			_, existed := tb.dict[key]
+			tb.dict[key] = value
+			if !existed {
+				tb.finalizer.adjustKeys(1)
+			}
+		} else {
+			tb.dict[key] = value
+		}
 		if _, ok := tb.k2i[key]; !ok {
 			tb.k2i[key] = len(tb.keys)
 			tb.keys = append(tb.keys, key)
@@ -384,4 +425,86 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 		}
 	}
 	return LNil, LNil
+}
+
+// tableFinalized is called when the LTable associated with this tableFinalizer has been GC-ed
+func tableFinalized(f *tableFinalizer) {
+	atomic.AddInt32(&f.allocInfo.numTables, -1)
+	atomic.AddInt32(&f.allocInfo.numKeys, -f.numKeys)
+}
+
+// adjustKeys is called from the LState's goroutine only
+func (f *tableFinalizer) adjustKeys(delta int32) {
+	f.numKeys += delta
+	// num keys in alloc info must be adjusted atomically as it can be altered via finalizers which can be executed
+	// from any go routine
+	atomic.AddInt32(&f.allocInfo.numKeys, delta)
+}
+
+// CheckQuota checks if this table's alloc info's quotas have been exceeded and if so invoke's the LState's quota
+// exceeded callback. CheckQuota is called automatically by vm operation which modify tables, so only needs to be
+// invoked directly if you are writing code which has directly added keys to a table using the Raw set methods.
+func (tb *LTable) CheckQuota(L *LState) {
+	if tb.finalizer != nil {
+		ai := tb.finalizer.allocInfo
+		if ai.numKeys > ai.maxKeys {
+			L.RaiseError("quota exceeded : too many table keys (max is %v)", ai.maxKeys)
+		}
+		if ai.numTables > ai.maxTables {
+			L.RaiseError("quota exceeded : too many tables (max is %v)", ai.maxTables)
+		}
+	}
+}
+
+// SetAllocInfo associates a table alloc info with a table. This will cause this table to atomically increment and
+// decrement the fields in the alloc info with the lifetime of the LTable. Note, that there are no guarantees when GC
+// will collect an LTable.
+// You can pass nil to remove a table from the allocation tracking.
+// Pass an LState which an error should be raised in if assigning this the table to the alloc info causes a quota
+// violation. You can pass nil if you do not want a quota violation to be raised even if the quota is exceeded.
+func (tb *LTable) SetAllocInfo(L *LState, info *LTableAllocInfo) {
+	if info != nil {
+		if tb.finalizer != nil {
+			atomic.AddInt32(&tb.finalizer.allocInfo.numTables, -1)
+			atomic.AddInt32(&tb.finalizer.allocInfo.numKeys, -tb.finalizer.numKeys)
+			atomic.AddInt32(&info.numTables, 1)
+			atomic.AddInt32(&info.numKeys, tb.finalizer.numKeys)
+			tb.finalizer.allocInfo = info
+			if L != nil {
+				tb.CheckQuota(L)
+			}
+		} else {
+			tb.finalizer = &tableFinalizer{allocInfo: info}
+			atomic.AddInt32(&info.numTables, 1)
+			numKeys := int32(len(tb.strdict) + len(tb.array) + len(tb.dict))
+			tb.finalizer.numKeys = numKeys
+			atomic.AddInt32(&info.numKeys, numKeys)
+			runtime.SetFinalizer(tb.finalizer, tableFinalized)
+			if L != nil {
+				tb.CheckQuota(L)
+			}
+		}
+	} else if tb.finalizer != nil {
+		runtime.SetFinalizer(tb.finalizer, nil)
+		atomic.AddInt32(&tb.finalizer.allocInfo.numTables, -1)
+		atomic.AddInt32(&tb.finalizer.allocInfo.numKeys, -tb.finalizer.numKeys)
+		tb.finalizer = nil
+	}
+}
+
+// NewTableAllocInfo will create  new LTableAllocInfo. Pass MaxInt32 if you want a value to be unlimited.
+func NewTableAllocInfo(maxTables, maxTotalKeys int32) *LTableAllocInfo {
+	return &LTableAllocInfo{maxTables: maxTables, maxKeys: maxTotalKeys}
+}
+
+// GetTableCount returns the number of tables tracked by this LTableAllocInfo. It is safe to call this from any
+// go routine.
+func (ti *LTableAllocInfo) GetTableCount() int32 {
+	return ti.numTables
+}
+
+// GetTableKeyCount returns the number of keys tracked by this LTableAllocInfo. It is safe to call this from any
+// go routine.
+func (ti *LTableAllocInfo) GetTableKeyCount() int32 {
+	return ti.numKeys
 }

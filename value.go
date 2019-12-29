@@ -158,6 +158,55 @@ func (nm LNumber) Format(f fmt.State, c rune) {
 	}
 }
 
+// LTableAllocInfo is used to track the memory usage for one or more tables.
+// We can't accurately nor easily track the total memory use of a table, as we don't know how many of its keys / values
+// are shared with other tables. What we can track is the number of keys which is a good indication of memory use.
+// Additionally, we allow multiple tables to contribute to the same alloc info struct, hence the `numTables` field.
+// The values in this struct are adjusted using atomic operators, as the finalizer can run on any goroutine and will
+// decrement these fields when it does.
+// If the max quotas are exceeded then an error is raised in the LState.
+// Implementation note regarding numKeys:
+// numKeys tracks the lengths of the slices and maps in the underlying storage of the LTable. In Gopher Lua's current
+// implementation, this means that when you set a high integer index it will allocate a contiguous slice of values,
+// meaning that the number of keys used may go up by more than you expected:
+// For example:
+// a = {}
+// a[100] = 5
+// would allocate 100 keys, as keys 1-99 would be allocated and set to nil.
+// Similarly, if a[100] is then set to nil, the key count will stay at 100, as the underlying storage remains allocated
+// due to the Gopher Lua implementation.
+// If table.remove() is used, then the underlying storage is truncated, so the key count will be reduced. Again, this
+// is just an implementation detail of the Gopher Lua implementation.
+// Using associative arrays, the lengths work exactly as expected:
+// a = {}
+// a["100"] = 5
+// would allocate 1 key.
+// From a Lua script's point of view, this tracking of the underlying storage, rather than the number of logical keys
+// may be hard to reason about, but it's important to remember we're approximating the memory used by this
+// implementation of Lua, not the logical number of keys used by a script.
+// As we want an approximation of the memory usage, arguably, we should track the _capacity_ of the underlying slices
+// rather than their _length_, as the capacity more accurately approximates the memory use. The reason this is not done
+// is because the capacity of a slice is automatically managed by the go runtime and is free to change between versions
+// of go. This would mean Gopher Lua could behave differently between different version of go, which is not desirable.
+// We could switch to using capacity if we moved away from using the `append` built in for the table slice.
+type LTableAllocInfo struct {
+	numKeys   int32 // these can be read from other go routines safely. They are adjusted via atomic operations.
+	numTables int32
+	maxKeys   int32 // set maximums to MaxInt32 to have tracking without any quota enforcement.
+	maxTables int32
+}
+
+// tableFinalizer is a struct which hangs off an LTable which the finalizer is attached to. We can't attach directly to
+// the table as tables can reference themselves (directly or indirectly) and if a finalizer is attached to a self
+// referencing chain of objects they will never be gc-ed. Therefore, it is important when attaching a finalizer that
+// the struct being attached to cannot end up referencing itself.
+// The tableFinalizer exists as typically LTableAllocInfos are shared between LTables, whereas tableFinalizer is
+// unique per LTable, hence it is finalized when the LTable is.
+type tableFinalizer struct {
+	allocInfo *LTableAllocInfo
+	numKeys   int32 // number of keys in this specific table (needed in finalization callback)
+}
+
 type LTable struct {
 	Metatable LValue
 
@@ -166,6 +215,9 @@ type LTable struct {
 	strdict map[string]LValue
 	keys    []LValue
 	k2i     map[LValue]int
+
+	// optional finalizer used to track memory utilisation
+	finalizer *tableFinalizer
 }
 
 func (tb *LTable) String() string                     { return fmt.Sprintf("table: %p", tb) }
@@ -212,6 +264,7 @@ type LState struct {
 	reg          *registry
 	stack        callFrameStack
 	alloc        *allocator
+	tblAllocInfo *LTableAllocInfo
 	currentFrame *callFrame
 	wrapped      bool
 	uvcache      *Upvalue
