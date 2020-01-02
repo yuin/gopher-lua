@@ -590,9 +590,6 @@ func newLState(options Options) *LState {
 	} else {
 		ls.stack = newFixedCallFrameStack(options.CallStackSize)
 	}
-	if options.MaxTables != 0 || options.MaxTotalTableKeys != 0 {
-		ls.tblAllocInfo = &LTableAllocInfo{maxKeys: options.MaxTotalTableKeys, maxTables: options.MaxTables}
-	}
 	ls.reg = newRegistry(ls, options.RegistrySize, options.RegistryGrowStep, options.RegistryMaxSize, al)
 	ls.Env = ls.G.Global
 	return ls
@@ -1225,6 +1222,19 @@ func NewState(opts ...Options) *LState {
 		if !opts[0].SkipOpenLibs {
 			ls.OpenLibs()
 		}
+		// initialise the table memory tracking *after* opening the base libs, so that any tables created by the
+		// base lib opening are not counted against the quota for this LState.
+		// If for some reason you want the base libs to be counted, pass SkipOpenLibs and then explicitly load the libs
+		// with a separate call to OpenLibs from the calling code.
+		if opts[0].MaxTables != 0 || opts[0].MaxTotalTableKeys != 0 {
+			if opts[0].MaxTables == 0 {
+				opts[0].MaxTables = math.MaxInt32
+			}
+			if opts[0].MaxTotalTableKeys == 0 {
+				opts[0].MaxTotalTableKeys = math.MaxInt32
+			}
+			ls.tblAllocInfo = &LTableAllocInfo{maxKeys: opts[0].MaxTotalTableKeys, maxTables: opts[0].MaxTables}
+		}
 	}
 	return ls
 }
@@ -1410,6 +1420,7 @@ func (ls *LState) NewThread() (*LState, context.CancelFunc) {
 	thread := newLState(ls.Options)
 	thread.G = ls.G
 	thread.Env = ls.Env
+	thread.tblAllocInfo = ls.tblAllocInfo
 	var f context.CancelFunc = nil
 	if ls.ctx != nil {
 		thread.mainLoop = mainLoopWithContext
