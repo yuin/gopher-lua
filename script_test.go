@@ -3,6 +3,7 @@ package lua
 import (
 	"fmt"
 	"github.com/yuin/gopher-lua/parse"
+	"math"
 	"os"
 	"runtime"
 	"sync/atomic"
@@ -143,4 +144,113 @@ func TestGlua(t *testing.T) {
 
 func TestLua(t *testing.T) {
 	testScriptDir(t, luaTests, "_lua5.1-tests")
+}
+
+// TestTableAllocTracking will test the basic functionality of table tracking, the count of tables and their keys.
+func TestTableAllocTracking(t *testing.T) {
+	s := `
+		a = {}
+		for i = 1, 100 do
+			a[i] = {}
+		end
+`
+	l1 := NewState(Options{MaxTables: 102})
+	defer l1.Close()
+	if err := l1.DoString(s); err != nil {
+		t.Error(err)
+	}
+	// should be 101 tables created, but a temp table is created by the DoString call, so 102 tables max
+	// if we collect gc a few times, this temp table should be collected leaving us with just the 101 tables from the
+	// script.
+	for i := 0; i < 5 && l1.GetTableAllocInfo().GetTableCount() != 101; i++ {
+		runtime.GC()
+	}
+	remaining := l1.GetTableAllocInfo().GetTableCount()
+	if remaining != 101 {
+		t.Error(fmt.Sprintf("expected 101 tables to remain, found %d", remaining))
+	}
+
+	// verify that with a small quota we hit a quota error
+	l2 := NewState(Options{MaxTables: 100})
+	defer l2.Close()
+	if err := l2.DoString(s); err == nil {
+		t.Error("expected table count quota error")
+	}
+
+	// verify that if we have a sufficiently high key limit, we don't have problems
+	l3 := NewState(Options{MaxTotalTableKeys: 101})
+	defer l3.Close()
+	if err := l3.DoString(s); err != nil {
+		t.Error(err)
+	}
+
+	// verify that if we limit the number of table keys we hit a quota error
+	l4 := NewState(Options{MaxTotalTableKeys: 100})
+	defer l4.Close()
+	if err := l4.DoString(s); err == nil {
+		t.Error("expected table key quota error")
+	}
+}
+
+// TestTableAllocTrackingWithGC call functions which create table garbage, but invoke the gc to collect them. Total
+// table count should remain low.
+// It's not necessary to explicitly call the gc to keep the table count low, but calling it explicitly is the only way
+// to ensure it is reliably called within the unit test, as other wise it is up to the go runtime when to call it.
+func TestTableAllocTrackingWithGC(t *testing.T) {
+	s := `
+		function Test()
+			local a = {}
+		end
+		for i = 1, 1000 do
+			Test()
+			collectgarbage()
+		end
+`
+	l1 := NewState(Options{MaxTables: 50})
+	defer l1.Close()
+	if err := l1.DoString(s); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestTableTrackingWithNilKeys(t *testing.T) {
+	createKeys := `
+		a = {}
+		-- set 100 keys, a mix of int and string keys
+		for i = 1,50 do
+			a[i] = 1
+			a[tostring(i)] = 1
+		end
+`
+	clearKeys := `
+		-- clear them all again
+		for i = 50,1,-1 do
+			-- note, to free the key, we must use table.remove(), setting the array indexed key to nil does not work
+			-- see notes
+			table.remove(a,i)
+			a[tostring(i)] = nil
+		end
+`
+	// create an LState with some key tracking, but no explict limit
+	l := NewState(Options{MaxTotalTableKeys: math.MaxInt32})
+	defer l.Close()
+	if err := l.DoString(createKeys); err != nil {
+		t.Error(err)
+	}
+	var count int32
+	count = l.GetTableAllocInfo().GetTableKeyCount()
+	if count < 100 {
+		t.Error(fmt.Sprintf("Expected at least 100 keys to be set, found %d", count))
+	}
+	if err := l.DoString(clearKeys); err != nil {
+		t.Error(err)
+	}
+	// call the GC to get rid of the temp tables from the call to DoString
+	for i := 0; i < 5 && l.GetTableAllocInfo().GetTableCount() != 1; i++ {
+		runtime.GC()
+	}
+	count = l.GetTableAllocInfo().GetTableKeyCount()
+	if count > 0 {
+		t.Error(fmt.Sprintf("Expected no keys to be in use, found %d", count))
+	}
 }
