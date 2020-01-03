@@ -230,6 +230,58 @@ The above examples show how to customize the callstack and registry size on a pe
 An ``LState`` object that has been created by ``*LState#NewThread()`` inherits the callstack & registry size from the parent ``LState`` object.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Limiting memory usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+GopherLua uses Go's GC to manage the memory of the variables used by Lua scripts. This means it's very difficult to calculate with any decent accuracy how much memory an ``LState`` is using.
+What we can do however, is track how many lua tables have been allocated and their size. If a script has a memory leak it is most likely to manifest by the number of keys in a particular table growing forever.
+
+To limit the total number of keys across all tables in use by an ``LState``, set the `MaxTotalTableKeys` option. To limit the total number of tables, set `MaxTables`.
+
+.. code-block:: go
+
+    L := lua.NewState(lua.Options{
+        MaxTables: 100,                 // 100 tables in total
+        MaxTotalTableKeys: 1000,        // 1000 key values across all tables (eg an average of 10 per table)
+    })
+   defer L.Close()
+
+If the quota is exceeded, the ``LState`` will raise an error.
+
+There is a small performance cost to enabling the tracking, but it is almost negligible. There is also a small memory overhead for each table created, but this is also small (maybe 32 bytes or something). Having the tracking enabled increases the number of garbage collection cycles that it takes to collect unreferenced tables, so in some circumstances this can mean memory is freed up more slowly.
+
+By default, neither `MaxTotalTableKeys` nor `MaxTables` is set, meaning the tracking is disabled and there are no performance costs.
+
+++++++++++++++++++++++++++++
+Inspecting table usage
+++++++++++++++++++++++++++++
+
+You can access the current allocation counts for tables and table keys using the `GetTableAllocInfo` function on the ``LState``. This lets you monitor the growth of tables or table keys before the quota is hit.
+For `GetTableAllocInfo` to return any info, either `MaxTotalTableKeys` or `MaxTables` must have been set to a non-zero value in the ``Options``. You can set them to `math.MaxInt32` if you want tracking enabled for inspection but don't want to enforce a particular limit.
+
+++++++++++++++++++++++++++++++++
+Garbage collection vs. tracking
+++++++++++++++++++++++++++++++++
+
+To track the table usage, GopherLua makes use of the Go runtime's "finalizers". This means that after a table stops being referenced in the Lua script, it will remain counted in the table allocation counts until Go's GC collects the garbage.
+What this means in practice is that scripts can exceed their `MaxTables` or `MaxTotalTableKeys` if they generate a large amount of temporarily tables. If this causes problems for you, and you wish to still use table tracking, you can explicitly call `collectgarbage()` from your script after code which has generated a lot of temporary tables. You will need to collect the garbage at least twice due to the way Go's finalizers work.
+
+++++++++++++++++++++++++++++++++++++++++++++
+Table indices
+++++++++++++++++++++++++++++++++++++++++++++
+
+If using a table with numeric indices, be aware that the current implementation of GopherLua does not use sparse arrays. This means if you set key `1000` on a table, keys 1-999 will have space allocated for them and will be set to `nil`. This means that the number of keys used by your ``LState`` may grow by more than you expect. However, as the goal is to roughly track the memory usage, and the memory usage has indeed gone up by these `nil` keys, this is correct.
+Similarly, if you set key `1000` to nil, the underlying storage in GopherLua stays allocated - which means the number of keys in use does not reduce (as the memory usage has not gone down). To remove a key from a table in a way that frees up the underlying memory, use `table.remove()`.
+
+For more info, see the doc comment by the ``LTableAllocInfo`` struct.
+
+++++++++++++++++++++++++++++++++++++++++++++
+Other potential sources of Lua memory growth
+++++++++++++++++++++++++++++++++++++++++++++
+
+Limiting the growth and number of tables does not fix all possible memory leaks in Lua scripts. It is also possible for example that a script could create an ever growing string by concatenating repeatedly. At this time, there is no way of limiting this in GopherLua.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Miscellaneous lua.NewState options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - **Options.SkipOpenLibs bool(default false)**
