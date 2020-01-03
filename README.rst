@@ -281,6 +281,14 @@ Other potential sources of Lua memory growth
 
 Limiting the growth and number of tables does not fix all possible memory leaks in Lua scripts. It is also possible for example that a script could create an ever growing string by concatenating repeatedly. At this time, there is no way of limiting this in GopherLua.
 
+++++++++++++++++++++++++++++++++++++++++++++
+Table alloc tracking and Go Lua functions
+++++++++++++++++++++++++++++++++++++++++++++
+
+If you are implementing Lua functions in Go which create ``LTables`` using `L.NewTable()`, then those tables will automatically be added to the quota count of the ``LState``. However, if you wish, you can create extra ``LTableAllocInfos`` should you want to track ``LTables`` created by your Go functions separately. To do this, call `NewTableAllocInfo` to create a new ``LTableAllocInfo`` and then set it on the ``LTable`` with `SetAllocInfo`.
+
+If you have Go Lua functions which set keys in ``LTables``, then all methods of setting keys will correctly adjust the key count. Additionally, if setting the keys via `SetField`, then a Lua error will be raised in that ``LState`` if the max key count is exceeded.
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Miscellaneous lua.NewState options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
