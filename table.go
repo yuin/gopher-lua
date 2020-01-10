@@ -428,6 +428,8 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 }
 
 // tableFinalized is called when the LTable associated with this tableFinalizer has been GC-ed
+// it can be called from any thread, but by definition the `tableFinalizer` cannot be being operated on by other threads
+// (otherwise it wouldn't be being finalized)
 func tableFinalized(f *tableFinalizer) {
 	atomic.AddInt32(&f.allocInfo.numTables, -1)
 	atomic.AddInt32(&f.allocInfo.numKeys, -f.numKeys)
@@ -447,10 +449,10 @@ func (f *tableFinalizer) adjustKeys(delta int32) {
 func (tb *LTable) CheckQuota(L *LState) {
 	if tb.finalizer != nil {
 		ai := tb.finalizer.allocInfo
-		if ai.numKeys > ai.maxKeys {
+		if atomic.LoadInt32(&ai.numKeys) > ai.maxKeys {
 			L.RaiseError("quota exceeded : too many table keys (max is %v)", ai.maxKeys)
 		}
-		if ai.numTables > ai.maxTables {
+		if atomic.LoadInt32(&ai.numTables) > ai.maxTables {
 			L.RaiseError("quota exceeded : too many tables (max is %v)", ai.maxTables)
 		}
 	}
@@ -500,11 +502,11 @@ func NewTableAllocInfo(maxTables, maxTotalKeys int32) *LTableAllocInfo {
 // GetTableCount returns the number of tables tracked by this LTableAllocInfo. It is safe to call this from any
 // go routine.
 func (ti *LTableAllocInfo) GetTableCount() int32 {
-	return ti.numTables
+	return atomic.LoadInt32(&ti.numTables)
 }
 
 // GetTableKeyCount returns the number of keys tracked by this LTableAllocInfo. It is safe to call this from any
 // go routine.
 func (ti *LTableAllocInfo) GetTableKeyCount() int32 {
-	return ti.numKeys
+	return atomic.LoadInt32(&ti.numKeys)
 }
