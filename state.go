@@ -7,7 +7,6 @@ package lua
 import (
 	"context"
 	"fmt"
-	"github.com/yuin/gopher-lua/parse"
 	"io"
 	"math"
 	"os"
@@ -16,6 +15,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/yuin/gopher-lua/ast"
+	"github.com/yuin/gopher-lua/parse"
 )
 
 const MultRet = -1
@@ -1943,6 +1945,14 @@ func (ls *LState) Load(reader io.Reader, name string) (*LFunction, error) {
 	if err != nil {
 		return nil, newApiErrorE(ApiErrorSyntax, err)
 	}
+	proto, err := Compile(chunk, name)
+	if err != nil {
+		return nil, newApiErrorE(ApiErrorSyntax, err)
+	}
+	return newLFunctionL(proto, ls.currentEnv(), 0), nil
+}
+
+func (ls *LState) LoadAst(chunk []ast.Stmt, name string) (*LFunction, error) {
 	proto, err := Compile(chunk, name)
 	if err != nil {
 		return nil, newApiErrorE(ApiErrorSyntax, err)
