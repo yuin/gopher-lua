@@ -110,11 +110,14 @@ var dummynodes = []tnode{
 	{val: LNil, key: tkey{LNil, 0}},
 }
 
+const ltableBadPosIdx = -1
+
 var (
-	errTabOverflow   = errors.New("table overflow")
-	errTabIndexNil   = errors.New("table index is nil")
-	errTabIndexNaN   = errors.New("table index is NaN")
-	errTabInvalidKey = errors.New("invalid key to 'next'")
+	errTabOverflow     = errors.New("table overflow")
+	errTabIndexNil     = errors.New("table index is nil")
+	errTabIndexChannel = errors.New("table index is channel")
+	errTabIndexNaN     = errors.New("table index is NaN")
+	errTabInvalidKey   = errors.New("invalid key to 'next'")
 )
 
 func newltable(size int) (*ltable, error) {
@@ -158,7 +161,7 @@ func (t *ltable) setnodevector(size uint32) error {
 	if size == 0 {
 		t.node = dummynodes
 		t.lsizenode = 0
-		t.lastfreeIdx = -1
+		t.lastfreeIdx = ltableBadPosIdx
 	} else {
 		lsize := luaO_ceillog2(size)
 		if lsize > MAXHBITS {
@@ -177,17 +180,20 @@ func (t *ltable) setnodevector(size uint32) error {
 }
 
 func (t *ltable) isdummy() bool {
-	return t.lastfreeIdx == -1
+	return t.lastfreeIdx == ltableBadPosIdx
 }
 
 func (t *ltable) newkey(key LValue) (*LValue, error) {
-	if key == LNil {
+	if key.Type() == LTNil {
 		return &LNil, errTabIndexNil
+	}
+	if key.Type() == LTChannel {
+		return &LNil, errTabIndexChannel
 	}
 	mpi := int32(t.mainposition(key))
 	if t.node[mpi].val != LNil || t.isdummy() { // main position is taken?
 		fi := t.getfreepos()
-		if fi == -1 {
+		if fi == ltableBadPosIdx {
 			t.rehash(key)
 			return t.Set(key)
 		}
@@ -257,6 +263,8 @@ func (t *ltable) mainposition(key LValue) uint32 {
 	case LTString:
 		tv := key.(LString)
 		return t.hashstri(string(tv))
+	case LTChannel:
+		panic("using channel fo key is not unsupported")
 	default:
 		return t.hashpointer(key)
 	}
@@ -271,7 +279,7 @@ func (t *ltable) getfreepos() int32 {
 			}
 		}
 	}
-	return -1
+	return ltableBadPosIdx
 }
 
 func keyRawEquals(lhs, rhs LValue) bool {
@@ -536,6 +544,8 @@ func (t *ltable) getgeneric(key LValue) *LValue {
 func (t *ltable) Get(key LValue) *LValue {
 	switch key.Type() {
 	case LTNil:
+		return &LNil
+	case LTChannel:
 		return &LNil
 	case LTNumber:
 		tv := key.(LNumber)

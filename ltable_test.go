@@ -37,6 +37,18 @@ func TestLTableBasic(t *testing.T) {
 		t.Error("bad string key")
 	}
 
+	if *tb.Get(LBool(true)) != LString("b1") {
+		t.Error("bad bool key")
+	}
+
+	if *tb.Get(LBool(false)) != LString("b0") {
+		t.Error("bad bool key")
+	}
+
+	if *tb.Get(LString("NOTFOUNDKEY")) != LNil {
+		t.Error("bad key is not &nil")
+	}
+
 	count := 0
 	nk, nv, _ := tb.Next(LNil)
 	for nk != LNil {
@@ -53,6 +65,36 @@ func TestLTableBasic(t *testing.T) {
 		t.Error("not 10")
 	}
 
+	ud := &LUserData{}
+
+	p, _ = tb.Set(ud)
+	*p = LString("UD")
+	if *tb.Get(ud) != LString("UD") {
+		t.Error("bad userdata key")
+	}
+
+	fl := LNumber(34.232)
+	p, _ = tb.Set(fl)
+	*p = LString("float")
+	if *tb.Get(fl) != LString("float") {
+		t.Error("bad float64 key")
+	}
+	if *tb.Get(LNumber(1243243211232432.23)) != LNil {
+		t.Error("bad float64 key")
+	}
+}
+
+func TestLTableDense(t *testing.T) {
+	tb, _ := newltable(5)
+	for i := 1; i <= 1000; i++ {
+		tb.SetInt(int64(i), LNumber(i))
+	}
+	if len(tb.array) != 1024 {
+		t.Error("array size should be 1024")
+	}
+	if len(tb.node) != 1 && !tb.isdummy() && tb.lsizenode != 0 {
+		t.Error("hash size should be 0")
+	}
 }
 
 func TestLTableSparse(t *testing.T) {
@@ -60,10 +102,10 @@ func TestLTableSparse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := 1; i < 1000; i++ {
+	for i := 0; i < 1000; i++ {
 		_ = tb.SetInt(int64(i*1000), LNumber(i*1000))
 	}
-	for i := 1; i < 1000; i++ {
+	for i := 0; i < 1000; i++ {
 		p := tb.Get(LNumber(i * 1000))
 		if *p != LNumber(i*1000) {
 			t.Error("bad: ", i)
