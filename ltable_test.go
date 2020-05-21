@@ -9,6 +9,9 @@ func TestLTableBasic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if tb.GetN() != 0 {
+		t.Error("not 0")
+	}
 	for i := -10; i <= 10; i++ {
 		tb.SetInt(int64(i), LNumber(i))
 		// fmt.Println(i, tb.array, tb.node)
@@ -95,6 +98,53 @@ func TestLTableDense(t *testing.T) {
 	if len(tb.node) != 1 && !tb.isdummy() && tb.lsizenode != 0 {
 		t.Error("hash size should be 0")
 	}
+
+	tb1, _ := newltable(5)
+	for i := 1000; i >= 1; i-- {
+		tb1.SetInt(int64(i), LNumber(i))
+	}
+
+	if len(tb1.array) != 1024 {
+		t.Error("array size should be 1024")
+	}
+
+	if len(tb1.node) != 1 {
+		t.Error("hash size should be 0")
+	}
+
+	// shrink
+
+	for i := 200; i <= 1000; i++ {
+		p, _ := tb.Set(LNumber(i))
+		*p = LNil
+	}
+	{
+		// trigger shrink
+		p, _ := tb.Set(LNumber(32.2))
+		*p = LNumber(32.2)
+	}
+	if len(tb.array) != 256 {
+		t.Error("array size should be 256")
+	}
+
+	// rotate the table (queue)
+	tb2, _ := newltable(0)
+
+	for i := 1; i <= 1000; i++ {
+		tb2.SetInt(int64(i), LNumber(i))
+	}
+	if tb2.GetN() != 1000 {
+		t.Error("getn not 1000")
+	}
+	for i := 1; i <= 800; i++ {
+		p, _ := tb2.Set(LNumber(i))
+		*p = LNil
+		tb2.SetInt(int64(1000+i), LNumber(i))
+	}
+	if len(tb2.array) != 0 {
+		t.Error("array size should be 0")
+	}
+
 }
 
 func TestLTableSparse(t *testing.T) {
@@ -110,5 +160,20 @@ func TestLTableSparse(t *testing.T) {
 		if *p != LNumber(i*1000) {
 			t.Error("bad: ", i)
 		}
+	}
+
+	tb1, _ := newltable(0)
+	tb1.SetInt(1, LNumber(1))
+	tb1.SetInt(2, LNumber(2))
+	tb1.SetInt(3, LNumber(3))
+	tb1.SetInt(4, LNumber(4))
+	if tb1.GetN() != 4 {
+		t.Error("bad: ", tb1.GetN())
+	}
+	p, _ := tb1.Set(LNumber(42.2))
+	*p = LNumber(42.2)
+	// tb1.SetInt(5, LNumber(5))
+	if tb1.GetN() != 4 {
+		t.Error("bad: ", tb1.GetN())
 	}
 }
