@@ -2,7 +2,6 @@ package lua
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"unsafe"
 )
@@ -45,63 +44,6 @@ func luaO_ceillog2(x uint32) int {
 	return l + int(log_2[x])
 }
 
-type tkey struct {
-	tvk  LValue
-	next int32 /* for chaining (offset for next node) */
-}
-
-type tnode struct {
-	val LValue
-	key tkey
-}
-
-type ltable struct {
-	lsizenode   byte /* log2 of size of 'node' array */
-	sizearray   uint32
-	array       []LValue
-	node        []tnode
-	lastfreeIdx int32
-}
-
-var dummynodes = []tnode{
-	{val: LNil, key: tkey{LNil, 0}},
-}
-
-var (
-	errTabOverflow   = errors.New("table overflow")
-	errTabIndexNil   = errors.New("table index is nil")
-	errTabIndexNaN   = errors.New("table index is NaN")
-	errTabInvalidKey = errors.New("invalid key to 'next'")
-)
-
-func newltable(size int) (*ltable, error) {
-	tab := &ltable{}
-	if err := tab.setnodevector(uint32(size)); err != nil {
-		return nil, err
-	}
-
-	return tab, nil
-}
-
-func sizenode(t *ltable) uint32 {
-	return 1 << uint32(t.lsizenode)
-}
-
-func hashpow2i(t *ltable, n uint64) uint32 {
-	mod := uint32(n) & (sizenode(t) - 1)
-	return mod
-}
-
-/*
-** for some types, it is better to avoid modulus by power of 2, as
-** they tend to have many 2 factors.
- */
-
-func hashmodi(t *ltable, n uint32) uint32 {
-	mod := n % ((sizenode(t) - 1) | 1)
-	return mod
-}
-
 func addString32(h uint32, s string) uint32 {
 	const prime32 = uint32(16777619)
 	for len(s) >= 8 {
@@ -141,18 +83,75 @@ func hashString32(s string) uint32 {
 	return addString32(uint32(2166136261), s)
 }
 
-func hashstri(t *ltable, n string) uint32 {
-	return hashmodi(t, hashString32(n))
-}
-
-func hashpointer(t *ltable, n LValue) uint32 {
-	v := *(*[2]uintptr)(unsafe.Pointer(&n))
-	return hashmodi(t, uint32(v[1])&math.MaxUint32)
-}
-
 func isIntegerKey(v LNumber) bool {
 	t := int64(v)
 	return LNumber(t) == v && t >= math.MinInt64 && t <= math.MaxInt64
+}
+
+type tkey struct {
+	tvk  LValue
+	next int32 /* for chaining (offset for next node) */
+}
+
+type tnode struct {
+	val LValue
+	key tkey
+}
+
+type ltable struct {
+	lsizenode   byte /* log2 of size of 'node' array */
+	sizearray   uint32
+	array       []LValue
+	node        []tnode
+	lastfreeIdx int32
+}
+
+var dummynodes = []tnode{
+	{val: LNil, key: tkey{LNil, 0}},
+}
+
+var (
+	errTabOverflow   = errors.New("table overflow")
+	errTabIndexNil   = errors.New("table index is nil")
+	errTabIndexNaN   = errors.New("table index is NaN")
+	errTabInvalidKey = errors.New("invalid key to 'next'")
+)
+
+func newltable(size int) (*ltable, error) {
+	tab := &ltable{}
+	if err := tab.setnodevector(uint32(size)); err != nil {
+		return nil, err
+	}
+
+	return tab, nil
+}
+
+func (t *ltable) sizenode() uint32 {
+	return 1 << uint32(t.lsizenode)
+}
+
+func (t *ltable) hashpow2i(n uint64) uint32 {
+	mod := uint32(n) & (t.sizenode() - 1)
+	return mod
+}
+
+/*
+** for some types, it is better to avoid modulus by power of 2, as
+** they tend to have many 2 factors.
+ */
+
+func (t *ltable) hashmodi(n uint32) uint32 {
+	mod := n % ((t.sizenode() - 1) | 1)
+	return mod
+}
+
+func (t *ltable) hashstri(n string) uint32 {
+	return t.hashmodi(hashString32(n))
+}
+
+func (t *ltable) hashpointer(n LValue) uint32 {
+	v := *(*[2]uintptr)(unsafe.Pointer(&n))
+	return t.hashmodi(uint32(v[1]) & math.MaxUint32)
 }
 
 func (t *ltable) setnodevector(size uint32) error {
@@ -177,27 +176,7 @@ func (t *ltable) setnodevector(size uint32) error {
 	return nil
 }
 
-func (t *ltable) getint(key int64) *LValue {
-	if uint64(key)-1 < uint64(t.sizearray) {
-		return &t.array[key-1]
-	} else {
-		ni := int32(hashpow2i(t, uint64(key)))
-		for {
-			if kv, ok := t.node[ni].key.tvk.(LNumber); ok && isIntegerKey(kv) && int64(kv) == key {
-				return &t.node[ni].val
-			} else {
-				nx := t.node[ni].key.next
-				if nx == 0 {
-					break
-				}
-				ni += nx
-			}
-		}
-		return &LNil
-	}
-}
-
-func isdummy(t *ltable) bool {
+func (t *ltable) isdummy() bool {
 	return t.lastfreeIdx == -1
 }
 
@@ -205,17 +184,17 @@ func (t *ltable) newkey(key LValue) (*LValue, error) {
 	if key == LNil {
 		return &LNil, errTabIndexNil
 	}
-	mpi := int32(mainposition(t, key))
-	if t.node[mpi].val != LNil || isdummy(t) { // main position is taken?
-		fi := getfreepos(t)
+	mpi := int32(t.mainposition(key))
+	if t.node[mpi].val != LNil || t.isdummy() { // main position is taken?
+		fi := t.getfreepos()
 		if fi == -1 {
 			t.rehash(key)
-			return t.set(key)
+			return t.Set(key)
 		}
-		if isdummy(t) {
+		if t.isdummy() {
 			panic("still dummy hash")
 		}
-		otherni := int32(mainposition(t, t.node[mpi].key.tvk))
+		otherni := int32(t.mainposition(t.node[mpi].key.tvk))
 		if otherni != mpi { // is colliding node out of its main position?
 			// yes; move colliding node into free position
 			for otherni+t.node[otherni].key.next != mpi {
@@ -245,20 +224,6 @@ func (t *ltable) newkey(key LValue) (*LValue, error) {
 	return &t.node[mpi].val, nil
 }
 
-func (t *ltable) setint(key int64, value LValue) error {
-	p := t.getint(key)
-	if p != &LNil {
-		*p = value
-	} else {
-		p, err := t.newkey(LNumber(key))
-		if err != nil {
-			return err
-		}
-		*p = value
-	}
-	return nil
-}
-
 func hashfloat(f float64) int32 {
 	n, i := math.Frexp(f)
 	n = n * -math.MinInt32
@@ -274,31 +239,31 @@ func hashfloat(f float64) int32 {
 	}
 }
 
-func mainposition(t *ltable, key LValue) uint32 {
+func (t *ltable) mainposition(key LValue) uint32 {
 	switch key.Type() {
 	case LTNumber:
 		tv := key.(LNumber)
 		if isIntegerKey(tv) {
-			return hashpow2i(t, uint64(tv))
+			return t.hashpow2i(uint64(tv))
 		}
-		return hashmodi(t, uint32(hashfloat(float64(tv))))
+		return t.hashmodi(uint32(hashfloat(float64(tv))))
 	case LTBool:
 		tv := key.(LBool)
 		if tv {
-			return hashpow2i(t, 1)
+			return t.hashpow2i(1)
 		} else {
-			return hashpow2i(t, 0)
+			return t.hashpow2i(0)
 		}
 	case LTString:
 		tv := key.(LString)
-		return hashstri(t, string(tv))
+		return t.hashstri(string(tv))
 	default:
-		return hashpointer(t, key)
+		return t.hashpointer(key)
 	}
 }
 
-func getfreepos(t *ltable) int32 {
-	if !isdummy(t) {
+func (t *ltable) getfreepos() int32 {
+	if !t.isdummy() {
 		for t.lastfreeIdx > 0 {
 			t.lastfreeIdx--
 			if t.node[t.lastfreeIdx].key.tvk == LNil {
@@ -363,10 +328,9 @@ func (t *ltable) findindex(key LValue) (uint32, error) {
 	if i != 0 && i <= t.sizearray {
 		return i, nil
 	} else {
-		ni := int32(mainposition(t, key))
+		ni := int32(t.mainposition(key))
 		var nx int32
 		for {
-			fmt.Println("B", t.node[ni].key.tvk, key)
 			if keyRawEquals(t.node[ni].key.tvk, key) {
 				i = uint32(ni)
 				// hash elements are numbered after array ones
@@ -382,7 +346,7 @@ func (t *ltable) findindex(key LValue) (uint32, error) {
 	}
 }
 
-func (t *ltable) next(key LValue) (LValue, LValue, bool) {
+func (t *ltable) Next(key LValue) (LValue, LValue, bool) {
 	i, err := t.findindex(key)
 	if err != nil {
 		return LNil, LNil, false
@@ -393,10 +357,8 @@ func (t *ltable) next(key LValue) (LValue, LValue, bool) {
 			return LNumber(i + 1), t.array[i], true
 		}
 	}
-	fmt.Println(key, i, i-t.sizearray)
-	fmt.Println(t.array, t.node)
 	// hash part
-	for i -= t.sizearray; int32(i) < int32(sizenode(t)); i++ {
+	for i -= t.sizearray; int32(i) < int32(t.sizenode()); i++ {
 		gv := t.node[i].val
 		if gv != LNil {
 			return t.node[i].key.tvk, gv, true
@@ -471,7 +433,7 @@ func (t *ltable) numusearray(nums []uint32) uint32 {
 func (t *ltable) numusehash(nums []uint32, pna *uint32) int32 {
 	var totaluse int32
 	var ause int32
-	i := int32(sizenode(t))
+	i := int32(t.sizenode())
 	for i > 0 {
 		i--
 		if t.node[i].val != LNil {
@@ -494,10 +456,10 @@ func (t *ltable) setarrayvector(size uint32) {
 }
 
 func (t *ltable) allocsizenode() uint32 {
-	if isdummy(t) {
+	if t.isdummy() {
 		return 0
 	} else {
-		return sizenode(t)
+		return t.sizenode()
 	}
 }
 
@@ -509,7 +471,7 @@ func (t *ltable) resize(nasize, nhsize uint32) error {
 	if err := t.setnodevector(nhsize); err != nil {
 		return err
 	}
-	println("XX", nasize, nhsize, len(t.node))
+	println("ltable resize", nasize, nhsize, len(t.node))
 	if nasize > oldasize {
 		// array part must grow?
 		t.setarrayvector(nasize)
@@ -519,7 +481,7 @@ func (t *ltable) resize(nasize, nhsize uint32) error {
 		// re-insert elements from vanishing slice
 		for i := nasize; i < oldasize; i++ {
 			if t.array[i] != LNil {
-				t.setint(int64(i+1), t.array[i]) // ignore error
+				t.SetInt(int64(i+1), t.array[i]) // ignore error
 			}
 		}
 		s := make([]LValue, nasize)
@@ -529,15 +491,35 @@ func (t *ltable) resize(nasize, nhsize uint32) error {
 	// re-insert elements from hash part
 	for j := int32(ohsize) - 1; j >= 0; j-- {
 		if nold[j].val != LNil {
-			p, _ := t.set(nold[j].key.tvk)
+			p, _ := t.Set(nold[j].key.tvk)
 			*p = nold[j].val
 		}
 	}
 	return nil
 }
 
+func (t *ltable) GetInt(key int64) *LValue {
+	if uint64(key)-1 < uint64(t.sizearray) {
+		return &t.array[key-1]
+	} else {
+		ni := int32(t.hashpow2i(uint64(key)))
+		for {
+			if kv, ok := t.node[ni].key.tvk.(LNumber); ok && isIntegerKey(kv) && int64(kv) == key {
+				return &t.node[ni].val
+			} else {
+				nx := t.node[ni].key.next
+				if nx == 0 {
+					break
+				}
+				ni += nx
+			}
+		}
+		return &LNil
+	}
+}
+
 func (t *ltable) getgeneric(key LValue) *LValue {
-	ni := int32(mainposition(t, key))
+	ni := int32(t.mainposition(key))
 	for {
 		if keyRawEquals(t.node[ni].key.tvk, key) {
 			return &t.node[ni].val
@@ -551,14 +533,14 @@ func (t *ltable) getgeneric(key LValue) *LValue {
 	}
 }
 
-func (t *ltable) get(key LValue) *LValue {
+func (t *ltable) Get(key LValue) *LValue {
 	switch key.Type() {
 	case LTNil:
 		return &LNil
 	case LTNumber:
 		tv := key.(LNumber)
 		if isIntegerKey(tv) {
-			return t.getint(int64(tv))
+			return t.GetInt(int64(tv))
 		}
 		return t.getgeneric(key)
 	default:
@@ -566,8 +548,22 @@ func (t *ltable) get(key LValue) *LValue {
 	}
 }
 
-func (t *ltable) set(key LValue) (*LValue, error) {
-	p := t.get(key)
+func (t *ltable) SetInt(key int64, value LValue) error {
+	p := t.GetInt(key)
+	if p != &LNil {
+		*p = value
+	} else {
+		p, err := t.newkey(LNumber(key))
+		if err != nil {
+			return err
+		}
+		*p = value
+	}
+	return nil
+}
+
+func (t *ltable) Set(key LValue) (*LValue, error) {
+	p := t.Get(key)
 	if p != &LNil {
 		return p, nil
 	}
@@ -590,7 +586,7 @@ func (t *ltable) rehash(key LValue) error {
 ** Try to find a boundary in table 't'. A 'boundary' is an integer index
 ** such that t[i] is non-nil and t[i+1] is nil (and 0 if t[1] is nil).
  */
-func (t *ltable) getn() uint64 {
+func (t *ltable) GetN() uint64 {
 	j := t.sizearray
 	if j > 0 && t.array[j-1] == LNil {
 		// there is a boundary in the array part: (binary) search for it
@@ -604,7 +600,7 @@ func (t *ltable) getn() uint64 {
 			}
 		}
 		return uint64(i)
-	} else if isdummy(t) {
+	} else if t.isdummy() {
 		return uint64(j)
 	} else {
 		return t.unboundSearch(uint64(j))
@@ -615,13 +611,13 @@ func (t *ltable) unboundSearch(j uint64) uint64 {
 	i := j
 	j++
 	// find 'i' and 'j' such that i is present and j is not
-	for t.getint(int64(j)) != &LNil {
+	for t.GetInt(int64(j)) != &LNil {
 		i = j
 		if j > uint64(math.MaxInt64)/2 {
 			// overflow?
 			// table was built with bad purposes: resort to linear search
 			i = 1
-			for t.getint(int64(i)) != &LNil {
+			for t.GetInt(int64(i)) != &LNil {
 				i++
 			}
 			return i - 1
@@ -631,7 +627,7 @@ func (t *ltable) unboundSearch(j uint64) uint64 {
 	// now do a binary search between them
 	for j-i > 1 {
 		m := (i + j) / 2
-		if t.getint(int64(m)) == &LNil {
+		if t.GetInt(int64(m)) == &LNil {
 			j = m
 		} else {
 			i = m
