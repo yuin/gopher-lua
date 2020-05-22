@@ -1,7 +1,5 @@
 package lua
 
-import "fmt"
-
 const defaultArrayCap = 4
 const defaultHashCap = 4
 
@@ -41,7 +39,10 @@ func newLTable(acap int, hcap int) *LTable {
 	}
 	tb := &LTable{}
 	tb.Metatable = LNil
-	initltable(&tb.tab, acap+hcap)
+	err := initltable(&tb.tab, hcap)
+	if err != nil {
+		panic(err)
+	}
 	return tb
 }
 
@@ -98,7 +99,7 @@ func (tb *LTable) Insert(pos int, value LValue) {
 	}
 	i := 0
 	for i = e; i > pos; i-- { /* move up elements */
-		pv := *tb.tab.GetInt(int64(i) - 1)
+		pv := tb.tab.GetInt(int64(i) - 1)
 		_ = tb.tab.SetInt(int64(i), pv)
 	}
 	_ = tb.tab.SetInt(int64(pos), value)
@@ -142,13 +143,12 @@ func (tb *LTable) Remove(pos int) LValue {
 			panic("position out of bounds")
 		}
 	}
-	oldval := *tb.tab.GetInt(int64(pos))
+	oldval := tb.tab.GetInt(int64(pos))
 	for ; pos < size; pos++ {
-		nv := *tb.tab.GetInt(int64(pos) + 1)
+		nv := tb.tab.GetInt(int64(pos) + 1)
 		_ = tb.tab.SetInt(int64(pos), nv)
 	}
 	_ = tb.tab.SetInt(int64(pos), LNil)
-	fmt.Println(tb.tab.array, tb.tab.node)
 	return oldval
 }
 
@@ -156,11 +156,10 @@ func (tb *LTable) Remove(pos int) LValue {
 // It is recommended to use `RawSetString` or `RawSetInt` for performance
 // if you already know the given LValue is a string or number.
 func (tb *LTable) RawSet(key LValue, value LValue) {
-	p, err := tb.tab.Set(key)
+	err := tb.tab.Set(key, value)
 	if err != nil {
 		panic(err)
 	}
-	*p = value
 }
 
 // RawSetInt sets a given LValue at a position `key` without the __newindex metamethod.
@@ -183,22 +182,22 @@ func (tb *LTable) RawSetH(key LValue, value LValue) {
 
 // RawGet returns an LValue associated with a given key without __index metamethod.
 func (tb *LTable) RawGet(key LValue) LValue {
-	return *tb.tab.Get(key)
+	return tb.tab.Get(key)
 }
 
 // RawGetInt returns an LValue at position `key` without __index metamethod.
 func (tb *LTable) RawGetInt(key int) LValue {
-	return *tb.tab.GetInt(int64(key))
+	return tb.tab.GetInt(int64(key))
 }
 
 // RawGet returns an LValue associated with a given key without __index metamethod.
 func (tb *LTable) RawGetH(key LValue) LValue {
-	return *tb.tab.Get(key)
+	return tb.tab.Get(key)
 }
 
 // RawGetString returns an LValue associated with a given key without __index metamethod.
 func (tb *LTable) RawGetString(key string) LValue {
-	return *tb.tab.Get(LString(key))
+	return tb.tab.Get(LString(key))
 }
 
 // ForEach iterates over this table of elements, yielding each in turn to a given function.

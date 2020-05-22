@@ -193,17 +193,17 @@ func (t *ltable) isdummy() bool {
 
 func (t *ltable) newkey(key LValue) (*LValue, error) {
 	if key.Type() == LTNil {
-		return &LNil, errTabIndexNil
+		return nil, errTabIndexNil
 	}
 	if key.Type() == LTChannel {
-		return &LNil, errTabIndexChannel
+		return nil, errTabIndexChannel
 	}
 	mpi := int32(t.mainposition(key))
 	if t.node[mpi].val != LNil || t.isdummy() { // main position is taken?
 		fi := t.getfreepos()
 		if fi == ltableBadPosIdx {
 			t.rehash(key)
-			return t.Set(key)
+			return t.set(key)
 		}
 		if t.isdummy() {
 			panic("still dummy hash")
@@ -506,14 +506,17 @@ func (t *ltable) resize(nasize, nhsize uint32) error {
 	// re-insert elements from hash part
 	for j := int32(ohsize) - 1; j >= 0; j-- {
 		if nold[j].val != LNil {
-			p, _ := t.Set(nold[j].key.tvk)
+			p, err := t.set(nold[j].key.tvk)
+			if err != nil {
+				panic(err)
+			}
 			*p = nold[j].val
 		}
 	}
 	return nil
 }
 
-func (t *ltable) GetInt(key int64) *LValue {
+func (t *ltable) getInt(key int64) *LValue {
 	if uint64(key)-1 < uint64(t.sizearray) {
 		return &t.array[key-1]
 	} else {
@@ -533,6 +536,10 @@ func (t *ltable) GetInt(key int64) *LValue {
 	}
 }
 
+func (t *ltable) GetInt(key int64) LValue {
+	return *t.getInt(key)
+}
+
 func (t *ltable) getgeneric(key LValue) *LValue {
 	ni := int32(t.mainposition(key))
 	for {
@@ -548,7 +555,7 @@ func (t *ltable) getgeneric(key LValue) *LValue {
 	}
 }
 
-func (t *ltable) Get(key LValue) *LValue {
+func (t *ltable) get(key LValue) *LValue {
 	switch key.Type() {
 	case LTNil:
 		return &LNil
@@ -557,7 +564,7 @@ func (t *ltable) Get(key LValue) *LValue {
 	case LTNumber:
 		tv := key.(LNumber)
 		if isIntegerKey(tv) {
-			return t.GetInt(int64(tv))
+			return t.getInt(int64(tv))
 		}
 		return t.getgeneric(key)
 	default:
@@ -565,8 +572,12 @@ func (t *ltable) Get(key LValue) *LValue {
 	}
 }
 
+func (t *ltable) Get(key LValue) LValue {
+	return *t.get(key)
+}
+
 func (t *ltable) SetInt(key int64, value LValue) error {
-	p := t.GetInt(key)
+	p := t.getInt(key)
 	if p != &LNil {
 		*p = value
 	} else {
@@ -579,8 +590,17 @@ func (t *ltable) SetInt(key int64, value LValue) error {
 	return nil
 }
 
-func (t *ltable) Set(key LValue) (*LValue, error) {
-	p := t.Get(key)
+func (t *ltable) Set(key LValue, value LValue) error {
+	p, err := t.set(key)
+	if err != nil {
+		return err
+	}
+	*p = value
+	return nil
+}
+
+func (t *ltable) set(key LValue) (*LValue, error) {
+	p := t.get(key)
 	if p != &LNil {
 		return p, nil
 	}
@@ -628,13 +648,13 @@ func (t *ltable) unboundSearch(j uint64) uint64 {
 	i := j
 	j++
 	// find 'i' and 'j' such that i is present and j is not
-	for *t.GetInt(int64(j)) != LNil {
+	for *t.getInt(int64(j)) != LNil {
 		i = j
 		if j > uint64(math.MaxInt64)/2 {
 			// overflow?
 			// table was built with bad purposes: resort to linear search
 			i = 1
-			for *t.GetInt(int64(i)) != LNil {
+			for *t.getInt(int64(i)) != LNil {
 				i++
 			}
 			return i - 1
@@ -644,7 +664,7 @@ func (t *ltable) unboundSearch(j uint64) uint64 {
 	// now do a binary search between them
 	for j-i > 1 {
 		m := (i + j) / 2
-		if *t.GetInt(int64(m)) == LNil {
+		if *t.getInt(int64(m)) == LNil {
 			j = m
 		} else {
 			i = m

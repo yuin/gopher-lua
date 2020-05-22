@@ -18,37 +18,32 @@ func TestLTableBasic(t *testing.T) {
 	}
 	for i := -10; i <= 10; i++ {
 		p := tb.GetInt(int64(i))
-		if (*p).(LNumber) != LNumber(i) {
-			t.Error("bad: ", i, *p)
+		if p.(LNumber) != LNumber(i) {
+			t.Error("bad: ", i, p)
 		}
 	}
 
 	t.Log(tb.node)
-	p, _ := tb.Set(LString("XXX"))
-	*p = LString("XXXVAL")
-	p, _ = tb.Set(LString("YYY"))
-	*p = LString("YYYVAL1")
-	p, _ = tb.Set(LString("YYY"))
-	*p = LString("YYYVAL2")
+	tb.Set(LString("XXX"), LString("XXXVAL"))
+	tb.Set(LString("YYY"), LString("YYYVAL1"))
+	tb.Set(LString("YYY"), LString("YYYVAL2"))
 
-	p, _ = tb.Set(LBool(true))
-	*p = LString("b1")
-	p, _ = tb.Set(LBool(false))
-	*p = LString("b0")
+	tb.Set(LBool(true), LString("b1"))
+	tb.Set(LBool(false), LString("b0"))
 
-	if *tb.Get(LString("YYY")) != LString("YYYVAL2") {
+	if tb.Get(LString("YYY")) != LString("YYYVAL2") {
 		t.Error("bad string key")
 	}
 
-	if *tb.Get(LBool(true)) != LString("b1") {
+	if tb.Get(LBool(true)) != LString("b1") {
 		t.Error("bad bool key")
 	}
 
-	if *tb.Get(LBool(false)) != LString("b0") {
+	if tb.Get(LBool(false)) != LString("b0") {
 		t.Error("bad bool key")
 	}
 
-	if *tb.Get(LString("NOTFOUNDKEY")) != LNil {
+	if tb.Get(LString("NOTFOUNDKEY")) != LNil {
 		t.Error("bad key is not &nil")
 	}
 
@@ -70,19 +65,17 @@ func TestLTableBasic(t *testing.T) {
 
 	ud := &LUserData{}
 
-	p, _ = tb.Set(ud)
-	*p = LString("UD")
-	if *tb.Get(ud) != LString("UD") {
+	tb.Set(ud, LString("UD"))
+	if tb.Get(ud) != LString("UD") {
 		t.Error("bad userdata key")
 	}
 
 	fl := LNumber(34.232)
-	p, _ = tb.Set(fl)
-	*p = LString("float")
-	if *tb.Get(fl) != LString("float") {
+	tb.Set(fl, LString("float"))
+	if tb.Get(fl) != LString("float") {
 		t.Error("bad float64 key")
 	}
-	if *tb.Get(LNumber(1243243211232432.23)) != LNil {
+	if tb.Get(LNumber(1243243211232432.23)) != LNil {
 		t.Error("bad float64 key")
 	}
 }
@@ -115,14 +108,10 @@ func TestLTableDense(t *testing.T) {
 	// shrink
 
 	for i := 200; i <= 1000; i++ {
-		p, _ := tb.Set(LNumber(i))
-		*p = LNil
+		tb.Set(LNumber(i), LNil)
 	}
-	{
-		// trigger shrink
-		p, _ := tb.Set(LNumber(32.2))
-		*p = LNumber(32.2)
-	}
+	// trigger shrink
+	tb.Set(LNumber(32.2), LNumber(32.2))
 	if len(tb.array) != 256 {
 		t.Error("array size should be 256")
 	}
@@ -137,8 +126,7 @@ func TestLTableDense(t *testing.T) {
 		t.Error("getn not 1000")
 	}
 	for i := 1; i <= 800; i++ {
-		p, _ := tb2.Set(LNumber(i))
-		*p = LNil
+		tb2.Set(LNumber(i), LNil)
 		tb2.SetInt(int64(1000+i), LNumber(i))
 	}
 	if len(tb2.array) != 0 {
@@ -157,7 +145,7 @@ func TestLTableSparse(t *testing.T) {
 	}
 	for i := 0; i < 1000; i++ {
 		p := tb.Get(LNumber(i * 1000))
-		if *p != LNumber(i*1000) {
+		if p != LNumber(i*1000) {
 			t.Error("bad: ", i)
 		}
 	}
@@ -170,12 +158,16 @@ func TestLTableSparse(t *testing.T) {
 	if tb1.GetN() != 4 {
 		t.Error("bad: ", tb1.GetN())
 	}
-	p, _ := tb1.Set(LNumber(42.2))
-	*p = LNumber(42.2)
+	tb1.Set(LNumber(42.2), LNumber(42.2))
 	// tb1.SetInt(5, LNumber(5))
 	if tb1.GetN() != 4 {
 		t.Error("bad: ", tb1.GetN())
 	}
+
+	tb2, _ := newltable(0)
+	tb2.SetInt(1, LString("a"))
+	tb2.SetInt(2, LString("b"))
+	t.Log(tb2.array, tb2.node)
 }
 
 func TestLTableGetN(t *testing.T) {

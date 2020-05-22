@@ -1,5 +1,7 @@
 package lua
 
+import "fmt"
+
 func OpenTable(L *LState) int {
 	tabmod := L.RegisterModule(TabLibName, tableFuncs)
 	L.Push(tabmod)
@@ -22,8 +24,8 @@ type lSortState struct {
 }
 
 func (s lSortState) less(i, j int) bool {
-	vi := *s.tab.GetInt(int64(i))
-	vj := *s.tab.GetInt(int64(j))
+	vi := s.tab.GetInt(int64(i))
+	vj := s.tab.GetInt(int64(j))
 	return s.lessV(vi, vj)
 }
 
@@ -39,8 +41,14 @@ func (s lSortState) lessV(vi, vj LValue) bool {
 }
 
 func (s lSortState) swap(i, j int) {
-	pi, _ := s.tab.Set(LNumber(i))
-	pj, _ := s.tab.Set(LNumber(j))
+	pi, err := s.tab.set(LNumber(i))
+	if err != nil {
+		panic(err)
+	}
+	pj, err := s.tab.set(LNumber(j))
+	if err != nil {
+		panic(err)
+	}
 	*pi, *pj = *pj, *pi
 }
 
@@ -64,7 +72,7 @@ func auxsort(state lSortState, l, u int) {
 		if u-l == 2 {
 			break
 		}
-		privot := *state.tab.GetInt(int64(i))
+		privot := state.tab.GetInt(int64(i))
 		state.swap(i, u-1)
 		// a[l] <= P == a[u-1] <= a[u], only need to sort from l+1 to u-2
 		i = l
@@ -73,7 +81,8 @@ func auxsort(state lSortState, l, u int) {
 			// repeat ++i until a[i] >= P
 			for {
 				i++
-				if !state.lessV(privot, *state.tab.GetInt(int64(i))) {
+				// !(i < privot) === i >= privote
+				if !state.lessV(state.tab.GetInt(int64(i)), privot) {
 					break
 				}
 				if i >= u {
@@ -83,7 +92,7 @@ func auxsort(state lSortState, l, u int) {
 			// repeat --j until a[j] <= P
 			for {
 				j--
-				if !state.lessV(*state.tab.GetInt(int64(j)), privot) {
+				if !state.lessV(privot, state.tab.GetInt(int64(j))) {
 					break
 				}
 				if j <= l {
@@ -122,6 +131,12 @@ func tableSort(L *LState) int {
 	if L.GetTop() != 1 {
 		state.fn = L.CheckFunction(2)
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			L.RaiseError("%v", r)
+		}
+	}()
+
 	auxsort(state, 1, int(n))
 	/*
 		sorter := lValueArraySorter{L, nil, tbl.array}
@@ -145,6 +160,11 @@ func tableMaxN(L *LState) int {
 
 func tableRemove(L *LState) int {
 	tbl := L.CheckTable(1)
+	defer func() {
+		if r := recover(); r != nil {
+			L.ArgError(2, fmt.Sprintf("%v", r))
+		}
+	}()
 	if L.GetTop() == 1 {
 		L.Push(tbl.Remove(-1))
 	} else {
@@ -192,7 +212,11 @@ func tableInsert(L *LState) int {
 	if nargs == 1 {
 		L.RaiseError("wrong number of arguments")
 	}
-
+	defer func() {
+		if r := recover(); r != nil {
+			L.ArgError(2, fmt.Sprintf("%v", r))
+		}
+	}()
 	if L.GetTop() == 2 {
 		tbl.Append(L.Get(2))
 		return 0
