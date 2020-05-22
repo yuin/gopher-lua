@@ -3,33 +3,6 @@ package lua
 const defaultArrayCap = 4
 const defaultHashCap = 4
 
-/*
-type lValueArraySorter struct {
-	L      *LState
-	Fn     *LFunction
-	Values []LValue
-}
-
-func (lv lValueArraySorter) Len() int {
-	return len(lv.Values)
-}
-
-func (lv lValueArraySorter) Swap(i, j int) {
-	lv.Values[i], lv.Values[j] = lv.Values[j], lv.Values[i]
-}
-
-func (lv lValueArraySorter) Less(i, j int) bool {
-	if lv.Fn != nil {
-		lv.L.Push(lv.Fn)
-		lv.L.Push(lv.Values[i])
-		lv.L.Push(lv.Values[j])
-		lv.L.Call(2, 1)
-		return LVAsBool(lv.L.reg.Pop())
-	}
-	return lessThan(lv.L, lv.Values[i], lv.Values[j])
-}
-*/
-
 func newLTable(acap int, hcap int) *LTable {
 	if acap < 0 {
 		acap = 0
@@ -48,43 +21,11 @@ func newLTable(acap int, hcap int) *LTable {
 
 // Len returns length of this LTable.
 func (tb *LTable) Len() int {
-	/*
-		if tb.array == nil {
-			return 0
-		}
-		var prev LValue = LNil
-		for i := len(tb.array) - 1; i >= 0; i-- {
-			v := tb.array[i]
-			if prev == LNil && v != LNil {
-				return i + 1
-			}
-			prev = v
-		}
-	*/
 	return int(tb.tab.GetN())
 }
 
 // Append appends a given LValue to this LTable.
 func (tb *LTable) Append(value LValue) {
-	/*
-		if value == LNil {
-			return
-		}
-		if tb.array == nil {
-			tb.array = make([]LValue, 0, defaultArrayCap)
-		}
-		if len(tb.array) == 0 || tb.array[len(tb.array)-1] != LNil {
-			tb.array = append(tb.array, value)
-		} else {
-			i := len(tb.array) - 2
-			for ; i >= 0; i-- {
-				if tb.array[i] != LNil {
-					break
-				}
-			}
-			tb.array[i+1] = value
-		}
-	*/
 	tb.Insert(-1, value)
 }
 
@@ -118,18 +59,6 @@ func (tb *LTable) MaxN() int {
 		k, _, ok = tb.tab.Next(k)
 	}
 	return int(max)
-
-	/*
-		if tb.array == nil {
-			return 0
-		}
-		for i := len(tb.array) - 1; i >= 0; i-- {
-			if tb.array[i] != LNil {
-				return i + 1
-			}
-		}
-		return 0
-	*/
 }
 
 // Remove removes from this table the element at a given position.

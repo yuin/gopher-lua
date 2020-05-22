@@ -6,6 +6,9 @@ import (
 	"unsafe"
 )
 
+// Adapt from lua 5.3 implementation.
+// https://www.lua.org/source/5.3/ltable.c.html
+
 const (
 	/*
 	** Maximum size of array part (MAXASIZE) is 2^MAXABITS. MAXABITS is
@@ -496,7 +499,10 @@ func (t *ltable) resize(nasize, nhsize uint32) error {
 		// re-insert elements from vanishing slice
 		for i := nasize; i < oldasize; i++ {
 			if t.array[i] != LNil {
-				t.SetInt(int64(i+1), t.array[i]) // ignore error
+				err := t.SetInt(int64(i+1), t.array[i]) // ignore error
+				if err != nil {
+					panic(err)
+				}
 			}
 		}
 		s := make([]LValue, nasize)
@@ -577,16 +583,11 @@ func (t *ltable) Get(key LValue) LValue {
 }
 
 func (t *ltable) SetInt(key int64, value LValue) error {
-	p := t.getInt(key)
-	if p != &LNil {
-		*p = value
-	} else {
-		p, err := t.newkey(LNumber(key))
-		if err != nil {
-			return err
-		}
-		*p = value
+	p, err := t.setInt(key)
+	if err != nil {
+		return err
 	}
+	*p = value
 	return nil
 }
 
@@ -597,6 +598,14 @@ func (t *ltable) Set(key LValue, value LValue) error {
 	}
 	*p = value
 	return nil
+}
+
+func (t *ltable) setInt(key int64) (*LValue, error) {
+	p := t.getInt(key)
+	if p != &LNil {
+		return p, nil
+	}
+	return t.newkey(LNumber(key))
 }
 
 func (t *ltable) set(key LValue) (*LValue, error) {
@@ -671,4 +680,17 @@ func (t *ltable) unboundSearch(j uint64) uint64 {
 		}
 	}
 	return i
+}
+
+func (t *ltable) Swap(i, j int64) error {
+	pi, err := t.setInt(i)
+	if err != nil {
+		return err
+	}
+	pj, err := t.setInt(j)
+	if err != nil {
+		return err
+	}
+	*pi, *pj = *pj, *pi
+	return nil
 }

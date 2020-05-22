@@ -17,6 +17,9 @@ var tableFuncs = map[string]LGFunction{
 	"sort":   tableSort,
 }
 
+// Adapt from lua 5.3 implementation.
+// https://www.lua.org/source/5.3/ltablib.c.html
+
 type lSortState struct {
 	L   *LState
 	tab *ltable
@@ -41,15 +44,10 @@ func (s lSortState) lessV(vi, vj LValue) bool {
 }
 
 func (s lSortState) swap(i, j int) {
-	pi, err := s.tab.set(LNumber(i))
+	err := s.tab.Swap(int64(i), int64(j))
 	if err != nil {
-		panic(err)
+		s.L.RaiseError("%v", err)
 	}
-	pj, err := s.tab.set(LNumber(j))
-	if err != nil {
-		panic(err)
-	}
-	*pi, *pj = *pj, *pi
 }
 
 func auxsort(state lSortState, l, u int) {
@@ -131,20 +129,7 @@ func tableSort(L *LState) int {
 	if L.GetTop() != 1 {
 		state.fn = L.CheckFunction(2)
 	}
-	defer func() {
-		if r := recover(); r != nil {
-			L.RaiseError("%v", r)
-		}
-	}()
-
 	auxsort(state, 1, int(n))
-	/*
-		sorter := lValueArraySorter{L, nil, tbl.array}
-		if L.GetTop() != 1 {
-			sorter.Fn = L.CheckFunction(2)
-		}
-		sort.Sort(sorter)
-	*/
 	return 0
 }
 
@@ -158,17 +143,21 @@ func tableMaxN(L *LState) int {
 	return 1
 }
 
-func tableRemove(L *LState) int {
-	tbl := L.CheckTable(1)
+func wrapRemove(L *LState, tbl *LTable, idx int) LValue {
 	defer func() {
 		if r := recover(); r != nil {
 			L.ArgError(2, fmt.Sprintf("%v", r))
 		}
 	}()
+	return tbl.Remove(idx)
+}
+
+func tableRemove(L *LState) int {
+	tbl := L.CheckTable(1)
 	if L.GetTop() == 1 {
-		L.Push(tbl.Remove(-1))
+		L.Push(wrapRemove(L, tbl, -1))
 	} else {
-		L.Push(tbl.Remove(L.CheckInt(2)))
+		L.Push(wrapRemove(L, tbl, L.CheckInt(2)))
 	}
 	return 1
 }
@@ -206,22 +195,27 @@ func tableConcat(L *LState) int {
 	return 1
 }
 
+func wrapInsert(L *LState, tbl *LTable, idx int, value LValue) {
+	defer func() {
+		if r := recover(); r != nil {
+			L.ArgError(2, fmt.Sprintf("%v", r))
+		}
+	}()
+
+	tbl.Insert(idx, value)
+}
+
 func tableInsert(L *LState) int {
 	tbl := L.CheckTable(1)
 	nargs := L.GetTop()
 	if nargs == 1 {
 		L.RaiseError("wrong number of arguments")
 	}
-	defer func() {
-		if r := recover(); r != nil {
-			L.ArgError(2, fmt.Sprintf("%v", r))
-		}
-	}()
 	if L.GetTop() == 2 {
-		tbl.Append(L.Get(2))
+		wrapInsert(L, tbl, -1, L.Get(2))
 		return 0
 	}
-	tbl.Insert(int(L.CheckInt(2)), L.CheckAny(3))
+	wrapInsert(L, tbl, L.CheckInt(2), L.CheckAny(3))
 	return 0
 }
 
