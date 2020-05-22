@@ -1,5 +1,7 @@
 package lua
 
+import "fmt"
+
 const defaultArrayCap = 4
 const defaultHashCap = 4
 
@@ -132,7 +134,7 @@ func (tb *LTable) MaxN() int {
 // Remove removes from this table the element at a given position.
 func (tb *LTable) Remove(pos int) LValue {
 	size := int(tb.tab.GetN())
-	if pos < 0 {
+	if pos == -1 {
 		pos = size
 	}
 	if pos != size {
@@ -146,6 +148,7 @@ func (tb *LTable) Remove(pos int) LValue {
 		_ = tb.tab.SetInt(int64(pos), nv)
 	}
 	_ = tb.tab.SetInt(int64(pos), LNil)
+	fmt.Println(tb.tab.array, tb.tab.node)
 	return oldval
 }
 

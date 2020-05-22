@@ -262,8 +262,7 @@ func (t *ltable) mainposition(key LValue) uint32 {
 		}
 		return t.hashmodi(uint32(hashfloat(float64(tv))))
 	case LTBool:
-		tv := key.(LBool)
-		if tv {
+		if key == LTrue {
 			return t.hashpow2i(1)
 		} else {
 			return t.hashpow2i(0)
@@ -629,13 +628,13 @@ func (t *ltable) unboundSearch(j uint64) uint64 {
 	i := j
 	j++
 	// find 'i' and 'j' such that i is present and j is not
-	for t.GetInt(int64(j)) != &LNil {
+	for *t.GetInt(int64(j)) != LNil {
 		i = j
 		if j > uint64(math.MaxInt64)/2 {
 			// overflow?
 			// table was built with bad purposes: resort to linear search
 			i = 1
-			for t.GetInt(int64(i)) != &LNil {
+			for *t.GetInt(int64(i)) != LNil {
 				i++
 			}
 			return i - 1
@@ -645,7 +644,7 @@ func (t *ltable) unboundSearch(j uint64) uint64 {
 	// now do a binary search between them
 	for j-i > 1 {
 		m := (i + j) / 2
-		if t.GetInt(int64(m)) == &LNil {
+		if *t.GetInt(int64(m)) == LNil {
 			j = m
 		} else {
 			i = m

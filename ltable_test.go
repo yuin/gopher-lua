@@ -177,3 +177,17 @@ func TestLTableSparse(t *testing.T) {
 		t.Error("bad: ", tb1.GetN())
 	}
 }
+
+func TestLTableGetN(t *testing.T) {
+	tb, _ := newltable(5)
+	for i := 1; i <= 5; i++ {
+		_ = tb.SetInt(int64(i), LNumber(i))
+	}
+	if tb.GetN() != 5 {
+		t.Error("not 5")
+	}
+	tb.SetInt(int64(5), LNil)
+	if tb.GetN() != 4 {
+		t.Error("not 4")
+	}
+}
