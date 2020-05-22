@@ -35,8 +35,10 @@ func (tb *LTable) Insert(pos int, value LValue) {
 	if pos == -1 {
 		pos = e
 	}
-	if !(1 <= pos && pos <= e) {
-		panic("position out of bounds")
+
+	// lua 5.1 implement
+	if pos > e {
+		e = pos // `grow' array if necessary
 	}
 	i := 0
 	for i = e; i > pos; i-- { /* move up elements */
@@ -67,10 +69,10 @@ func (tb *LTable) Remove(pos int) LValue {
 	if pos == -1 {
 		pos = size
 	}
-	if pos != size {
-		if !(1 <= pos && pos <= size+1) {
-			panic("position out of bounds")
-		}
+	// lua 5.1 implement
+	if !(1 <= pos && pos <= size) { // position is outside bounds?
+		// nothing to remove
+		return LNil
 	}
 	oldval := tb.tab.GetInt(int64(pos))
 	for ; pos < size; pos++ {

@@ -1,7 +1,5 @@
 package lua
 
-import "fmt"
-
 func OpenTable(L *LState) int {
 	tabmod := L.RegisterModule(TabLibName, tableFuncs)
 	L.Push(tabmod)
@@ -17,8 +15,8 @@ var tableFuncs = map[string]LGFunction{
 	"sort":   tableSort,
 }
 
-// Adapt from lua 5.3 implementation.
-// https://www.lua.org/source/5.3/ltablib.c.html
+// Adapt from lua 5.1 implementation.
+// https://www.lua.org/source/5.1/ltablib.c.html
 
 type lSortState struct {
 	L   *LState
@@ -143,21 +141,12 @@ func tableMaxN(L *LState) int {
 	return 1
 }
 
-func wrapRemove(L *LState, tbl *LTable, idx int) LValue {
-	defer func() {
-		if r := recover(); r != nil {
-			L.ArgError(2, fmt.Sprintf("%v", r))
-		}
-	}()
-	return tbl.Remove(idx)
-}
-
 func tableRemove(L *LState) int {
 	tbl := L.CheckTable(1)
 	if L.GetTop() == 1 {
-		L.Push(wrapRemove(L, tbl, -1))
+		L.Push(tbl.Remove(-1))
 	} else {
-		L.Push(wrapRemove(L, tbl, L.CheckInt(2)))
+		L.Push(tbl.Remove(L.CheckInt(2)))
 	}
 	return 1
 }
@@ -195,16 +184,6 @@ func tableConcat(L *LState) int {
 	return 1
 }
 
-func wrapInsert(L *LState, tbl *LTable, idx int, value LValue) {
-	defer func() {
-		if r := recover(); r != nil {
-			L.ArgError(2, fmt.Sprintf("%v", r))
-		}
-	}()
-
-	tbl.Insert(idx, value)
-}
-
 func tableInsert(L *LState) int {
 	tbl := L.CheckTable(1)
 	nargs := L.GetTop()
@@ -212,10 +191,10 @@ func tableInsert(L *LState) int {
 		L.RaiseError("wrong number of arguments")
 	}
 	if L.GetTop() == 2 {
-		wrapInsert(L, tbl, -1, L.Get(2))
+		tbl.Append(L.Get(2))
 		return 0
 	}
-	wrapInsert(L, tbl, L.CheckInt(2), L.CheckAny(3))
+	tbl.Insert(L.CheckInt(2), L.CheckAny(3))
 	return 0
 }
 

@@ -57,14 +57,13 @@ func TestTableInsert(t *testing.T) {
 	tbl.Append(LTrue)
 	tbl.Append(LTrue)
 
-	tbl.Insert(4, LFalse)
 	tbl.Insert(5, LFalse)
 	errorIfNotEqual(t, LFalse, tbl.RawGetInt(5))
-	errorIfNotEqual(t, 5, tbl.Len())
+	errorIfNotEqual(t, 3, tbl.Len()) // #tbl should be 3
 
-	// tbl.Insert(-10, LFalse)
-	// errorIfNotEqual(t, LFalse, tbl.RawGet(LNumber(-10)))
-	// errorIfNotEqual(t, 5, tbl.Len())
+	tbl.Insert(-10, LFalse)
+	errorIfNotEqual(t, LFalse, tbl.RawGet(LNumber(-10)))
+	errorIfNotEqual(t, 5, tbl.Len())
 
 	tbl = newLTable(0, 0)
 	tbl.Append(LNumber(1))
@@ -77,9 +76,9 @@ func TestTableInsert(t *testing.T) {
 	errorIfNotEqual(t, LNumber(3), tbl.RawGetInt(4))
 	errorIfNotEqual(t, 4, tbl.Len())
 
-	// tbl = newLTable(0, 0)
-	// tbl.Insert(5, LNumber(10))
-	// errorIfNotEqual(t, LNumber(10), tbl.RawGetInt(5))
+	tbl = newLTable(0, 0)
+	tbl.Insert(5, LNumber(10))
+	errorIfNotEqual(t, LNumber(10), tbl.RawGetInt(5))
 
 }
 
@@ -99,9 +98,9 @@ func TestTableMaxN(t *testing.T) {
 
 func TestTableRemove(t *testing.T) {
 	tbl := newLTable(0, 0)
-	// errorIfNotEqual(t, LNil, tbl.Remove(10))
+	errorIfNotEqual(t, LNil, tbl.Remove(10))
 	tbl.Append(LTrue)
-	// errorIfNotEqual(t, LNil, tbl.Remove(10))
+	errorIfNotEqual(t, LNil, tbl.Remove(10))
 
 	tbl.Append(LFalse)
 	tbl.Append(LTrue)
