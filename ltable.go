@@ -47,7 +47,7 @@ func luaO_ceillog2(x uint32) int {
 	return l + int(log_2[x])
 }
 
-func addString32(h uint32, s string) uint32 {
+func addString32FNV1a(h uint32, s string) uint32 {
 	const prime32 = uint32(16777619)
 	for len(s) >= 8 {
 		h = (h ^ uint32(s[0])) * prime32
@@ -79,6 +79,17 @@ func addString32(h uint32, s string) uint32 {
 		h = (h ^ uint32(s[0])) * prime32
 	}
 
+	return h
+}
+
+// https://www.lua.org/source/5.3/lstring.c.html#luaS_hash
+func addString32(h uint32, s string) uint32 {
+	l := len(s)
+	h = h ^ uint32(l)
+	step := (l >> 5) + 1
+	for ; l >= step; l -= step {
+		h = h ^ ((h << 5) + (h >> 2) + uint32(s[l-1]))
+	}
 	return h
 }
 
@@ -148,8 +159,9 @@ func (t *ltable) hashmodi(n uint32) uint32 {
 	return mod
 }
 
-func (t *ltable) hashstri(n string) uint32 {
-	return t.hashmodi(hashString32(n))
+func (t *ltable) hashstri(s string) uint32 {
+	v := addString32(uint32(2166136261), s)
+	return v & (t.sizenode() - 1)
 }
 
 func (t *ltable) hashpointer(n LValue) uint32 {

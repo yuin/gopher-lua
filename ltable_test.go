@@ -183,3 +183,9 @@ func TestLTableGetN(t *testing.T) {
 		t.Error("not 4")
 	}
 }
+
+func TestLTableHash(t *testing.T) {
+	a := hashString32("XXX")
+	b := hashString32("XXX1")
+	t.Log(a, b)
+}
