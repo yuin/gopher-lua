@@ -136,9 +136,11 @@ func isInteger(v LNumber) bool {
 	//return frac == 0.0
 }
 
+/*
 func isArrayKey(v LNumber) bool {
 	return isInteger(v) && v < LNumber(int((^uint(0))>>1)) && v > LNumber(0) && v < LNumber(MaxArrayIndex)
 }
+*/
 
 func parseNumber(number string) (LNumber, error) {
 	var value LNumber

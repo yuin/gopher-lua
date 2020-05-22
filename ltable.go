@@ -122,11 +122,19 @@ var (
 
 func newltable(size int) (*ltable, error) {
 	tab := &ltable{}
-	if err := tab.setnodevector(uint32(size)); err != nil {
+	err := initltable(tab, size)
+	if err != nil {
 		return nil, err
 	}
-
 	return tab, nil
+}
+
+func initltable(tab *ltable, size int) error {
+	if err := tab.setnodevector(uint32(size)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (t *ltable) sizenode() uint32 {
@@ -479,7 +487,7 @@ func (t *ltable) resize(nasize, nhsize uint32) error {
 	if err := t.setnodevector(nhsize); err != nil {
 		return err
 	}
-	println("ltable resize", nasize, nhsize, len(t.node))
+	// println("ltable resize", nasize, nhsize, len(t.node))
 	if nasize > oldasize {
 		// array part must grow?
 		t.setarrayvector(nasize)

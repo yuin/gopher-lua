@@ -1,9 +1,5 @@
 package lua
 
-import (
-	"sort"
-)
-
 func OpenTable(L *LState) int {
 	tabmod := L.RegisterModule(TabLibName, tableFuncs)
 	L.Push(tabmod)
@@ -19,13 +15,121 @@ var tableFuncs = map[string]LGFunction{
 	"sort":   tableSort,
 }
 
+type lSortState struct {
+	L   *LState
+	tab *ltable
+	fn  *LFunction
+}
+
+func (s lSortState) less(i, j int) bool {
+	vi := *s.tab.GetInt(int64(i))
+	vj := *s.tab.GetInt(int64(j))
+	return s.lessV(vi, vj)
+}
+
+func (s lSortState) lessV(vi, vj LValue) bool {
+	if s.fn != nil {
+		s.L.Push(s.fn)
+		s.L.Push(vi)
+		s.L.Push(vj)
+		s.L.Call(2, 1)
+		return LVAsBool(s.L.reg.Pop())
+	}
+	return lessThan(s.L, vi, vj)
+}
+
+func (s lSortState) swap(i, j int) {
+	pi, _ := s.tab.Set(LNumber(i))
+	pj, _ := s.tab.Set(LNumber(j))
+	*pi, *pj = *pj, *pi
+}
+
+func auxsort(state lSortState, l, u int) {
+	for l < u {
+		var i, j int
+		if state.less(u, l) {
+			state.swap(u, l)
+		}
+		if u-l == 1 {
+			break
+		}
+		i = (l + u) / 2
+		if state.less(i, l) {
+			state.swap(i, l)
+		} else {
+			if state.less(u, i) {
+				state.swap(u, i)
+			}
+		}
+		if u-l == 2 {
+			break
+		}
+		privot := *state.tab.GetInt(int64(i))
+		state.swap(i, u-1)
+		// a[l] <= P == a[u-1] <= a[u], only need to sort from l+1 to u-2
+		i = l
+		j = u - 1
+		for { // invariant: a[l..i] <= P <= a[j..u]
+			// repeat ++i until a[i] >= P
+			for {
+				i++
+				if !state.lessV(privot, *state.tab.GetInt(int64(i))) {
+					break
+				}
+				if i >= u {
+					state.L.ArgError(2, "invalid order function for sorting")
+				}
+			}
+			// repeat --j until a[j] <= P
+			for {
+				j--
+				if !state.lessV(*state.tab.GetInt(int64(j)), privot) {
+					break
+				}
+				if j <= l {
+					state.L.ArgError(2, "invalid order function for sorting")
+				}
+			}
+			if j < i {
+				break
+			}
+			state.swap(i, j)
+		}
+		// swap pivot (a[u-1]) with a[i]
+		state.swap(u-1, i)
+		// a[l..i-1] <= a[i] == P <= a[i+1..u]
+		// adjust so that smaller half is in [j..i] and larger one in [l..u]
+		if i-l < u-i {
+			j = l
+			i = i - 1
+			l = i + 2
+		} else {
+			j = i + 1
+			i = u
+			u = j - 2
+		}
+		auxsort(state, j, i)
+	}
+}
+
 func tableSort(L *LState) int {
 	tbl := L.CheckTable(1)
-	sorter := lValueArraySorter{L, nil, tbl.array}
-	if L.GetTop() != 1 {
-		sorter.Fn = L.CheckFunction(2)
+	n := tbl.tab.GetN()
+	state := lSortState{
+		L:   L,
+		tab: &tbl.tab,
 	}
-	sort.Sort(sorter)
+	if L.GetTop() != 1 {
+		state.fn = L.CheckFunction(2)
+	}
+	auxsort(state, 1, int(n))
+	/*
+		sorter := lValueArraySorter{L, nil, tbl.array}
+		if L.GetTop() != 1 {
+			sorter.Fn = L.CheckFunction(2)
+		}
+		sort.Sort(sorter)
+	*/
 	return 0
 }
 
