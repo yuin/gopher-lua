@@ -141,7 +141,7 @@ func TestLTableSparse(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < 1000; i++ {
-		_ = tb.SetInt(int64(i*1000), LNumber(i*1000))
+		tb.SetInt(int64(i*1000), LNumber(i*1000))
 	}
 	for i := 0; i < 1000; i++ {
 		p := tb.Get(LNumber(i * 1000))
@@ -173,7 +173,7 @@ func TestLTableSparse(t *testing.T) {
 func TestLTableGetN(t *testing.T) {
 	tb, _ := newltable(5)
 	for i := 1; i <= 5; i++ {
-		_ = tb.SetInt(int64(i), LNumber(i))
+		tb.SetInt(int64(i), LNumber(i))
 	}
 	if tb.GetN() != 5 {
 		t.Error("not 5")

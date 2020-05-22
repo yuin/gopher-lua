@@ -116,28 +116,17 @@ var dummynodes = []tnode{
 const ltableBadPosIdx = -1
 
 var (
-	errTabOverflow     = errors.New("table overflow")
-	errTabIndexNil     = errors.New("table index is nil")
-	errTabIndexChannel = errors.New("table index is channel")
-	errTabIndexNaN     = errors.New("table index is NaN")
-	errTabInvalidKey   = errors.New("invalid key to 'next'")
+	errTabInvalidKeyNext = errors.New("invalid key to 'next'")
 )
 
 func newltable(size int) (*ltable, error) {
 	tab := &ltable{}
-	err := initltable(tab, size)
-	if err != nil {
-		return nil, err
-	}
+	initltable(tab, size)
 	return tab, nil
 }
 
-func initltable(tab *ltable, size int) error {
-	if err := tab.setnodevector(uint32(size)); err != nil {
-		return err
-	}
-
-	return nil
+func initltable(tab *ltable, size int) {
+	tab.setnodevector(uint32(size))
 }
 
 func (t *ltable) sizenode() uint32 {
@@ -168,7 +157,7 @@ func (t *ltable) hashpointer(n LValue) uint32 {
 	return t.hashmodi(uint32(v[1]) & math.MaxUint32)
 }
 
-func (t *ltable) setnodevector(size uint32) error {
+func (t *ltable) setnodevector(size uint32) {
 	if size == 0 {
 		t.node = dummynodes
 		t.lsizenode = 0
@@ -176,7 +165,7 @@ func (t *ltable) setnodevector(size uint32) error {
 	} else {
 		lsize := luaO_ceillog2(size)
 		if lsize > MAXHBITS {
-			return errTabOverflow
+			panic("table overflow")
 		}
 		size := 1 << uint(lsize)
 		t.node = make([]tnode, size)
@@ -187,19 +176,18 @@ func (t *ltable) setnodevector(size uint32) error {
 		t.lsizenode = byte(lsize)
 		t.lastfreeIdx = int32(size)
 	}
-	return nil
 }
 
 func (t *ltable) isdummy() bool {
 	return t.lastfreeIdx == ltableBadPosIdx
 }
 
-func (t *ltable) newkey(key LValue) (*LValue, error) {
+func (t *ltable) newkey(key LValue) *LValue {
 	if key.Type() == LTNil {
-		return nil, errTabIndexNil
+		panic("table index is nil")
 	}
 	if key.Type() == LTChannel {
-		return nil, errTabIndexChannel
+		panic("table index is channel")
 	}
 	mpi := int32(t.mainposition(key))
 	if t.node[mpi].val != LNil || t.isdummy() { // main position is taken?
@@ -238,7 +226,7 @@ func (t *ltable) newkey(key LValue) (*LValue, error) {
 		}
 	}
 	t.node[mpi].key.tvk = key
-	return &t.node[mpi].val, nil
+	return &t.node[mpi].val
 }
 
 func hashfloat(f float64) int32 {
@@ -356,7 +344,7 @@ func (t *ltable) findindex(key LValue) (uint32, error) {
 			}
 			nx = t.node[ni].key.next
 			if nx == 0 {
-				return 0, errTabInvalidKey
+				return 0, errTabInvalidKeyNext
 			} else {
 				ni += nx
 			}
@@ -481,14 +469,12 @@ func (t *ltable) allocsizenode() uint32 {
 	}
 }
 
-func (t *ltable) resize(nasize, nhsize uint32) error {
+func (t *ltable) resize(nasize, nhsize uint32) {
 	oldasize := t.sizearray
 	ohsize := t.allocsizenode()
 	nold := t.node
 	// create new hash part with appropriate size
-	if err := t.setnodevector(nhsize); err != nil {
-		return err
-	}
+	t.setnodevector(nhsize)
 	// println("ltable resize", nasize, nhsize, len(t.node))
 	if nasize > oldasize {
 		// array part must grow?
@@ -499,10 +485,7 @@ func (t *ltable) resize(nasize, nhsize uint32) error {
 		// re-insert elements from vanishing slice
 		for i := nasize; i < oldasize; i++ {
 			if t.array[i] != LNil {
-				err := t.SetInt(int64(i+1), t.array[i]) // ignore error
-				if err != nil {
-					panic(err)
-				}
+				t.SetInt(int64(i+1), t.array[i])
 			}
 		}
 		s := make([]LValue, nasize)
@@ -512,14 +495,11 @@ func (t *ltable) resize(nasize, nhsize uint32) error {
 	// re-insert elements from hash part
 	for j := int32(ohsize) - 1; j >= 0; j-- {
 		if nold[j].val != LNil {
-			p, err := t.set(nold[j].key.tvk)
-			if err != nil {
-				panic(err)
-			}
+			p := t.set(nold[j].key.tvk)
 			*p = nold[j].val
 		}
 	}
-	return nil
+	return
 }
 
 func (t *ltable) getInt(key int64) *LValue {
@@ -582,41 +562,33 @@ func (t *ltable) Get(key LValue) LValue {
 	return *t.get(key)
 }
 
-func (t *ltable) SetInt(key int64, value LValue) error {
-	p, err := t.setInt(key)
-	if err != nil {
-		return err
-	}
+func (t *ltable) SetInt(key int64, value LValue) {
+	p := t.setInt(key)
 	*p = value
-	return nil
 }
 
-func (t *ltable) Set(key LValue, value LValue) error {
-	p, err := t.set(key)
-	if err != nil {
-		return err
-	}
+func (t *ltable) Set(key LValue, value LValue) {
+	p := t.set(key)
 	*p = value
-	return nil
 }
 
-func (t *ltable) setInt(key int64) (*LValue, error) {
+func (t *ltable) setInt(key int64) *LValue {
 	p := t.getInt(key)
 	if p != &LNil {
-		return p, nil
+		return p
 	}
 	return t.newkey(LNumber(key))
 }
 
-func (t *ltable) set(key LValue) (*LValue, error) {
+func (t *ltable) set(key LValue) *LValue {
 	p := t.get(key)
 	if p != &LNil {
-		return p, nil
+		return p
 	}
 	return t.newkey(key)
 }
 
-func (t *ltable) rehash(key LValue) error {
+func (t *ltable) rehash(key LValue) {
 	var asize, na uint32
 	var nums [MAXABITS + 1]uint32
 	na = t.numusearray(nums[:])
@@ -625,7 +597,7 @@ func (t *ltable) rehash(key LValue) error {
 	na += uint32(countint(key, nums[:]))
 	totaluse++
 	asize = computesizes(nums[:], &na)
-	return t.resize(asize, totaluse-na)
+	t.resize(asize, totaluse-na)
 }
 
 /*
@@ -682,15 +654,8 @@ func (t *ltable) unboundSearch(j uint64) uint64 {
 	return i
 }
 
-func (t *ltable) Swap(i, j int64) error {
-	pi, err := t.setInt(i)
-	if err != nil {
-		return err
-	}
-	pj, err := t.setInt(j)
-	if err != nil {
-		return err
-	}
+func (t *ltable) Swap(i, j int64) {
+	pi := t.setInt(i)
+	pj := t.setInt(j)
 	*pi, *pj = *pj, *pi
-	return nil
 }

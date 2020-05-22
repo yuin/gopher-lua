@@ -3,7 +3,6 @@ package lua
 import (
 	"context"
 	"fmt"
-	"github.com/yuin/gopher-lua/parse"
 	"io"
 	"math"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/yuin/gopher-lua/parse"
 )
 
 const MultRet = -1
@@ -1690,6 +1691,8 @@ func (ls *LState) RawSet(tb *LTable, key LValue, value LValue) {
 		ls.RaiseError("table index is NaN")
 	} else if key == LNil {
 		ls.RaiseError("table index is nil")
+	} else if key.Type() == LTChannel {
+		ls.RaiseError("table index is channel")
 	}
 	tb.RawSet(key, value)
 }

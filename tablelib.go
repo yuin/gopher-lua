@@ -42,10 +42,7 @@ func (s lSortState) lessV(vi, vj LValue) bool {
 }
 
 func (s lSortState) swap(i, j int) {
-	err := s.tab.Swap(int64(i), int64(j))
-	if err != nil {
-		s.L.RaiseError("%v", err)
-	}
+	s.tab.Swap(int64(i), int64(j))
 }
 
 func auxsort(state lSortState, l, u int) {

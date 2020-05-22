@@ -1,7 +1,7 @@
 package lua
 
-const defaultArrayCap = 4
-const defaultHashCap = 4
+const defaultArrayCap = 0
+const defaultHashCap = 0
 
 func newLTable(acap int, hcap int) *LTable {
 	if acap < 0 {
@@ -12,10 +12,7 @@ func newLTable(acap int, hcap int) *LTable {
 	}
 	tb := &LTable{}
 	tb.Metatable = LNil
-	err := initltable(&tb.tab, hcap)
-	if err != nil {
-		panic(err)
-	}
+	initltable(&tb.tab, hcap)
 	return tb
 }
 
@@ -43,9 +40,9 @@ func (tb *LTable) Insert(pos int, value LValue) {
 	i := 0
 	for i = e; i > pos; i-- { /* move up elements */
 		pv := tb.tab.GetInt(int64(i) - 1)
-		_ = tb.tab.SetInt(int64(i), pv)
+		tb.tab.SetInt(int64(i), pv)
 	}
-	_ = tb.tab.SetInt(int64(pos), value)
+	tb.tab.SetInt(int64(pos), value)
 }
 
 // MaxN returns a maximum number key that nil value does not exist before it.
@@ -77,9 +74,9 @@ func (tb *LTable) Remove(pos int) LValue {
 	oldval := tb.tab.GetInt(int64(pos))
 	for ; pos < size; pos++ {
 		nv := tb.tab.GetInt(int64(pos) + 1)
-		_ = tb.tab.SetInt(int64(pos), nv)
+		tb.tab.SetInt(int64(pos), nv)
 	}
-	_ = tb.tab.SetInt(int64(pos), LNil)
+	tb.tab.SetInt(int64(pos), LNil)
 	return oldval
 }
 
@@ -87,18 +84,12 @@ func (tb *LTable) Remove(pos int) LValue {
 // It is recommended to use `RawSetString` or `RawSetInt` for performance
 // if you already know the given LValue is a string or number.
 func (tb *LTable) RawSet(key LValue, value LValue) {
-	err := tb.tab.Set(key, value)
-	if err != nil {
-		panic(err)
-	}
+	tb.tab.Set(key, value)
 }
 
 // RawSetInt sets a given LValue at a position `key` without the __newindex metamethod.
 func (tb *LTable) RawSetInt(key int, value LValue) {
-	err := tb.tab.SetInt(int64(key), value)
-	if err != nil {
-		panic(err)
-	}
+	tb.tab.SetInt(int64(key), value)
 }
 
 // RawSetString sets a given LValue to a given string index without the __newindex metamethod.
