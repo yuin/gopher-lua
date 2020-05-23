@@ -187,6 +187,20 @@ func TestLTableGetN(t *testing.T) {
 	if tb.GetN() != 4 {
 		t.Error("not 4")
 	}
+
+	tb1, _ := newltable(0)
+	tb1.ResizeArray(6)
+	tb1.SetInt(int64(1), LNumber(1))
+	tb1.SetInt(int64(2), LNumber(2))
+	tb1.SetInt(int64(3), LNumber(3))
+	tb1.SetInt(int64(4), LNil)
+	tb1.SetInt(int64(5), LNumber(5))
+	tb1.SetInt(int64(6), LNumber(6))
+
+	if tb1.GetN() != 6 {
+		t.Log(tb1.array)
+		t.Error("not 6", tb1.GetN())
+	}
 }
 
 func TestLTableHash(t *testing.T) {

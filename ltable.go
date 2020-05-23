@@ -106,6 +106,9 @@ func newltable(size int) (*ltable, error) {
 }
 
 func initltable(tab *ltable, size int) {
+	if size < 0 {
+		size = 0
+	}
 	tab.setnodevector(uint32(size))
 }
 
@@ -475,8 +478,7 @@ func (t *ltable) resize(nasize, nhsize uint32) {
 	// re-insert elements from hash part
 	for j := int32(ohsize) - 1; j >= 0; j-- {
 		if nold[j].val != LNil {
-			p := t.set(nold[j].key.tvk)
-			*p = nold[j].val
+			*t.set(nold[j].key.tvk) = nold[j].val
 		}
 	}
 	return
@@ -661,4 +663,12 @@ func (t *ltable) Swap(i, j int64) {
 	pi := t.setInt(i)
 	pj := t.setInt(j)
 	*pi, *pj = *pj, *pi
+}
+
+func (t *ltable) ResizeArray(nasize int) {
+	if nasize < 0 {
+		nasize = 0
+	}
+	nsize := t.allocsizenode()
+	t.resize(uint32(nasize), nsize)
 }

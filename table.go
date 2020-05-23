@@ -16,6 +16,14 @@ func newLTable(acap int, hcap int) *LTable {
 	return tb
 }
 
+func (tb *LTable) sizearray() int {
+	return int(tb.tab.sizearray)
+}
+
+func (tb *LTable) resizeArray(nasize int) {
+	tb.tab.ResizeArray(nasize)
+}
+
 // Len returns length of this LTable.
 func (tb *LTable) Len() int {
 	return int(tb.tab.GetN())
