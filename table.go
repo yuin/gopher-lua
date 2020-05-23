@@ -119,7 +119,7 @@ func (tb *LTable) RawGetH(key LValue) LValue {
 
 // RawGetString returns an LValue associated with a given key without __index metamethod.
 func (tb *LTable) RawGetString(key string) LValue {
-	return tb.tab.Get(LString(key))
+	return tb.tab.GetString(key)
 }
 
 // ForEach iterates over this table of elements, yielding each in turn to a given function.

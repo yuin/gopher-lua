@@ -1,6 +1,7 @@
 package lua
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -77,6 +78,10 @@ func TestLTableBasic(t *testing.T) {
 	}
 	if tb.Get(LNumber(1243243211232432.23)) != LNil {
 		t.Error("bad float64 key")
+	}
+
+	if tb.hashpointer(&LUserData{}) == tb.hashpointer(&LUserData{}) {
+		t.Error("bad pointer hash")
 	}
 }
 
@@ -188,4 +193,48 @@ func TestLTableHash(t *testing.T) {
 	a := hashString32("XXX")
 	b := hashString32("XXX1")
 	t.Log(a, b)
+}
+
+func benchGetData() []LString {
+	tab := make([]LString, 10)
+	for i := 0; i < 10; i++ {
+		tab[i] = LString(fmt.Sprintf("dfadStringvds%d", i))
+	}
+	return tab
+}
+
+func BenchmarkLTableNew(b *testing.B) {
+	tab := benchGetData()
+	for n := 0; n < b.N; n++ {
+		t, _ := newltable(0)
+		for i := 0; i < 10; i++ {
+			t.Set(tab[i], LNil)
+		}
+		for i := 0; i < 10; i++ {
+			t.GetString(string(tab[i]))
+			// t.Get(tab[i])
+		}
+	}
+}
+
+func BenchmarkLTableMap(b *testing.B) {
+	tab := benchGetData()
+
+	for n := 0; n < b.N; n++ {
+		t := make(map[LString]LValue)
+		for i := 0; i < 10; i++ {
+			// t[tab[i]] = LNumber(i)
+			t[tab[i]] = LNil
+		}
+		for i := 0; i < 10; i++ {
+			_, _ = t[tab[i]]
+		}
+	}
+}
+
+func BenchmarkLTableHashLua(b *testing.B) {
+	tab := benchGetData()
+	for n := 0; n < b.N; n++ {
+		hashString32(string(tab[0]))
+	}
 }

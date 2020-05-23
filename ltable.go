@@ -47,54 +47,23 @@ func luaO_ceillog2(x uint32) int {
 	return l + int(log_2[x])
 }
 
-func addString32FNV1a(h uint32, s string) uint32 {
-	const prime32 = uint32(16777619)
-	for len(s) >= 8 {
-		h = (h ^ uint32(s[0])) * prime32
-		h = (h ^ uint32(s[1])) * prime32
-		h = (h ^ uint32(s[2])) * prime32
-		h = (h ^ uint32(s[3])) * prime32
-		h = (h ^ uint32(s[4])) * prime32
-		h = (h ^ uint32(s[5])) * prime32
-		h = (h ^ uint32(s[6])) * prime32
-		h = (h ^ uint32(s[7])) * prime32
-		s = s[8:]
-	}
-
-	if len(s) >= 4 {
-		h = (h ^ uint32(s[0])) * prime32
-		h = (h ^ uint32(s[1])) * prime32
-		h = (h ^ uint32(s[2])) * prime32
-		h = (h ^ uint32(s[3])) * prime32
-		s = s[4:]
-	}
-
-	if len(s) >= 2 {
-		h = (h ^ uint32(s[0])) * prime32
-		h = (h ^ uint32(s[1])) * prime32
-		s = s[2:]
-	}
-
-	if len(s) > 0 {
-		h = (h ^ uint32(s[0])) * prime32
-	}
-
-	return h
-}
-
 // https://www.lua.org/source/5.3/lstring.c.html#luaS_hash
-func addString32(h uint32, s string) uint32 {
+// use FNV1a instead
+func hashString32(s string) uint32 {
+	const (
+		prime32 = uint32(16777619)
+		seed    = uint32(2166136261)
+	)
+
+	h := uint32(seed)
 	l := len(s)
 	h = h ^ uint32(l)
 	step := (l >> 5) + 1
 	for ; l >= step; l -= step {
-		h = h ^ ((h << 5) + (h >> 2) + uint32(s[l-1]))
+		// h = h ^ ((h << 5) + (h >> 2) + uint32(s[l-1]))
+		h = (h ^ uint32(s[0])) * prime32
 	}
 	return h
-}
-
-func hashString32(s string) uint32 {
-	return addString32(uint32(2166136261), s)
 }
 
 func isIntegerKey(v LNumber) bool {
@@ -160,13 +129,12 @@ func (t *ltable) hashmodi(n uint32) uint32 {
 }
 
 func (t *ltable) hashstri(s string) uint32 {
-	v := addString32(uint32(2166136261), s)
-	return v & (t.sizenode() - 1)
+	return hashString32(s) & (t.sizenode() - 1)
 }
 
 func (t *ltable) hashpointer(n LValue) uint32 {
 	v := *(*[2]uintptr)(unsafe.Pointer(&n))
-	return t.hashmodi(uint32(v[1]) & math.MaxUint32)
+	return t.hashmodi(uint32(v[1] & math.MaxUint32))
 }
 
 func (t *ltable) setnodevector(size uint32) {
@@ -214,14 +182,14 @@ func (t *ltable) newkey(key LValue) *LValue {
 		otherni := int32(t.mainposition(t.node[mpi].key.tvk))
 		if otherni != mpi { // is colliding node out of its main position?
 			// yes; move colliding node into free position
-			for otherni+t.node[otherni].key.next != mpi {
+			for otherni+t.node[otherni].key.next != mpi { // find previous
 				otherni += t.node[otherni].key.next
 			}
-			t.node[otherni].key.next = fi - otherni
-			t.node[fi] = t.node[mpi]
+			t.node[otherni].key.next = fi - otherni // rechain to point to 'f'
+			t.node[fi] = t.node[mpi]                // copy colliding node into free pos. (mp->next also goes)
 			if t.node[mpi].key.next != 0 {
-				t.node[fi].key.next += mpi - fi
-				t.node[mpi].key.next = 0
+				t.node[fi].key.next += mpi - fi // correct 'next'
+				t.node[mpi].key.next = 0        // now 'mp' is free
 			}
 			t.node[mpi].val = LNil
 		} else { // colliding node is in its own main position
@@ -308,7 +276,7 @@ func keyRawEquals(lhs, rhs LValue) bool {
 	case LTBool:
 		ret = bool(lhs.(LBool)) == bool(rhs.(LBool))
 	case LTString:
-		ret = string(lhs.(LString)) == string(rhs.(LString))
+		ret = lhs.(LString) == rhs.(LString)
 	case LTUserData, LTTable:
 		if lhs == rhs {
 			ret = true
@@ -553,6 +521,22 @@ func (t *ltable) getgeneric(key LValue) *LValue {
 	}
 }
 
+func (t *ltable) getStr(key string) *LValue {
+	ni := int32(t.hashstri(key)) // mainposition
+	for {
+		tvk := t.node[ni].key.tvk
+		if tvk.Type() == LTString && string(tvk.(LString)) == key {
+			return &t.node[ni].val
+		} else {
+			nx := t.node[ni].key.next
+			if nx == 0 {
+				return &LNil
+			}
+			ni += nx
+		}
+	}
+}
+
 func (t *ltable) get(key LValue) *LValue {
 	switch key.Type() {
 	case LTNil:
@@ -565,6 +549,8 @@ func (t *ltable) get(key LValue) *LValue {
 			return t.getInt(int64(tv))
 		}
 		return t.getgeneric(key)
+	case LTString:
+		return t.getStr(string(key.(LString)))
 	default:
 		return t.getgeneric(key)
 	}
@@ -572,6 +558,10 @@ func (t *ltable) get(key LValue) *LValue {
 
 func (t *ltable) Get(key LValue) LValue {
 	return *t.get(key)
+}
+
+func (t *ltable) GetString(key string) LValue {
+	return *t.getStr(key)
 }
 
 func (t *ltable) SetInt(key int64, value LValue) {
@@ -582,6 +572,7 @@ func (t *ltable) SetInt(key int64, value LValue) {
 func (t *ltable) Set(key LValue, value LValue) {
 	p := t.set(key)
 	*p = value
+	// t.set(key)
 }
 
 func (t *ltable) setInt(key int64) *LValue {
