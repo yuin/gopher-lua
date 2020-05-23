@@ -99,17 +99,25 @@ var (
 	errTabInvalidKeyNext = errors.New("invalid key to 'next'")
 )
 
-func newltable(size int) (*ltable, error) {
+// for test only
+func newltable(nhsize int) (*ltable, error) {
 	tab := &ltable{}
-	initltable(tab, size)
+	initltable(tab, 0, nhsize)
 	return tab, nil
 }
 
-func initltable(tab *ltable, size int) {
-	if size < 0 {
-		size = 0
+func initltable(tab *ltable, nasize, nhsize int) {
+	if nasize < 0 {
+		nasize = 0
 	}
-	tab.setnodevector(uint32(size))
+	if nhsize < 0 {
+		nhsize = 0
+	}
+	tab.setnodevector(uint32(nhsize))
+	// XXX: removed on lua 5.3
+	if nasize > 0 {
+		tab.setarrayvector(uint32(nasize))
+	}
 }
 
 func (t *ltable) sizenode() uint32 {

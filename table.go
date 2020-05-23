@@ -12,7 +12,7 @@ func newLTable(acap int, hcap int) *LTable {
 	}
 	tb := &LTable{}
 	tb.Metatable = LNil
-	initltable(&tb.tab, hcap)
+	initltable(&tb.tab, acap, hcap)
 	return tb
 }
 
