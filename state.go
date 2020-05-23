@@ -1305,9 +1305,11 @@ func (ls *LState) setFieldString(obj LValue, key string, value LValue) {
 	curobj := obj
 	for i := 0; i < MaxTableGetLoop; i++ {
 		tb, istable := curobj.(*LTable)
+		var p *LValue
 		if istable {
-			if tb.RawGetString(key) != LNil {
-				tb.RawSetString(key, value)
+			p = tb.rawSetStringPtr(key)
+			if *p != LNil {
+				*p = value
 				return
 			}
 		}
@@ -1316,7 +1318,7 @@ func (ls *LState) setFieldString(obj LValue, key string, value LValue) {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key)
 			}
-			tb.RawSetString(key, value)
+			*p = value
 			return
 		}
 		if metaindex.Type() == LTFunction {
