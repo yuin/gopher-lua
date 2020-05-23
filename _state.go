@@ -1152,7 +1152,7 @@ func (ls *LState) setFieldString(obj LValue, key string, value LValue) {
 		tb, istable := curobj.(*LTable)
 		var p *LValue
 		if istable {
-			p = tb.rawSetStringPtr(key)
+			p = tb.rawSetStringUnsafe(key)
 			if *p != LNil {
 				*p = value
 				return

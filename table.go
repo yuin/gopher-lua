@@ -24,8 +24,8 @@ func (tb *LTable) resizeArray(nasize int) {
 	tb.tab.ResizeArray(nasize)
 }
 
-func (tb *LTable) rawSetStringPtr(key string) *LValue {
-	return tb.tab.set(LString(key))
+func (tb *LTable) rawSetStringUnsafe(key string) *LValue {
+	return tb.tab.setStr(key)
 }
 
 // Len returns length of this LTable.

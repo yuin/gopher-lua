@@ -61,7 +61,7 @@ func hashString32(s string) uint32 {
 	step := (l >> 5) + 1
 	for ; l >= step; l -= step {
 		// h = h ^ ((h << 5) + (h >> 2) + uint32(s[l-1]))
-		h = (h ^ uint32(s[0])) * prime32
+		h = (h ^ uint32(s[l-1])) * prime32
 	}
 	return h
 }
@@ -534,8 +534,7 @@ func (t *ltable) getgeneric(key LValue) *LValue {
 func (t *ltable) getStr(key string) *LValue {
 	ni := int32(t.hashstri(key)) // mainposition
 	for {
-		tvk := t.node[ni].key.tvk
-		if tvk.Type() == LTString && string(tvk.(LString)) == key {
+		if v, ok := t.node[ni].key.tvk.(LString); ok && string(v) == key {
 			return &t.node[ni].val
 		} else {
 			nx := t.node[ni].key.next
@@ -575,14 +574,15 @@ func (t *ltable) GetString(key string) LValue {
 }
 
 func (t *ltable) SetInt(key int64, value LValue) {
-	p := t.setInt(key)
-	*p = value
+	*t.setInt(key) = value
+}
+
+func (t *ltable) SetString(key string, value LValue) {
+	*t.setStr(key) = value
 }
 
 func (t *ltable) Set(key LValue, value LValue) {
-	p := t.set(key)
-	*p = value
-	// t.set(key)
+	*t.set(key) = value
 }
 
 func (t *ltable) setInt(key int64) *LValue {
@@ -591,6 +591,14 @@ func (t *ltable) setInt(key int64) *LValue {
 		return p
 	}
 	return t.newkey(LNumber(key))
+}
+
+func (t *ltable) setStr(key string) *LValue {
+	p := t.getStr(key)
+	if p != &LNil {
+		return p
+	}
+	return t.newkey(LString(key))
 }
 
 func (t *ltable) set(key LValue) *LValue {
