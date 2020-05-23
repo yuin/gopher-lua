@@ -3,6 +3,7 @@ package lua
 import (
 	"fmt"
 	"testing"
+	"unsafe"
 )
 
 func TestLTableBasic(t *testing.T) {
@@ -64,11 +65,29 @@ func TestLTableBasic(t *testing.T) {
 		t.Error("not 10")
 	}
 
-	ud := &LUserData{}
+	for i := 0; i < 5; i++ {
+		ud := &LUserData{}
+		v := fmt.Sprintf("UD%d", i)
+		tb.Set(ud, LString(v))
+		tb.Set(&LUserData{}, LNil)
+		if tb.Get(ud) != LString(v) {
+			t.Error("bad userdata key")
+		}
+		t.Log("hash userdata: ", tb.hashpointer(ud))
 
-	tb.Set(ud, LString("UD"))
-	if tb.Get(ud) != LString("UD") {
-		t.Error("bad userdata key")
+	}
+
+	for i := 0; i < 5; i++ {
+		ch := make(LChannel, 1)
+		if unsafe.Sizeof(ch) != unsafe.Sizeof(uintptr(0)) {
+			t.Error("sizeof ch not equal to pointer")
+		}
+		v := fmt.Sprintf("ch%d", i)
+		tb.Set(ch, LString(v))
+		if tb.Get(ch) != LString(v) {
+			t.Error("bad channel key")
+		}
+		t.Log("hash channel: ", tb.hashpointer(ch))
 	}
 
 	fl := LNumber(34.232)

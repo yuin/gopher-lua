@@ -1693,8 +1693,6 @@ func (ls *LState) RawSet(tb *LTable, key LValue, value LValue) {
 		ls.RaiseError("table index is NaN")
 	} else if key == LNil {
 		ls.RaiseError("table index is nil")
-	} else if key.Type() == LTChannel {
-		ls.RaiseError("table index is channel")
 	}
 	tb.RawSet(key, value)
 }

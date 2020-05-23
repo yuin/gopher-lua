@@ -177,9 +177,6 @@ func (t *ltable) newkey(key LValue) *LValue {
 	if key.Type() == LTNil {
 		panic("table index is nil")
 	}
-	if key.Type() == LTChannel {
-		panic("table index is channel")
-	}
 	mpi := int32(t.mainposition(key))
 	if t.node[mpi].val != LNil || t.isdummy() { // main position is taken?
 		fi := t.getfreepos()
@@ -252,8 +249,6 @@ func (t *ltable) mainposition(key LValue) uint32 {
 	case LTString:
 		tv := key.(LString)
 		return t.hashstri(string(tv))
-	case LTChannel:
-		panic("using channel fo key is not unsupported")
 	default:
 		return t.hashpointer(key)
 	}
@@ -549,8 +544,6 @@ func (t *ltable) getStr(key string) *LValue {
 func (t *ltable) get(key LValue) *LValue {
 	switch key.Type() {
 	case LTNil:
-		return &LNil
-	case LTChannel:
 		return &LNil
 	case LTNumber:
 		tv := key.(LNumber)
