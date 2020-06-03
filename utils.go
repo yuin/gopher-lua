@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -256,13 +255,11 @@ func strCmp(s1, s2 string) int {
 	}
 }
 
-func unsafeFastStringToReadOnlyBytes(s string) []byte {
-	b := make([]byte, 0)
+func unsafeFastStringToReadOnlyBytes(s string) (bs []byte) {
 	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	bh := (*reflect.SliceHeader)(unsafe.Pointer(&bs))
 	bh.Data = sh.Data
 	bh.Cap = sh.Len
 	bh.Len = sh.Len
-	runtime.KeepAlive(s)
-	return b
+	return
 }
