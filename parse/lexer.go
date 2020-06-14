@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/yuin/gopher-lua/ast"
 	"io"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/yuin/gopher-lua/ast"
 )
 
 const EOF = -1
@@ -40,6 +41,10 @@ func isIdent(ch int, pos int) bool {
 
 func isDigit(ch int) bool {
 	return '0' <= ch && ch <= '9' || 'a' <= ch && ch <= 'f' || 'A' <= ch && ch <= 'F'
+}
+
+func toString(ch int) string {
+	return string(rune(ch))
 }
 
 type Scanner struct {
@@ -255,7 +260,7 @@ func (sc *Scanner) scanMultilineString(ch int, buf *bytes.Buffer) error {
 	var count1, count2 int
 	count1, ch = sc.countSep(ch)
 	if ch != '[' {
-		return sc.Error(string(ch), "invalid multiline string")
+		return sc.Error(toString(ch), "invalid multiline string")
 	}
 	ch = sc.Next()
 	if ch == '\n' || ch == '\r' {
@@ -338,7 +343,7 @@ redo:
 				goto redo
 			} else {
 				tok.Type = ch
-				tok.Str = string(ch)
+				tok.Str = toString(ch)
 			}
 		case '"', '\'':
 			tok.Type = TString
@@ -351,7 +356,7 @@ redo:
 				tok.Str = buf.String()
 			} else {
 				tok.Type = ch
-				tok.Str = string(ch)
+				tok.Str = toString(ch)
 			}
 		case '=':
 			if sc.Peek() == '=' {
@@ -360,7 +365,7 @@ redo:
 				sc.Next()
 			} else {
 				tok.Type = ch
-				tok.Str = string(ch)
+				tok.Str = toString(ch)
 			}
 		case '~':
 			if sc.Peek() == '=' {
@@ -377,7 +382,7 @@ redo:
 				sc.Next()
 			} else {
 				tok.Type = ch
-				tok.Str = string(ch)
+				tok.Str = toString(ch)
 			}
 		case '>':
 			if sc.Peek() == '=' {
@@ -386,7 +391,7 @@ redo:
 				sc.Next()
 			} else {
 				tok.Type = ch
-				tok.Str = string(ch)
+				tok.Str = toString(ch)
 			}
 		case '.':
 			ch2 := sc.Peek()
@@ -410,7 +415,7 @@ redo:
 			tok.Str = buf.String()
 		case '+', '*', '/', '%', '^', '#', '(', ')', '{', '}', ']', ';', ':', ',':
 			tok.Type = ch
-			tok.Str = string(ch)
+			tok.Str = toString(ch)
 		default:
 			writeChar(buf, ch)
 			err = sc.Error(buf.String(), "Invalid token")
