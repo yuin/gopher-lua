@@ -263,3 +263,11 @@ func unsafeFastStringToReadOnlyBytes(s string) (bs []byte) {
 	bh.Len = sh.Len
 	return
 }
+
+func useAllowlist(orgFuncs map[string]LGFunction, allowed ...string) map[string]LGFunction {
+	funcs := map[string]LGFunction{}
+	for _, str := range allowed {
+		funcs[str] = osFuncs[str]
+	}
+	return funcs
+}

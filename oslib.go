@@ -35,6 +35,14 @@ func OpenOs(L *LState) int {
 	return 1
 }
 
+func OpenOsAllowlist(allowed ...string) LGFunction {
+	return func(L *LState) int {
+		osmod := L.RegisterModule(OsLibName, useAllowlist(osFuncs, allowed...))
+		L.Push(osmod)
+		return 1
+	}
+}
+
 var osFuncs = map[string]LGFunction{
 	"clock":     osClock,
 	"difftime":  osDiffTime,
