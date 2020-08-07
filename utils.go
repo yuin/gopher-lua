@@ -32,7 +32,7 @@ func defaultFormat(v interface{}, f fmt.State, c rune) {
 	buf = append(buf, "%")
 	for i := 0; i < 128; i++ {
 		if f.Flag(i) {
-			buf = append(buf, string(i))
+			buf = append(buf, string(rune(i)))
 		}
 	}
 
