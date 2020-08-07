@@ -1367,6 +1367,10 @@ func NewState(opts ...Options) *LState {
 	return ls
 }
 
+func (ls *LState) IsClosed() bool {
+	return ls.stack == nil
+}
+
 func (ls *LState) Close() {
 	atomic.AddInt32(&ls.stop, 1)
 	for _, file := range ls.G.tempFiles {
