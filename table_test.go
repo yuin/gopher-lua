@@ -19,12 +19,18 @@ func TestTableLen(t *testing.T) {
 	tbl.RawSetInt(8, LNil)
 	tbl.RawSetInt(7, LNumber(10))
 	errorIfNotEqual(t, 9, tbl.Len())
+	errorIfNotEqual(t, 0, tbl.DictionaryLen())
 
 	tbl = newLTable(0, 0)
 	tbl.Append(LTrue)
 	tbl.Append(LTrue)
 	tbl.Append(LTrue)
 	errorIfNotEqual(t, 3, tbl.Len())
+
+	tbl = newLTable(0, 0)
+	tbl.RawSetString("a", LNumber(1))
+	tbl.RawSetString("b", LNumber(2))
+	errorIfNotEqual(t, 2, tbl.DictionaryLen())
 }
 
 func TestTableAppend(t *testing.T) {
@@ -206,4 +212,35 @@ func TestTableForEach(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestNext(t *testing.T) {
+	tbl := newLTable(0, 0)
+	tbl.RawSetString("a", LNumber(1))
+	tbl.RawSetString("b", LString("B"))
+	index, value := tbl.Next(LNil)
+	errorIfNotEqual(t, LString("a"), index)
+	errorIfNotEqual(t, LNumber(1), value)
+
+	index, value = tbl.Next(LString("a"))
+	errorIfNotEqual(t, LString("b"), index)
+	errorIfNotEqual(t, LString("B"), value)
+
+	tbl = newLTable(0, 0)
+	tbl.Append(LNumber(11))
+	tbl.Append(LNumber(21))
+	tbl.Append(LNumber(13))
+	tbl.Insert(2, LNil)
+	index, value = tbl.Next(LNil)
+	errorIfNotEqual(t, LNumber(1), index)
+	errorIfNotEqual(t, LNumber(11), value)
+	index, value = tbl.Next(LNumber(1))
+	errorIfNotEqual(t, LNumber(3), index)
+	errorIfNotEqual(t, LNumber(21), value)
+
+	tbl = newLTable(0, 0)
+	tbl.RawSetH(LTrue, LNumber(-10))
+	index, value = tbl.Next(LNil)
+	errorIfNotEqual(t, index, LTrue)
+	errorIfNotEqual(t, LNumber(-10), value)
 }

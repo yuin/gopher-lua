@@ -158,14 +158,17 @@ func (nm LNumber) Format(f fmt.State, c rune) {
 	}
 }
 
+type lTableDictValue struct {
+	value LValue
+	keyIndex int
+}
+
 type LTable struct {
 	Metatable LValue
 
 	array   []LValue
-	dict    map[LValue]LValue
-	strdict map[string]LValue
-	keys    []LValue
-	k2i     map[LValue]int
+	dict    map[LValue]lTableDictValue
+	keys    []*LValue
 }
 
 func (tb *LTable) String() string                     { return fmt.Sprintf("table: %p", tb) }
