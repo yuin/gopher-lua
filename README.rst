@@ -12,6 +12,9 @@ GopherLua: VM and compiler for Lua in Go.
 .. image:: https://coveralls.io/repos/yuin/gopher-lua/badge.svg
     :target: https://coveralls.io/r/yuin/gopher-lua
 
+.. image:: https://app.fuzzit.dev/badge?org_id=yuin
+    :target: https://app.fuzzit.dev/orgs/yuin/dashboard
+
 .. image:: https://badges.gitter.im/Join%20Chat.svg
     :alt: Join the chat at https://gitter.im/yuin/gopher-lua
     :target: https://gitter.im/yuin/gopher-lua?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
