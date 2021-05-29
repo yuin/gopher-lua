@@ -91,9 +91,11 @@ func tableInsert(L *LState) int {
 
 	if L.GetTop() == 2 {
 		tbl.Append(L.Get(2))
+		tbl.CheckQuota(L)
 		return 0
 	}
 	tbl.Insert(int(L.CheckInt(2)), L.CheckAny(3))
+	tbl.CheckQuota(L)
 	return 0
 }
 

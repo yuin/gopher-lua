@@ -330,7 +330,8 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			reg.Set(RA, newLTable(B, C))
+			tbl := L.CreateTable(B, C)
+			reg.Set(RA, tbl)
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SELF
