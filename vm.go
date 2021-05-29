@@ -1389,6 +1389,12 @@ func init() {
 			if B == 0 {
 				nelem = reg.Top() - RA - 1
 			}
+			// needs more space?
+			// see https://www.lua.org/source/5.1/lvm.c.html luaH_resizearray
+			last := nelem + offset
+			if last > table.sizearray() {
+				table.resizeArray(last)
+			}
 			for i := 1; i <= nelem; i++ {
 				table.RawSetInt(offset+i, reg.Get(RA+i))
 			}
