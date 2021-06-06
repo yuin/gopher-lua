@@ -51,13 +51,14 @@ func (tb *LTable) Len() int {
 	if tb.array == nil {
 		return 0
 	}
-	var prev LValue = LNil
-	for i := len(tb.array) - 1; i >= 0; i-- {
+	for i := 0; i < len(tb.array); i++ {
 		v := tb.array[i]
-		if prev == LNil && v != LNil {
-			return i + 1
+		x := i + 1
+		if len(tb.array) == x && v != LNil {
+			return x
+		} else if v == LNil {
+			break
 		}
-		prev = v
 	}
 	return 0
 }
