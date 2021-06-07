@@ -67,12 +67,10 @@ func (tb *LTable) OpLen() int {
 		return 0
 	}
 	for i := 0; i < len(tb.array); i++ {
-		v := tb.array[i]
-		x := i + 1
-		if len(tb.array) == x && v != LNil {
-			return x
-		} else if v == LNil {
-			break
+		if tb.array[i] == LNil {
+		   return i
+		} else if (len(tb.array) - 1) == i {
+			return i + 1
 		}
 	}
 	return 0
