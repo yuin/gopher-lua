@@ -331,8 +331,9 @@ function test()
 	assert(os.time(t1) == os.time(t6))
 end
 test()
+
 -- issue #304
-do
+function test()
 	local x ={
 		[20] = 0;
 		[600] = 0;
@@ -348,3 +349,4 @@ do
 	  assert(#a == i)
 	end
 end
+test()
