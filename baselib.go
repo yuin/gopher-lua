@@ -321,11 +321,16 @@ func baseSelect(L *LState) int {
 	switch lv := L.Get(1).(type) {
 	case LNumber:
 		idx := int(lv)
-		num := L.reg.Top() - L.indexToReg(int(lv)) - 1
+		num := L.GetTop()
 		if idx < 0 {
-			num++
+			idx = num + idx
+		} else if idx > num {
+			idx = num
 		}
-		return num
+		if 1 > idx {
+			L.ArgError(1, "index out of range")
+		}
+		return num - idx
 	case LString:
 		if string(lv) != "#" {
 			L.ArgError(1, "invalid string '"+string(lv)+"'")
