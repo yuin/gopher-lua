@@ -552,7 +552,7 @@ func init() {
 						reg.SetNumber(RA, LNumber(0))
 					}
 				} else if lv.Type() == LTTable {
-					reg.SetNumber(RA, LNumber(lv.(*LTable).Len()))
+					reg.SetNumber(RA, LNumber(lv.(*LTable).OpLen()))
 				} else {
 					L.RaiseError("__len undefined")
 				}
