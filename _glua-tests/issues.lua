@@ -331,3 +331,22 @@ function test()
 	assert(os.time(t1) == os.time(t6))
 end
 test()
+
+-- issue #304
+function test()
+	local x ={
+		[20] = 0;
+		[600] = 0;
+	}
+	local y = {
+		"a", "b", "c"
+	}
+	assert(#x == 0)
+	assert(#y == 3)
+	local a = {}
+	for i=1,100 do
+	  a[i] = true
+	  assert(#a == i)
+	end
+end
+test()

@@ -62,6 +62,20 @@ func (tb *LTable) Len() int {
 	return 0
 }
 
+func (tb *LTable) OpLen() int {
+	if tb.array == nil {
+		return 0
+	}
+	for i := 0; i < len(tb.array); i++ {
+		if tb.array[i] == LNil {
+			return i
+		} else if (len(tb.array) - 1) == i {
+			return i + 1
+		}
+	}
+	return 0
+}
+
 // Append appends a given LValue to this LTable.
 func (tb *LTable) Append(value LValue) {
 	if value == LNil {
