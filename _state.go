@@ -105,6 +105,8 @@ type Options struct {
 	// If `MinimizeStackMemory` is set, the call stack will be automatically grown or shrank up to a limit of
 	// `CallStackSize` in order to minimize memory usage. This does incur a slight performance penalty.
 	MinimizeStackMemory bool
+	// Sets the maximum number of operations to execute. A value of 0 indicates no limit.
+	ExecutionLimit uint
 }
 
 /* }}} */
@@ -621,6 +623,15 @@ func (ls *LState) printCallStack() {
 		}
 	}
 	println("-------------------------")
+}
+
+func (ls *LState) incOpCounter() {
+	if ls.Options.ExecutionLimit > 0 {
+		ls.G.opcount++
+		if ls.G.opcount > ls.Options.ExecutionLimit {
+			ls.RaiseError("execution limit reached")
+		}
+	}
 }
 
 func (ls *LState) closeAllUpvalues() { // +inline-start

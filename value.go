@@ -198,6 +198,7 @@ type Global struct {
 	builtinMts map[int]LValue
 	tempFiles  []*os.File
 	gccount    int32
+	opcount    uint
 }
 
 type LState struct {
