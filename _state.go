@@ -3,7 +3,6 @@ package lua
 import (
 	"context"
 	"fmt"
-
 	"io"
 	"math"
 	"os"
@@ -937,18 +936,22 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 		proto := cf.Fn.Proto
 		nargs := cf.NArgs
 		np := int(proto.NumParameters)
-		newSize := cf.LocalBase + np
-		// +inline-call ls.reg.checkSize newSize
-		for i := nargs; i < np; i++ {
-			ls.reg.array[cf.LocalBase+i] = LNil
+		if nargs < np {
+			// default any missing arguments to nil
+			newSize := cf.LocalBase + np
+			// +inline-call ls.reg.checkSize newSize
+			for i := nargs; i < np; i++ {
+				ls.reg.array[cf.LocalBase+i] = LNil
+			}
 			nargs = np
+			ls.reg.top = newSize
 		}
 
 		if (proto.IsVarArg & VarArgIsVarArg) == 0 {
 			if nargs < int(proto.NumUsedRegisters) {
 				nargs = int(proto.NumUsedRegisters)
 			}
-			newSize = cf.LocalBase + nargs
+			newSize := cf.LocalBase + nargs
 			// +inline-call ls.reg.checkSize newSize
 			for i := np; i < nargs; i++ {
 				ls.reg.array[cf.LocalBase+i] = LNil
@@ -1212,6 +1215,10 @@ func NewState(opts ...Options) *LState {
 		}
 	}
 	return ls
+}
+
+func (ls *LState) IsClosed() bool {
+	return ls.stack == nil
 }
 
 func (ls *LState) Close() {
@@ -2038,7 +2045,7 @@ func (ls *LState) SetMx(mx int) {
 	go func() {
 		limit := uint64(mx * 1024 * 1024) //MB
 		var s runtime.MemStats
-		for ls.stop == 0 {
+		for atomic.LoadInt32(&ls.stop) == 0 {
 			runtime.ReadMemStats(&s)
 			if s.Alloc >= limit {
 				fmt.Println("out of memory")
