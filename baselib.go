@@ -260,7 +260,7 @@ func basePairs(L *LState) int {
 func basePCall(L *LState) int {
 	L.CheckAny(1)
 	v := L.Get(1)
-	if v.Type() != LTFunction {
+	if v.Type() != LTFunction && L.GetMetaField(v, "__call").Type() != LTFunction {
 		L.Push(LFalse)
 		L.Push(LString("attempt to call a " + v.Type().String() + " value"))
 		return 2
