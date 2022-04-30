@@ -28,8 +28,8 @@ func TestTableLen(t *testing.T) {
 }
 
 func TestTableLenType(t *testing.T) {
-    L := NewState(Options{})
-    err := L.DoString(`
+	L := NewState(Options{})
+	err := L.DoString(`
         mt = {
             __index = mt,
             __len = function (self)
@@ -46,9 +46,9 @@ func TestTableLenType(t *testing.T) {
 
         print(#v)
     `)
-    if err != nil {
-        t.Error(err)
-    }
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestTableAppend(t *testing.T) {
