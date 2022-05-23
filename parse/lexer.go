@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/yuin/gopher-lua/ast"
 	"io"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/yuin/gopher-lua/ast"
 )
 
 const EOF = -1
