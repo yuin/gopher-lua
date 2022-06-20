@@ -200,7 +200,7 @@ func baseLoadFile(L *LState) int {
 	var chunkname string
 	var err error
 	if L.GetTop() < 1 {
-		reader = os.Stdin
+		reader = L.Options.Stdin
 		chunkname = "<stdin>"
 	} else {
 		chunkname = L.CheckString(1)
@@ -283,12 +283,12 @@ func basePCall(L *LState) int {
 func basePrint(L *LState) int {
 	top := L.GetTop()
 	for i := 1; i <= top; i++ {
-		fmt.Print(L.ToStringMeta(L.Get(i)).String())
+		fmt.Fprint(L.Options.Stdout, L.ToStringMeta(L.Get(i)).String())
 		if i != top {
-			fmt.Print("\t")
+			fmt.Fprint(L.Options.Stdout, "\t")
 		}
 	}
-	fmt.Println("")
+	fmt.Fprintln(L.Options.Stdout, "")
 	return 0
 }
 
