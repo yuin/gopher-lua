@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 )
 
 type LValueType int
@@ -166,6 +167,7 @@ type LTable struct {
 	strdict map[string]LValue
 	keys    []LValue
 	k2i     map[LValue]int
+	mut     sync.RWMutex
 }
 
 func (tb *LTable) String() string                     { return fmt.Sprintf("table: %p", tb) }

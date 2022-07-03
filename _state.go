@@ -3,6 +3,7 @@ package lua
 import (
 	"context"
 	"fmt"
+	"github.com/xyproto/gopher-lua/parse"
 	"io"
 	"math"
 	"os"
@@ -11,8 +12,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/yuin/gopher-lua/parse"
 )
 
 const MultRet = -1

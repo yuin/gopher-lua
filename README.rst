@@ -1,3 +1,4 @@
+# This is an experimental fork of yuin/gopher-lua
 
 ===============================================================================
 GopherLua: VM and compiler for Lua in Go.
