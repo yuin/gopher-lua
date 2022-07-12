@@ -1657,6 +1657,10 @@ func patchCode(context *funcContext) { // {{{
 } // }}}
 
 func Compile(chunk []ast.Stmt, name string) (proto *FunctionProto, err error) { // {{{
+	return CompileWithParNames(chunk, name)
+} // }}}
+
+func CompileWithParNames(chunk []ast.Stmt, name string, parNames ...string) (proto *FunctionProto, err error) { // {{{
 	defer func() {
 		if rcv := recover(); rcv != nil {
 			if _, ok := rcv.(*CompileError); ok {
@@ -1667,7 +1671,7 @@ func Compile(chunk []ast.Stmt, name string) (proto *FunctionProto, err error) { 
 		}
 	}()
 	err = nil
-	parlist := &ast.ParList{HasVargs: true, Names: []string{}}
+	parlist := &ast.ParList{HasVargs: true, Names: parNames}
 	funcexpr := &ast.FunctionExpr{ParList: parlist, Stmts: chunk}
 	context := newFuncContext(name, nil)
 	compileFunctionExpr(context, funcexpr, ecnone(0))
