@@ -353,7 +353,7 @@ func (tb *LTable) ForEachWithBreak(cb func(LValue, LValue) bool) {
 		for i, v := range tb.array {
 			if v != LNil {
 				if !cb(LNumber(i+1), v) {
-					break
+					return
 				}
 			}
 		}
@@ -362,7 +362,7 @@ func (tb *LTable) ForEachWithBreak(cb func(LValue, LValue) bool) {
 		for k, v := range tb.strdict {
 			if v != LNil {
 				if !cb(LString(k), v) {
-					break
+					return
 				}
 			}
 		}
@@ -371,7 +371,7 @@ func (tb *LTable) ForEachWithBreak(cb func(LValue, LValue) bool) {
 		for k, v := range tb.dict {
 			if v != LNil {
 				if !cb(k, v) {
-					break
+					return
 				}
 			}
 		}
