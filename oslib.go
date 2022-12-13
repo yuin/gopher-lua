@@ -108,13 +108,18 @@ func osDate(L *LState) int {
 	t := time.Now()
 	cfmt := "%c"
 	if L.GetTop() >= 1 {
-		cfmt = L.CheckString(1)
+		lv := L.Get(1)
+		if LVCanConvToString(lv) {
+			cfmt = lv.String()
+		} else if lv != LNil {
+			L.TypeError(1, LTString)
+		}
 		if strings.HasPrefix(cfmt, "!") {
 			t = time.Now().UTC()
 			cfmt = strings.TrimLeft(cfmt, "!")
 		}
 		if L.GetTop() >= 2 {
-			t = time.Unix(L.CheckInt64(2), 0)
+			t = time.Unix(L.OptInt64(2, t.Unix()), 0)
 		}
 		if strings.HasPrefix(cfmt, "*t") {
 			ret := L.NewTable()
