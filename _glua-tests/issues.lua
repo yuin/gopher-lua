@@ -404,3 +404,15 @@ function test()
     assert(2 % 2 == 0)
 end
 test()
+
+-- issue #417
+function test()
+    assert(type(os.date(nil)) == "string")
+    assert(type(os.date(nil, nil)) == "string")  
+    local t = os.time()
+    assert(os.date(nil, t) == os.date("%c", t))
+    assert(os.date(2) == "2")
+    local ok, msg = pcall(os.date, {})
+    assert(not ok and string.find(msg, "string expected, got table", 1, true))
+end
+test()
