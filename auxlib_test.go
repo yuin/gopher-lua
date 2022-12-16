@@ -1,6 +1,8 @@
 package lua
 
 import (
+	"embed"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -334,4 +336,34 @@ func TestLoadFileForEmptyFile(t *testing.T) {
 
 	_, err = L.LoadFile(tmpFile.Name())
 	errorIfNotNil(t, err)
+}
+
+//go:embed _lua5.1-tests/all.lua
+var luaTree embed.FS
+
+type luaFileSystem struct {
+	fileSystem embed.FS
+}
+
+func (lfs *luaFileSystem) Open(path string) (io.ReadCloser, error) {
+	return lfs.fileSystem.Open(path)
+}
+
+func (lfs *luaFileSystem) Stat(path string) (os.FileInfo, error) {
+	file, err := lfs.fileSystem.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	return file.Stat()
+}
+
+func TestLoadLuaFileSystemFile(t *testing.T) {
+	L := NewState(Options{LuaFileSystem: &luaFileSystem{fileSystem: luaTree}})
+	defer L.Close()
+
+	_, err := L.LoadFile("_lua5.1-tests/all.lua")
+	errorIfNotNil(t, err)
+
+	_, err = L.LoadFile("invalid.lua")
+	errorIfNil(t, err)
 }

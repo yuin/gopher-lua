@@ -109,6 +109,8 @@ type Options struct {
 	// If `MinimizeStackMemory` is set, the call stack will be automatically grown or shrank up to a limit of
 	// `CallStackSize` in order to minimize memory usage. This does incur a slight performance penalty.
 	MinimizeStackMemory bool
+	// Load lua files from LuaFileSystem instead of OS file-system.
+	LuaFileSystem LuaFileSystem
 }
 
 /* }}} */
@@ -575,6 +577,28 @@ func (rg *registry) SetNumber(reg int, val LNumber) {
 
 func (rg *registry) IsFull() bool {
 	return rg.top >= cap(rg.array)
+}
+
+/* }}} */
+
+/* luaFileSystem {{{ */
+type LuaFileSystem interface {
+	Open(path string) (io.ReadCloser, error)
+	Stat(luapath string) (os.FileInfo, error)
+}
+
+func (ls *LState) Open(path string) (io.ReadCloser, error) {
+	if ls.Options.LuaFileSystem != nil {
+		return ls.Options.LuaFileSystem.Open(path)
+	}
+	return os.Open(path)
+}
+
+func (ls *LState) Stat(luapath string) (os.FileInfo, error) {
+	if ls.Options.LuaFileSystem != nil {
+		return ls.Options.LuaFileSystem.Stat(luapath)
+	}
+	return os.Stat(luapath)
 }
 
 /* }}} */
