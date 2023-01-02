@@ -2,9 +2,10 @@ package lua
 
 import (
 	"fmt"
-	"github.com/yuin/gopher-lua/ast"
 	"math"
 	"reflect"
+
+	"github.com/yuin/gopher-lua/ast"
 )
 
 /* internal constants & structs  {{{ */
@@ -1468,7 +1469,15 @@ func compileLogicalOpExprAux(context *funcContext, reg int, expr ast.Expr, ec *e
 
 	a := reg
 	sreg := savereg(ec, a)
-	if !hasnextcond && thenlabel == elselabel {
+
+	if ident, ok := expr.(*ast.IdentExpr); ok && getIdentRefType(context, context, ident) == ecLocal && ((elselabel == lb.e && thenlabel != elselabel) || (hasnextcond && thenlabel == lb.e)) {
+		b := context.FindLocalVar(ident.Value)
+		if sreg != b {
+			code.AddABC(OP_TESTSET, sreg, b, 0^flip, sline(expr))
+		} else {
+			code.AddABC(OP_TEST, sreg, b, 0^flip, sline(expr))
+		}
+	} else if !hasnextcond && thenlabel == elselabel {
 		reg += compileExpr(context, reg, expr, &expcontext{ec.ctype, intMax(a, sreg), ec.varargopt})
 		last := context.Code.Last()
 		if opGetOpCode(last) == OP_MOVE && opGetArgA(last) == a {
@@ -1478,11 +1487,7 @@ func compileLogicalOpExprAux(context *funcContext, reg int, expr ast.Expr, ec *e
 		}
 	} else {
 		reg += compileExpr(context, reg, expr, ecnone(0))
-		if sreg == a {
-			code.AddABC(OP_TEST, a, 0, 0^flip, sline(expr))
-		} else {
-			code.AddABC(OP_TESTSET, sreg, a, 0^flip, sline(expr))
-		}
+		code.AddABC(OP_TEST, a, 0, 0^flip, sline(expr))
 	}
 	code.AddASbx(OP_JMP, 0, jumplabel, sline(expr))
 } // }}}
