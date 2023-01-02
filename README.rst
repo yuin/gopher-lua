@@ -3,14 +3,14 @@
 GopherLua: VM and compiler for Lua in Go.
 ===============================================================================
 
-.. image:: https://godoc.org/github.com/yuin/gopher-lua?status.svg
-    :target: http://godoc.org/github.com/yuin/gopher-lua
+.. image:: https://pkg.go.dev/badge/github.com/yuin/gopher-lua.svg
+    :target: https://pkg.go.dev/github.com/yuin/gopher-lua
 
-.. image:: https://travis-ci.org/yuin/gopher-lua.svg
-    :target: https://travis-ci.org/yuin/gopher-lua
+.. image:: https://github.com/yuin/gopher-lua/workflows/test/badge.svg?branch=master&event=push
+    :target: https://github.com/yuin/gopher-lua/actions?query=workflow:test
 
-.. image:: https://coveralls.io/repos/yuin/gopher-lua/badge.svg
-    :target: https://coveralls.io/r/yuin/gopher-lua
+.. image:: https://coveralls.io/repos/github/yuin/gopher-lua/badge.svg?branch=master
+    :target: https://coveralls.io/github/yuin/gopher-lua
 
 .. image:: https://badges.gitter.im/Join%20Chat.svg
     :alt: Join the chat at https://gitter.im/yuin/gopher-lua
