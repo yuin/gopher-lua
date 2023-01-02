@@ -16,7 +16,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v1
     - name: Run tests
-      run: make test
+      run: ./_tools/go-inline *.go && go fmt . &&  go test -v ./... -covermode=count -coverprofile=coverage.out -coverpkg=$(go list ./... | sed 's/\n/,/g')
     - name: Send coverage
       if: "matrix.platform == 'ubuntu-latest'"
       env:
