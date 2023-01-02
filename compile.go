@@ -526,8 +526,7 @@ func compileStmt(context *funcContext, stmt ast.Stmt) { // {{{
 func compileAssignStmtLeft(context *funcContext, stmt *ast.AssignStmt) (int, []*assigncontext) { // {{{
 	reg := context.RegTop()
 	acs := make([]*assigncontext, 0, len(stmt.Lhs))
-	for i, lhs := range stmt.Lhs {
-		islast := i == len(stmt.Lhs)-1
+	for _, lhs := range stmt.Lhs {
 		switch st := lhs.(type) {
 		case *ast.IdentExpr:
 			identtype := getIdentRefType(context, context, st)
@@ -538,9 +537,7 @@ func compileAssignStmtLeft(context *funcContext, stmt *ast.AssignStmt) (int, []*
 			case ecUpvalue:
 				context.Upvalues.RegisterUnique(st.Value)
 			case ecLocal:
-				if islast {
-					ec.reg = context.FindLocalVar(st.Value)
-				}
+				ec.reg = context.FindLocalVar(st.Value)
 			}
 			acs = append(acs, &assigncontext{ec, 0, 0, false, false})
 		case *ast.AttrGetExpr:

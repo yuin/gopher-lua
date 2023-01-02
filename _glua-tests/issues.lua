@@ -404,3 +404,44 @@ function test()
     assert(2 % 2 == 0)
 end
 test()
+
+-- issue #355
+function test()
+  local x = "valid"
+  assert(x == "valid")
+  assert(zzz == nil)
+  x = zzz and "not-valid" or x
+  assert(x == "valid")
+end
+test()
+
+function test()
+  local x = "valid"
+  local z = nil
+  assert(x == "valid")
+  assert(z == nil)
+  x = z and "not-valid" or x
+  assert(x == "valid")
+end
+test()
+
+function test()
+  local x = "valid"
+  assert(x == "valid")
+  assert(zzz == nil)
+  x = zzz and "not-valid" or "still " .. x
+  assert(x == "still valid")
+end
+test()
+
+-- issue #315
+function test()
+  local a = {}
+  local d = 'e'
+  local f = 1
+  
+  f, a.d = f, d
+  
+  assert(f..", "..a.d == "1, e")
+end
+test()
