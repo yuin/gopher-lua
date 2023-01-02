@@ -23,4 +23,5 @@ jobs:
         COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         GO111MODULE=off go get github.com/mattn/goveralls
+        ./_tools/go-inline *.go && go fmt .
         $(go env GOPATH)/bin/goveralls -coverprofile=coverage.out -service=github
