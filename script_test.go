@@ -2,12 +2,13 @@ package lua
 
 import (
 	"fmt"
-	"github.com/yuin/gopher-lua/parse"
 	"os"
 	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/yuin/gopher-lua/parse"
 )
 
 const maxMemory = 40
@@ -22,6 +23,7 @@ var gluaTests []string = []string{
 	"vm.lua",
 	"math.lua",
 	"strings.lua",
+	"goto.lua",
 }
 
 var luaTests []string = []string{
