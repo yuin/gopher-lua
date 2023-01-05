@@ -831,7 +831,7 @@ Miscellaneous notes
 - Daylight saving time is not supported.
 - GopherLua has a function to set an environment variable : ``os.setenv(name, value)``
 - GopherLua support ``goto`` and ``::label::`` statement in Lua5.2.
-  - `goto` is a keyword and not a valid variable name.
+    - `goto` is a keyword and not a valid variable name.
 
 ----------------------------------------------------------------
 Standalone interpreter
