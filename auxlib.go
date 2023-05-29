@@ -40,6 +40,11 @@ func (ls *LState) CheckNumber(n int) LNumber {
 	if lv, ok := v.(LNumber); ok {
 		return lv
 	}
+	if lv, ok := v.(LString); ok {
+		if num, err := parseNumber(string(lv)); err == nil {
+			return num
+		}
+	}
 	ls.TypeError(n, LTNumber)
 	return 0
 }
