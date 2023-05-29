@@ -769,6 +769,9 @@ func (ls *LState) isStarted() bool {
 
 func (ls *LState) kill() {
 	ls.Dead = true
+	if ls.ctxCancelFn != nil {
+		ls.ctxCancelFn()
+	}
 }
 
 func (ls *LState) indexToReg(idx int) int {
@@ -1402,6 +1405,7 @@ func (ls *LState) NewThread() (*LState, context.CancelFunc) {
 	if ls.ctx != nil {
 		thread.mainLoop = mainLoopWithContext
 		thread.ctx, f = context.WithCancel(ls.ctx)
+		thread.ctxCancelFn = f
 	}
 	return thread, f
 }

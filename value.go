@@ -218,6 +218,7 @@ type LState struct {
 	hasErrorFunc bool
 	mainLoop     func(*LState, *callFrame)
 	ctx          context.Context
+	ctxCancelFn  context.CancelFunc
 }
 
 func (ls *LState) String() string                     { return fmt.Sprintf("thread: %p", ls) }
