@@ -7,7 +7,6 @@ import (
 )
 
 func TestOsDateFormatUTCWithTwoParam(t *testing.T) {
-	t.Setenv("TZ", "Asia/Tokyo")
 	ls := NewState()
 
 	g := ls.GetGlobal("os")
@@ -82,7 +81,6 @@ func TestOsDateFormatUTCWithTwoParam(t *testing.T) {
 }
 
 func TestOsDateFormatLocalWithTwoParam(t *testing.T) {
-	t.Setenv("TZ", "Asia/Tokyo")
 	ls := NewState()
 
 	g := ls.GetGlobal("os")
