@@ -472,7 +472,7 @@ t[1] = "'error'"
 checktraceback(co, t)
 
 
--- test acessing line numbers of a coroutine from a resume inside
+-- test accessing line numbers of a coroutine from a resume inside
 -- a C function (this is a known bug in Lua 5.0)
 
 local function g(x)

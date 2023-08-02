@@ -333,7 +333,7 @@ F = function (x)
   if A ~= nil then
     assert(type(A) == "userdata")
     assert(T.udataval(A) == B)
-    debug.getmetatable(A)    -- just acess it
+    debug.getmetatable(A)    -- just access it
   end
   A = x   -- ressucita userdata
   B = udval
