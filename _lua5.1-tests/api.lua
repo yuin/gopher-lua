@@ -315,7 +315,7 @@ collectgarbage()
 assert(type(T.getref(a)) == 'table')
 
 
--- colect in cl the `val' of all collected userdata
+-- collect in cl the `val' of all collected userdata
 tt = {}
 cl = {n=0}
 A = nil; B = nil
