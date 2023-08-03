@@ -115,7 +115,7 @@ if rawget(_G, "querytab") then
   local t = querytab(a)
 
   for k,_ in pairs(a) do a[k] = nil end
-  collectgarbage()   -- restore GC and collect dead fiels in `a'
+  collectgarbage()   -- restore GC and collect dead fields in `a'
   for i=0,t-1 do
     local k = querytab(a, i)
     assert(k == nil or type(k) == 'number' or k == 'alo')
