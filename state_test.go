@@ -422,7 +422,7 @@ func TestContextCancel(t *testing.T) {
 	errorIfFalse(t, strings.Contains(err.Error(), "context canceled"), "execution must be canceled")
 }
 
-func TestContextWithCroutine(t *testing.T) {
+func TestContextWithCoroutine(t *testing.T) {
 	L := NewState()
 	defer L.Close()
 	ctx, cancel := context.WithCancel(context.Background())

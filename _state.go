@@ -742,7 +742,7 @@ func (ls *LState) frameFuncName(fr *callFrame) (string, bool) {
 		if ls.Parent == nil {
 			return "main chunk", true
 		} else {
-			return "corountine", true
+			return "coroutine", true
 		}
 	}
 	if !frame.Fn.IsG {
