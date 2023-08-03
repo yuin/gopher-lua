@@ -1827,7 +1827,7 @@ func patchCode(context *funcContext) { // {{{
 			}
 		}
 
-		// bulk move optimization(reducing op dipatch costs)
+		// bulk move optimization(reducing op dispatch costs)
 		if curop == OP_MOVE {
 			moven++
 		} else {
