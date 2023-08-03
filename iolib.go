@@ -558,7 +558,7 @@ func ioInput(L *LState) int {
 		}
 
 	}
-	L.ArgError(1, "string or file expedted, but got "+L.Get(1).Type().String())
+	L.ArgError(1, "string or file expected, but got "+L.Get(1).Type().String())
 	return 0
 }
 
@@ -735,7 +735,7 @@ func ioOutput(L *LState) int {
 		}
 
 	}
-	L.ArgError(1, "string or file expedted, but got "+L.Get(1).Type().String())
+	L.ArgError(1, "string or file expected, but got "+L.Get(1).Type().String())
 	return 0
 }
 
