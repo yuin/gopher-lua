@@ -341,7 +341,7 @@ F = function (x)
 end
 tt.__gc = F
 
--- test whether udate collection frees memory in the right time
+-- test whether update collection frees memory in the right time
 do
   collectgarbage();
   collectgarbage();
