@@ -40,7 +40,7 @@ func (e *Error) Error() string {
 type MatchData struct {
 	// captured positions
 	// layout
-	// xxxx xxxx xxxx xxx0 : caputured positions
+	// xxxx xxxx xxxx xxx0 : captured positions
 	// xxxx xxxx xxxx xxx1 : position captured positions
 	captures []uint32
 }
