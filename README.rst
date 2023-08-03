@@ -847,7 +847,7 @@ Lua has an interpreter called ``lua`` . GopherLua has an interpreter called ``gl
 ----------------------------------------------------------------
 How to Contribute
 ----------------------------------------------------------------
-See `Guidlines for contributors <https://github.com/yuin/gopher-lua/tree/master/.github/CONTRIBUTING.md>`_ .
+See `Guidelines for contributors <https://github.com/yuin/gopher-lua/tree/master/.github/CONTRIBUTING.md>`_ .
 
 ----------------------------------------------------------------
 Libraries for GopherLua
