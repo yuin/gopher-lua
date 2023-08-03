@@ -613,7 +613,7 @@ func ioLines(L *LState) int {
 	return 1
 }
 
-var ioOpenOpions = []string{"r", "rb", "w", "wb", "a", "ab", "r+", "rb+", "w+", "wb+", "a+", "ab+"}
+var ioOpenOptions = []string{"r", "rb", "w", "wb", "a", "ab", "r+", "rb+", "w+", "wb+", "a+", "ab+"}
 
 func ioOpenFile(L *LState) int {
 	path := L.CheckString(1)
@@ -624,7 +624,7 @@ func ioOpenFile(L *LState) int {
 	perm := 0600
 	writable := true
 	readable := true
-	switch ioOpenOpions[L.CheckOption(2, ioOpenOpions)] {
+	switch ioOpenOptions[L.CheckOption(2, ioOpenOptions)] {
 	case "r", "rb":
 		mode = os.O_RDONLY
 		writable = false
