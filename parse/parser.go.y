@@ -110,7 +110,7 @@ stat:
             $$ = &ast.AssignStmt{Lhs: $1, Rhs: $3}
             $$.SetLine($1[0].Line())
         } |
-        /* 'stat = functioncal' causes a reduce/reduce conflict */
+        /* 'stat = functioncall' causes a reduce/reduce conflict */
         prefixexp {
             if _, ok := $1.(*ast.FuncCallExpr); !ok {
                yylex.(*Lexer).Error("parse error")
