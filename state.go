@@ -2014,6 +2014,9 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 							err = rcv.(*ApiError)
 							err.(*ApiError).StackTrace = ls.stackTrace(0)
 						}
+						ls.stack.SetSp(sp)
+						ls.currentFrame = ls.stack.Last()
+						ls.reg.SetTop(base)
 					}
 				}()
 				ls.Call(1, 1)
