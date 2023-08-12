@@ -457,6 +457,7 @@ function test()
   assert(c == 1)
   assert(type(c) == "number")
 end
+test()
 
 -- issue #452
 function test()
