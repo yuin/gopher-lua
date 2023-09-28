@@ -404,10 +404,10 @@ normalreturn:
 	return L.GetTop() - top
 
 errreturn:
-	L.RaiseError(err.Error())
-	//L.Push(LNil)
-	//L.Push(LString(err.Error()))
-	return 2
+	L.Push(LNil)
+	L.Push(LString(err.Error()))
+	L.Push(LNumber(1)) // C-Lua compatibility: Original Lua pushes errno to the stack
+	return 3
 }
 
 var fileSeekOptions = []string{"set", "cur", "end"}
