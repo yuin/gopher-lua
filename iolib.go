@@ -613,7 +613,8 @@ func ioLines(L *LState) int {
 	return 1
 }
 
-var ioOpenOpions = []string{"r", "rb", "w", "wb", "a", "ab", "r+", "rb+", "w+", "wb+", "a+", "ab+"}
+var ioOpenOpions = []string{"r", "rb", "w", "wb", "a", "ab", "r+", "rb+", "w+", "wb+", "a+", "ab+",
+	"r+b", "w+b", "a+b"}
 
 func ioOpenFile(L *LState) int {
 	path := L.CheckString(1)
@@ -633,11 +634,11 @@ func ioOpenFile(L *LState) int {
 		readable = false
 	case "a", "ab":
 		mode = os.O_WRONLY | os.O_APPEND | os.O_CREATE
-	case "r+", "rb+":
+	case "r+", "rb+", "r+b":
 		mode = os.O_RDWR
-	case "w+", "wb+":
+	case "w+", "wb+", "w+b":
 		mode = os.O_RDWR | os.O_TRUNC | os.O_CREATE
-	case "a+", "ab+":
+	case "a+", "ab+", "a+b":
 		mode = os.O_APPEND | os.O_RDWR | os.O_CREATE
 	}
 	file, err := newFile(L, nil, path, mode, os.FileMode(perm), writable, readable)
