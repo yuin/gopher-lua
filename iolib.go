@@ -658,6 +658,9 @@ func ioPopen(L *LState) int {
 	cmd := L.CheckString(1)
 	if L.GetTop() == 1 {
 		L.Push(LString("r"))
+	} else if L.GetTop() > 1 && (L.Get(2)).Type() == LTNil {
+		L.SetTop(1)
+		L.Push(LString("r"))
 	}
 	var file *LUserData
 	var err error
