@@ -457,3 +457,14 @@ function test()
   assert(c == 1)
   assert(type(c) == "number")
 end
+
+-- issue #459
+function test()
+  local a, b = io.popen("ls", nil)
+  assert(a)
+  assert(b == nil)
+  local a, b = io.popen("ls", nil, nil)
+  assert(a)
+  assert(b == nil)
+end
+test()
