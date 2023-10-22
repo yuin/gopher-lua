@@ -469,3 +469,14 @@ function test()
   assert(not ok)
 end
 test()
+
+-- issue #459
+function test()
+  local a, b = io.popen("ls", nil)
+  assert(a)
+  assert(b == nil)
+  local a, b = io.popen("ls", nil, nil)
+  assert(a)
+  assert(b == nil)
+end
+test()
