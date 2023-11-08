@@ -84,17 +84,17 @@ func testScriptDir(t *testing.T, tests []string, directory string) {
 	}
 }
 
-var numActiveUserDatas int32 = 0
+var numActiveUserData int32 = 0
 
 type finalizerStub struct{ x byte }
 
 func allocFinalizerUserData(L *LState) int {
 	ud := L.NewUserData()
-	atomic.AddInt32(&numActiveUserDatas, 1)
+	atomic.AddInt32(&numActiveUserData, 1)
 	a := finalizerStub{}
 	ud.Value = &a
 	runtime.SetFinalizer(&a, func(aa *finalizerStub) {
-		atomic.AddInt32(&numActiveUserDatas, -1)
+		atomic.AddInt32(&numActiveUserData, -1)
 	})
 	L.Push(ud)
 	return 1
@@ -106,11 +106,11 @@ func sleep(L *LState) int {
 }
 
 func countFinalizers(L *LState) int {
-	L.Push(LNumber(numActiveUserDatas))
+	L.Push(LNumber(numActiveUserData))
 	return 1
 }
 
-// TestLocalVarFree verifies that tables and user user datas which are no longer referenced by the lua script are
+// TestLocalVarFree verifies that tables and user data which are no longer referenced by the lua script are
 // correctly gc-ed. There was a bug in gopher lua where local vars were not being gc-ed in all circumstances.
 func TestLocalVarFree(t *testing.T) {
 	s := `
@@ -127,7 +127,7 @@ func TestLocalVarFree(t *testing.T) {
 			end
 			sleep(100)
 		end
-		error("user datas not finalized after 100 gcs")
+		error("user data not finalized after 100 gcs")
 `
 	L := NewState()
 	L.SetGlobal("allocFinalizer", L.NewFunction(allocFinalizerUserData))

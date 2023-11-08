@@ -510,23 +510,23 @@ func dump(node interface{}, level int, s string) string {
 	case reflect.Ptr:
 		vt := rv.Elem()
 		tt := rt.Elem()
-		indicies := []int{}
+		indices := []int{}
 		for i := 0; i < tt.NumField(); i++ {
 			if strings.Index(tt.Field(i).Name, "Base") > -1 {
 				continue
 			}
-			indicies = append(indicies, i)
+			indices = append(indices, i)
 		}
 		switch {
-		case len(indicies) == 0:
+		case len(indices) == 0:
 			return strings.Repeat(s, level) + "<empty>"
-		case len(indicies) == 1 && isInlineDumpNode(vt.Field(indicies[0])):
-			for _, i := range indicies {
+		case len(indices) == 1 && isInlineDumpNode(vt.Field(indices[0])):
+			for _, i := range indices {
 				buf = append(buf, strings.Repeat(s, level)+"- Node$"+tt.Name()+": "+dump(vt.Field(i).Interface(), 0, s))
 			}
 		default:
 			buf = append(buf, strings.Repeat(s, level)+"- Node$"+tt.Name())
-			for _, i := range indicies {
+			for _, i := range indices {
 				if isInlineDumpNode(vt.Field(i)) {
 					inf := dump(vt.Field(i).Interface(), 0, s)
 					buf = append(buf, strings.Repeat(s, level+1)+tt.Field(i).Name+": "+inf)

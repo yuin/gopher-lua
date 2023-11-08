@@ -444,7 +444,7 @@ func TestContextCancel(t *testing.T) {
 	errorIfFalse(t, strings.Contains(err.Error(), "context canceled"), "execution must be canceled")
 }
 
-func TestContextWithCroutine(t *testing.T) {
+func TestContextWithCoroutine(t *testing.T) {
 	L := NewState()
 	defer L.Close()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -491,7 +491,7 @@ func TestPCallAfterFail(t *testing.T) {
 	})
 	L.Push(changeError)
 	err := L.PCall(0, 0, nil)
-	errorIfFalse(t, strings.Contains(err.Error(), "A New Error"), "error not propogated correctly")
+	errorIfFalse(t, strings.Contains(err.Error(), "A New Error"), "error not propagated correctly")
 }
 
 func TestRegistryFixedOverflow(t *testing.T) {

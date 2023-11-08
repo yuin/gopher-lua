@@ -313,7 +313,7 @@ end
 assert(a == 5^4)
 
 
--- access to locals of collected corroutines
+-- access to locals of collected coroutines
 --[[
 local C = {}; setmetatable(C, {__mode = "kv"})
 local x = coroutine.wrap (function ()

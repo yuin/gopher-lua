@@ -17,7 +17,7 @@ function pack(...) return arg end
 
 print('testing C API')
 
--- testing allignment
+-- testing alignment
 a = T.d2s(12458954321123)
 assert(string.len(a) == 8)   -- sizeof(double)
 assert(T.s2d(a) == 12458954321123)
@@ -315,7 +315,7 @@ collectgarbage()
 assert(type(T.getref(a)) == 'table')
 
 
--- colect in cl the `val' of all collected userdata
+-- collect in cl the `val' of all collected userdata
 tt = {}
 cl = {n=0}
 A = nil; B = nil
@@ -333,7 +333,7 @@ F = function (x)
   if A ~= nil then
     assert(type(A) == "userdata")
     assert(T.udataval(A) == B)
-    debug.getmetatable(A)    -- just acess it
+    debug.getmetatable(A)    -- just access it
   end
   A = x   -- ressucita userdata
   B = udval
@@ -341,7 +341,7 @@ F = function (x)
 end
 tt.__gc = F
 
--- test whether udate collection frees memory in the right time
+-- test whether update collection frees memory in the right time
 do
   collectgarbage();
   collectgarbage();

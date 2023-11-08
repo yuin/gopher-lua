@@ -174,8 +174,8 @@ func strGsub(L *LState) int {
 }
 
 type replaceInfo struct {
-	Indicies []int
-	String   string
+	Indices []int
+	String  string
 }
 
 func checkCaptureIndex(L *LState, m *pm.MatchData, idx int) {
@@ -205,9 +205,9 @@ func strGsubDoReplace(str string, info []replaceInfo) string {
 	buf := []byte(str)
 	for _, replace := range info {
 		oldlen := len(buf)
-		b1 := append([]byte(""), buf[0:offset+replace.Indicies[0]]...)
+		b1 := append([]byte(""), buf[0:offset+replace.Indices[0]]...)
 		b2 := []byte("")
-		index2 := offset + replace.Indicies[1]
+		index2 := offset + replace.Indices[1]
 		if index2 <= len(buf) {
 			b2 = append(b2, buf[index2:len(buf)]...)
 		}

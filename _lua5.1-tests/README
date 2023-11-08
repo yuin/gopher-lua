@@ -1,7 +1,7 @@
 This tarball contains the official test scripts for Lua 5.1.
 Unlike Lua itself, these tests do not aim portability, small footprint,
 or easy of use. (Their main goal is to try to crash Lua.) They are not
-intended for general use. You are wellcome to use them, but expect to
+intended for general use. You are welcome to use them, but expect to
 have to "dirt your hands".
 
 The tarball should expand in the following contents:

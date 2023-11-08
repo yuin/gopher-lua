@@ -3,7 +3,7 @@ Any kind of contributions are welcome.
 
 ## Building GopherLua
 
-GopherLua uses simple inlining tool for generate efficient codes. This tool requires python interpreter. Files name of which starts with `_` genarate files name of which does not starts with `_` . For instance, `_state.go` generate `state.go` . You do not edit generated sources.
+GopherLua uses simple inlining tool for generate efficient codes. This tool requires python interpreter. Files name of which starts with `_` generate files name of which does not starts with `_` . For instance, `_state.go` generate `state.go` . You do not edit generated sources.
 To generate sources, some make target is available.
 
 ```bash
