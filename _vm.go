@@ -495,8 +495,8 @@ func init() {
 			rhs := L.rkValue(C)
 			ret := false
 
-			if v1, ok1 := lhs.assertFloat64(); ok1 {
-				if v2, ok2 := rhs.assertFloat64(); ok2 {
+			if v1, ok1 := lhs.(LNumber); ok1 {
+				if v2, ok2 := rhs.(LNumber); ok2 {
 					ret = v1 <= v2
 				} else {
 					L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
@@ -572,7 +572,7 @@ func init() {
 			nret := C - 1
 			var callable *LFunction
 			var meta bool
-			if fn, ok := lv.assertFunction(); ok {
+			if fn, ok := lv.(*LFunction); ok {
 				callable = fn
 				meta = false
 			} else {
@@ -598,7 +598,7 @@ func init() {
 			lv := reg.Get(RA)
 			var callable *LFunction
 			var meta bool
-			if fn, ok := lv.assertFunction(); ok {
+			if fn, ok := lv.(*LFunction); ok {
 				callable = fn
 				meta = false
 			} else {
@@ -685,9 +685,9 @@ func init() {
 			lbase := cf.LocalBase
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
-			if init, ok1 := reg.Get(RA).assertFloat64(); ok1 {
-				if limit, ok2 := reg.Get(RA + 1).assertFloat64(); ok2 {
-					if step, ok3 := reg.Get(RA + 2).assertFloat64(); ok3 {
+			if init, ok1 := reg.Get(RA).(LNumber); ok1 {
+				if limit, ok2 := reg.Get(RA + 1).(LNumber); ok2 {
+					if step, ok3 := reg.Get(RA + 2).(LNumber); ok3 {
 						init += step
 						v := LNumber(init)
 						// +inline-call reg.SetNumber RA v
@@ -716,8 +716,8 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
-			if init, ok1 := reg.Get(RA).assertFloat64(); ok1 {
-				if step, ok2 := reg.Get(RA + 2).assertFloat64(); ok2 {
+			if init, ok1 := reg.Get(RA).(LNumber); ok1 {
+				if step, ok2 := reg.Get(RA + 2).(LNumber); ok2 {
 					// +inline-call reg.SetNumber RA LNumber(init-step)
 				} else {
 					L.RaiseError("for statement step must be a number")
@@ -839,8 +839,8 @@ func opArith(L *LState, inst uint32, baseframe *callFrame) int { //OP_ADD, OP_SU
 	C := int(inst>>9) & 0x1ff //GETC
 	lhs := L.rkValue(B)
 	rhs := L.rkValue(C)
-	v1, ok1 := lhs.assertFloat64()
-	v2, ok2 := rhs.assertFloat64()
+	v1, ok1 := lhs.(LNumber)
+	v2, ok2 := rhs.(LNumber)
 	if ok1 && ok2 {
 		v := numberArith(L, opcode, LNumber(v1), LNumber(v2))
 		// +inline-call reg.SetNumber RA v
@@ -899,25 +899,25 @@ func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
 		event = "__pow"
 	}
 	op := L.metaOp2(lhs, rhs, event)
-	if _, ok := op.assertFunction(); ok {
+	if _, ok := op.(*LFunction); ok {
 		L.reg.Push(op)
 		L.reg.Push(lhs)
 		L.reg.Push(rhs)
 		L.Call(2, 1)
 		return L.reg.Pop()
 	}
-	if str, ok := lhs.assertString(); ok {
+	if str, ok := lhs.(LString); ok {
 		if lnum, err := parseNumber(string(str)); err == nil {
 			lhs = lnum
 		}
 	}
-	if str, ok := rhs.assertString(); ok {
+	if str, ok := rhs.(LString); ok {
 		if rnum, err := parseNumber(string(str)); err == nil {
 			rhs = rnum
 		}
 	}
-	if v1, ok1 := lhs.assertFloat64(); ok1 {
-		if v2, ok2 := rhs.assertFloat64(); ok2 {
+	if v1, ok1 := lhs.(LNumber); ok1 {
+		if v2, ok2 := rhs.(LNumber); ok2 {
 			return numberArith(L, opcode, LNumber(v1), LNumber(v2))
 		}
 	}
@@ -966,8 +966,8 @@ func stringConcat(L *LState, total, last int) LValue {
 
 func lessThan(L *LState, lhs, rhs LValue) bool {
 	// optimization for numbers
-	if v1, ok1 := lhs.assertFloat64(); ok1 {
-		if v2, ok2 := rhs.assertFloat64(); ok2 {
+	if v1, ok1 := lhs.(LNumber); ok1 {
+		if v2, ok2 := rhs.(LNumber); ok2 {
 			return v1 < v2
 		}
 		L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
@@ -997,8 +997,8 @@ func equals(L *LState, lhs, rhs LValue, raw bool) bool {
 	case LTNil:
 		ret = true
 	case LTNumber:
-		v1, _ := lhs.assertFloat64()
-		v2, _ := rhs.assertFloat64()
+		v1, _ := lhs.(LNumber)
+		v2, _ := rhs.(LNumber)
 		ret = v1 == v2
 	case LTBool:
 		ret = bool(lhs.(LBool)) == bool(rhs.(LBool))
