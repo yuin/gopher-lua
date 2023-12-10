@@ -100,10 +100,47 @@ func (fs *flagScanner) Next() (byte, bool) {
 }
 
 var cDateFlagToGo = map[byte]string{
-	'a': "mon", 'A': "Monday", 'b': "Jan", 'B': "January", 'c': "02 Jan 06 15:04 MST", 'd': "02",
-	'F': "2006-01-02", 'H': "15", 'I': "03", 'm': "01", 'M': "04", 'p': "PM", 'P': "pm", 'S': "05",
-	'x': "15/04/05", 'X': "15:04:05", 'y': "06", 'Y': "2006", 'z': "-0700", 'Z': "MST"}
+	// Formatting
+	'n': "\n",
+	't': "\t",
 
+	// Year
+	'Y': "2006", 'y': "06",
+
+	// Month
+	'b': "Jan", 'B': "January", // TODO: %^B, %^b
+	'm': "01", // TODO: %-m, %_m
+
+	// Day of the year/month
+	'j': "002",
+	'd': "02", 'e': "_2", // TODO: %-d
+
+	// Day of the week
+	'a': "Mon", 'A': "Monday", // TODO: %^A, %^a
+
+	// Hour, minute, second
+	'H': "15",
+	'I': "03", 'l': "3",
+	'M': "04",
+	'S': "05",
+
+	// Other
+	'c': "02 Jan 06 15:04 MST",
+	'x': "01/02/06", 'X': "15:04:05",
+	'D': "01/02/06",
+	'F': "2006-01-02",
+	'r': "03:04:05 PM", 'R': "15:04",
+	'T': "15:04:05",
+	'p': "PM", 'P': "pm",
+	'z': "-0700", 'Z': "MST",
+
+	// Many other flags are handled in the body of strftime since they cannot
+	// be represented in Go format strings.
+}
+
+// This implementation of strftime is inspired by both the C spec and Ruby's
+// extensions. This allows for flags like %-d, which provides the day of the
+// month without padding (1..31 instead of 01..31).
 func strftime(t time.Time, cfmt string) string {
 	sc := newFlagScanner('%', "", "", cfmt)
 	for c, eos := sc.Next(); !eos; c, eos = sc.Next() {
@@ -113,6 +150,15 @@ func strftime(t time.Time, cfmt string) string {
 					sc.AppendString(t.Format(v))
 				} else {
 					switch c {
+					case 'G':
+						isoYear, _ := t.ISOWeek()
+						sc.AppendString(fmt.Sprint(isoYear))
+					case 'g':
+						isoYear, _ := t.ISOWeek()
+						sc.AppendString(fmt.Sprint(isoYear)[2:])
+					case 'V':
+						_, isoWeek := t.ISOWeek()
+						sc.AppendString(fmt.Sprint(isoWeek))
 					case 'w':
 						sc.AppendString(fmt.Sprint(int(t.Weekday())))
 					default:
