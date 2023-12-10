@@ -21,12 +21,12 @@ func TestStrftime(t *testing.T) {
 
 		{t1, "%Y %y", "2016 16"},
 		{t1, "%G %g", "2016 16"},
-		{t1, "%b %B %m", "Feb February 02"},
+		{t1, "%b %B", "Feb February"},
+		{t1, "%m %-m", "02 2"},
 		{t1, "%V", "5"},
 		{t1, "%w", "3"},
 		{t1, "%j", "034"},
-		{t1, "%d", "03"},
-		{t1, "%e", " 3"},
+		{t1, "%d %-d %e", "03 3  3"},
 		{t1, "%a %A", "Wed Wednesday"},
 		{t1, "%H %I %l", "13 01 1"},
 		{t1, "%M", "23"},
@@ -41,12 +41,12 @@ func TestStrftime(t *testing.T) {
 
 		{t2, "%Y %y", "1945 45"},
 		{t2, "%G %g", "1945 45"},
-		{t2, "%b %B %m", "Sep September 09"},
+		{t2, "%b %B", "Sep September"},
+		{t2, "%m %-m", "09 9"},
 		{t2, "%V", "36"},
 		{t2, "%w", "4"},
 		{t2, "%j", "249"},
-		{t2, "%d", "06"},
-		{t2, "%e", " 6"},
+		{t2, "%d %-d %e", "06 6  6"},
 		{t2, "%a %A", "Thu Thursday"},
 		{t2, "%H %I %l", "07 07 7"},
 		{t2, "%M", "35"},
@@ -58,6 +58,9 @@ func TestStrftime(t *testing.T) {
 		{t2, "%R %T %X", "07:35 07:35:04 07:35:04"},
 		{t2, "%p %P", "AM am"},
 		{t2, "%z %Z", "-0500 Minus5"},
+
+		{t1, "not real flags: %-Q %_J %^^ %-", "not real flags: %-Q %_J %^^ %-"},
+		{t1, "end in flag: %", "end in flag: %"},
 	}
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("Case %d (\"%s\")", i, c.Fmt), func(t *testing.T) {

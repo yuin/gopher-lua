@@ -48,19 +48,22 @@ func defaultFormat(v interface{}, f fmt.State, c rune) {
 }
 
 type flagScanner struct {
-	flag       byte
-	start      string
-	end        string
-	buf        []byte
-	str        string
-	Length     int
-	Pos        int
-	HasFlag    bool
-	ChangeFlag bool
+	flag        byte
+	modifiers   []byte
+	start       string
+	end         string
+	buf         []byte
+	str         string
+	Length      int
+	Pos         int
+	HasFlag     bool
+	ChangeFlag  bool
+	HasModifier bool
+	Modifier    byte
 }
 
-func newFlagScanner(flag byte, start, end, str string) *flagScanner {
-	return &flagScanner{flag, start, end, make([]byte, 0, len(str)), str, len(str), 0, false, false}
+func newFlagScanner(flag byte, modifiers, start, end, str string) *flagScanner {
+	return &flagScanner{flag, []byte(modifiers), start, end, make([]byte, 0, len(str)), str, len(str), 0, false, false, false, 0}
 }
 
 func (fs *flagScanner) AppendString(str string) { fs.buf = append(fs.buf, str...) }
@@ -85,13 +88,24 @@ func (fs *flagScanner) Next() (byte, bool) {
 				fs.AppendChar(fs.flag)
 				fs.Pos += 2
 				return fs.Next()
-			} else if fs.Pos != fs.Length-1 {
+			} else if fs.Pos < fs.Length-1 {
 				if fs.HasFlag {
 					fs.AppendString(fs.end)
 				}
 				fs.AppendString(fs.start)
 				fs.ChangeFlag = true
 				fs.HasFlag = true
+				fs.HasModifier = false
+				fs.Modifier = 0
+				if fs.Pos < fs.Length-2 {
+					for _, modifier := range fs.modifiers {
+						if fs.str[fs.Pos+1] == modifier {
+							fs.HasModifier = true
+							fs.Modifier = modifier
+							fs.Pos += 1
+						}
+					}
+				}
 			}
 		}
 	}
@@ -99,40 +113,40 @@ func (fs *flagScanner) Next() (byte, bool) {
 	return c, false
 }
 
-var cDateFlagToGo = map[byte]string{
+var cDateFlagToGo = map[string]string{
 	// Formatting
-	'n': "\n",
-	't': "\t",
+	"n": "\n",
+	"t": "\t",
 
 	// Year
-	'Y': "2006", 'y': "06",
+	"Y": "2006", "y": "06",
 
 	// Month
-	'b': "Jan", 'B': "January", // TODO: %^B, %^b
-	'm': "01", // TODO: %-m, %_m
+	"b": "Jan", "B": "January",
+	"m": "01", "-m": "1",
 
 	// Day of the year/month
-	'j': "002",
-	'd': "02", 'e': "_2", // TODO: %-d
+	"j": "002",
+	"d": "02", "-d": "2", "e": "_2",
 
 	// Day of the week
-	'a': "Mon", 'A': "Monday", // TODO: %^A, %^a
+	"a": "Mon", "A": "Monday",
 
 	// Hour, minute, second
-	'H': "15",
-	'I': "03", 'l': "3",
-	'M': "04",
-	'S': "05",
+	"H": "15",
+	"I": "03", "l": "3",
+	"M": "04",
+	"S": "05",
 
 	// Other
-	'c': "02 Jan 06 15:04 MST",
-	'x': "01/02/06", 'X': "15:04:05",
-	'D': "01/02/06",
-	'F': "2006-01-02",
-	'r': "03:04:05 PM", 'R': "15:04",
-	'T': "15:04:05",
-	'p': "PM", 'P': "pm",
-	'z': "-0700", 'Z': "MST",
+	"c": "02 Jan 06 15:04 MST",
+	"x": "01/02/06", "X": "15:04:05",
+	"D": "01/02/06",
+	"F": "2006-01-02",
+	"r": "03:04:05 PM", "R": "15:04",
+	"T": "15:04:05",
+	"p": "PM", "P": "pm",
+	"z": "-0700", "Z": "MST",
 
 	// Many other flags are handled in the body of strftime since they cannot
 	// be represented in Go format strings.
@@ -142,11 +156,16 @@ var cDateFlagToGo = map[byte]string{
 // extensions. This allows for flags like %-d, which provides the day of the
 // month without padding (1..31 instead of 01..31).
 func strftime(t time.Time, cfmt string) string {
-	sc := newFlagScanner('%', "", "", cfmt)
+	sc := newFlagScanner('%', "-", "", "", cfmt)
 	for c, eos := sc.Next(); !eos; c, eos = sc.Next() {
 		if !sc.ChangeFlag {
 			if sc.HasFlag {
-				if v, ok := cDateFlagToGo[c]; ok {
+				flag := string(c)
+				if sc.HasModifier {
+					flag = string(sc.Modifier) + flag
+				}
+
+				if v, ok := cDateFlagToGo[flag]; ok {
 					sc.AppendString(t.Format(v))
 				} else {
 					switch c {
@@ -163,6 +182,9 @@ func strftime(t time.Time, cfmt string) string {
 						sc.AppendString(fmt.Sprint(int(t.Weekday())))
 					default:
 						sc.AppendChar('%')
+						if sc.HasModifier {
+							sc.AppendChar(sc.Modifier)
+						}
 						sc.AppendChar(c)
 					}
 				}
