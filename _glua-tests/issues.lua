@@ -470,6 +470,16 @@ function test()
 end
 test()
 
+-- issue #455
+function test()
+  local path = "."
+  local fd, _, code = io.open(path, "r")
+  assert(fd ~= nil)
+  local _, _, ecode = fd:read(1)
+  assert(ecode == 1)
+end
+test()
+
 -- issue #459
 function test()
   local a, b = io.popen("ls", nil)
