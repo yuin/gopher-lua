@@ -239,6 +239,8 @@ Miscellaneous lua.NewState options
 - **Options.IncludeGoStackTrace bool(default false)**
     - By default, GopherLua does not show Go stack traces when panics occur.
     - You can get Go stack traces by setting this to ``true`` .
+- **Options.ExecutionLimit uint(default 0)**
+    - Sets the maximum number of operations to execute. A value of ``0`` indicates no limit.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 API

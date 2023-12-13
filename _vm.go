@@ -24,6 +24,7 @@ func mainLoop(L *LState, baseframe *callFrame) {
 		cf = L.currentFrame
 		inst = cf.Fn.Proto.Code[cf.Pc]
 		cf.Pc++
+		L.incOpCounter()
 		if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
 			return
 		}
@@ -53,6 +54,7 @@ func mainLoopWithContext(L *LState, baseframe *callFrame) {
 			L.RaiseError(L.ctx.Err().Error())
 			return
 		default:
+			L.incOpCounter()
 			if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
 				return
 			}
