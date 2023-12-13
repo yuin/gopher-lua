@@ -1,6 +1,7 @@
 package lua
 
 import (
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -79,8 +80,20 @@ func osDiffTime(L *LState) int {
 }
 
 func osExecute(L *LState) int {
+	outReader, outWriter, err := os.Pipe()
+	errReader, errWriter, err := os.Pipe()
+	inReader, inWriter, err := os.Pipe()
+	inWriter.Close()
+
+	copyDone := make(chan struct{})
+	go func() {
+		io.Copy(L.Options.Stdout, outReader)
+		io.Copy(L.Options.Stderr, errReader)
+		close(copyDone)
+	}()
+
 	var procAttr os.ProcAttr
-	procAttr.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr}
+	procAttr.Files = []*os.File{inReader, outWriter, errWriter}
 	cmd, args := popenArgs(L.CheckString(1))
 	args = append([]string{cmd}, args...)
 	process, err := os.StartProcess(cmd, args, &procAttr)
@@ -90,6 +103,11 @@ func osExecute(L *LState) int {
 	}
 
 	ps, err := process.Wait()
+
+	outWriter.Close()
+	errWriter.Close()
+	<-copyDone
+
 	if err != nil || !ps.Success() {
 		L.Push(LNumber(1))
 		return 1

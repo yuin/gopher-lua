@@ -350,19 +350,19 @@ func (ls *LState) CallMeta(obj LValue, event string) LValue {
 /* load and function call operations {{{ */
 
 func (ls *LState) LoadFile(path string) (*LFunction, error) {
-	var file *os.File
+	var reader *bufio.Reader
 	var err error
 	if len(path) == 0 {
-		file = os.Stdin
+		reader = bufio.NewReader(ls.Options.Stdin)
 	} else {
-		file, err = os.Open(path)
+		file, err := os.Open(path)
 		defer file.Close()
 		if err != nil {
 			return nil, newApiErrorE(ApiErrorFile, err)
 		}
+		reader = bufio.NewReader(file)
 	}
 
-	reader := bufio.NewReader(file)
 	// get the first character.
 	c, err := reader.ReadByte()
 	if err != nil && err != io.EOF {

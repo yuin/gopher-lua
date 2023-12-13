@@ -2036,7 +2036,7 @@ func (ls *LState) SetMx(mx int) {
 		for atomic.LoadInt32(&ls.stop) == 0 {
 			runtime.ReadMemStats(&s)
 			if s.Alloc >= limit {
-				fmt.Println("out of memory")
+				fmt.Fprintln(ls.Options.Stdout, "out of memory")
 				os.Exit(3)
 			}
 			time.Sleep(100 * time.Millisecond)

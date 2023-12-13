@@ -28,7 +28,7 @@ var ioFuncs = map[string]LGFunction{
 const lFileClass = "FILE*"
 
 type lFile struct {
-	fp     *os.File
+	fp     io.ReadWriteCloser
 	pp     *exec.Cmd
 	writer io.Writer
 	reader *bufio.Reader
@@ -63,7 +63,7 @@ func errorIfFileIsClosed(L *LState, file *lFile) {
 	}
 }
 
-func newFile(L *LState, file *os.File, path string, flag int, perm os.FileMode, writable, readable bool) (*LUserData, error) {
+func newFile(L *LState, file io.ReadWriteCloser, path string, flag int, perm os.FileMode, writable, readable bool) (*LUserData, error) {
 	ud := L.NewUserData()
 	var err error
 	if file == nil {
@@ -121,7 +121,13 @@ func (file *lFile) Type() lFileType {
 func (file *lFile) Name() string {
 	switch file.Type() {
 	case lFileFile:
-		return fmt.Sprintf("file %s", file.fp.Name())
+		switch f := file.fp.(type) {
+		case *os.File:
+			return fmt.Sprintf("file %s", f.Name())
+		default:
+			return fmt.Sprintf("pipe")
+		}
+
 	case lFileProcess:
 		return fmt.Sprintf("process %s", file.pp.Path)
 	}
@@ -130,11 +136,16 @@ func (file *lFile) Name() string {
 
 func (file *lFile) AbandonReadBuffer() error {
 	if file.Type() == lFileFile && file.reader != nil {
-		_, err := file.fp.Seek(-int64(file.reader.Buffered()), 1)
-		if err != nil {
-			return err
+		if fp, ok := file.fp.(io.ReadSeeker); ok {
+			_, err := fp.Seek(-int64(file.reader.Buffered()), 1)
+			if err != nil {
+				return err
+			}
+			file.reader = bufio.NewReaderSize(fp, fileDefaultReadBuffer)
+		} else {
+			return errors.New("cannot seek")
 		}
-		file.reader = bufio.NewReaderSize(file.fp, fileDefaultReadBuffer)
+		return nil
 	}
 	return nil
 }
@@ -167,15 +178,20 @@ func fileIsReadable(L *LState, file *lFile) int {
 	return 0
 }
 
-var stdFiles = []struct {
-	name     string
-	file     *os.File
-	writable bool
-	readable bool
-}{
-	{"stdout", os.Stdout, true, false},
-	{"stdin", os.Stdin, false, true},
-	{"stderr", os.Stderr, true, false},
+type nopWriter struct {
+	io.ReadCloser
+}
+
+func (n nopWriter) Write(p []byte) (int, error) {
+	return 0, io.EOF
+}
+
+type nopReader struct {
+	io.WriteCloser
+}
+
+func (n nopReader) Read(p []byte) (int, error) {
+	return 0, io.EOF
 }
 
 func OpenIo(L *LState) int {
@@ -185,10 +201,16 @@ func OpenIo(L *LState) int {
 	L.SetFuncs(mt, fileMethods)
 	mt.RawSetString("lines", L.NewClosure(fileLines, L.NewFunction(fileLinesIter)))
 
-	for _, finfo := range stdFiles {
-		file, _ := newFile(L, finfo.file, "", 0, os.FileMode(0), finfo.writable, finfo.readable)
-		mod.RawSetString(finfo.name, file)
-	}
+	// stdin
+	file, _ := newFile(L, nopWriter{L.Options.Stdin}, "", 0, os.FileMode(0), false, true)
+	mod.RawSetString("stdin", file)
+	// stdout
+	file, _ = newFile(L, nopReader{L.Options.Stdout}, "", 0, os.FileMode(0), true, false)
+	mod.RawSetString("stdout", file)
+	// stderr
+	file, _ = newFile(L, nopReader{L.Options.Stderr}, "", 0, os.FileMode(0), true, false)
+	mod.RawSetString("stderr", file)
+
 	uv := L.CreateTable(2, 0)
 	uv.RawSetInt(fileDefOutIndex, mod.RawGetString("stdout"))
 	uv.RawSetInt(fileDefInIndex, mod.RawGetString("stdin"))
@@ -420,6 +442,12 @@ func fileSeek(L *LState) int {
 		return 2
 	}
 
+	if _, ok := file.fp.(*os.File); !ok {
+		L.Push(LNil)
+		L.Push(LString("can not seek a pipe."))
+		return 2
+	}
+
 	top := L.GetTop()
 	if top == 1 {
 		L.Push(LString("cur"))
@@ -436,7 +464,7 @@ func fileSeek(L *LState) int {
 		goto errreturn
 	}
 
-	pos, err = file.fp.Seek(L.CheckInt64(3), L.CheckOption(2, fileSeekOptions))
+	pos, err = file.fp.(*os.File).Seek(L.CheckInt64(3), L.CheckOption(2, fileSeekOptions))
 	if err != nil {
 		goto errreturn
 	}
@@ -738,7 +766,7 @@ func ioOutput(L *LState) int {
 		}
 
 	}
-	L.ArgError(1, "string or file expedted, but got "+L.Get(1).Type().String())
+	L.ArgError(1, "string or file expected, but got "+L.Get(1).Type().String())
 	return 0
 }
 
