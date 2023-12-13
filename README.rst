@@ -397,6 +397,7 @@ main.lua
 +++++++++++++++++++++++++++++++++++++++++
 Calling Lua from Go
 +++++++++++++++++++++++++++++++++++++++++
+Here we create a new Lua state and call the "double" function defined in "double.lua".
 
 .. code-block:: go
 
