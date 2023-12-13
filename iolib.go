@@ -278,8 +278,13 @@ func fileCloseAux(L *LState, file *lFile) int {
 		L.Push(LTrue)
 		return 1
 	case lFileProcess:
-		if file.stdout != nil {
-			file.stdout.Close() // ignore errors
+		// When stdout is piped, close it
+		if closer, ok := file.stdout.(io.Closer); ok {
+			_ = closer.Close() // ignore errors
+		}
+		// When stdin is piped, close it
+		if closer, ok := file.writer.(io.Closer); ok {
+			_ = closer.Close() // ignore errors
 		}
 		err = file.pp.Wait()
 		var exitStatus int // Initialised to zero value = 0
