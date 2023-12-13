@@ -1724,6 +1724,10 @@ func (ls *LState) ForEach(tb *LTable, cb func(LValue, LValue)) {
 	tb.ForEach(cb)
 }
 
+func (ls *LState) ForEachWithBreak(tb *LTable, cb func(LValue, LValue) bool) {
+	tb.ForEachWithBreak(cb)
+}
+
 func (ls *LState) GetGlobal(name string) LValue {
 	return ls.GetField(ls.Get(GlobalsIndex), name)
 }
