@@ -347,6 +347,38 @@ func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 	}
 }
 
+// ForEachB iterates over this table of elements, yielding each in turn to a given function.
+// If function returns false, iteration will stop
+func (tb *LTable) ForEachB(cb func(LValue, LValue) bool) {
+	if tb.array != nil {
+		for i, v := range tb.array {
+			if v != LNil {
+				if !cb(LNumber(i+1), v) {
+					return
+				}
+			}
+		}
+	}
+	if tb.strdict != nil {
+		for k, v := range tb.strdict {
+			if v != LNil {
+				if !cb(LString(k), v) {
+					return
+				}
+			}
+		}
+	}
+	if tb.dict != nil {
+		for k, v := range tb.dict {
+			if v != LNil {
+				if !cb(k, v) {
+					return
+				}
+			}
+		}
+	}
+}
+
 // This function is equivalent to lua_next ( http://www.lua.org/manual/5.1/manual.html#lua_next ).
 func (tb *LTable) Next(key LValue) (LValue, LValue) {
 	init := false
