@@ -491,7 +491,7 @@ function test()
 end
 test()
 
--- issue #464
+-- issue #454, #464
 function test()
   local result = nil
   local result_err = nil
