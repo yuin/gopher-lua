@@ -458,12 +458,11 @@ func baseUnpack(L *LState) int {
 }
 
 func baseXPCall(L *LState) int {
-	fn := L.CheckFunction(1)
 	errfunc := L.CheckFunction(2)
-
+	L.Remove(2)
 	top := L.GetTop()
-	L.Push(fn)
-	if err := L.PCall(0, MultRet, errfunc); err != nil {
+	nargs := top - 1
+	if err := L.PCall(nargs, MultRet, errfunc); err != nil {
 		L.Push(LFalse)
 		if aerr, ok := err.(*ApiError); ok {
 			L.Push(aerr.Object)
@@ -472,8 +471,8 @@ func baseXPCall(L *LState) int {
 		}
 		return 2
 	} else {
-		L.Insert(LTrue, top+1)
-		return L.GetTop() - top
+		L.Insert(LTrue, 1)
+		return L.GetTop()
 	}
 }
 
