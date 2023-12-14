@@ -490,3 +490,22 @@ function test()
   assert(b == nil)
 end
 test()
+
+-- issue #464
+function test()
+  local result = nil
+  local result_err = nil
+  local callback = function(arg)
+    result = arg
+  end
+  local errfunc = function(err)
+    result_err = err
+  end
+  xpcall(callback, errfunc, 9)
+
+  -- check first for error because otherwise also wrong result assert
+  -- would be triggered
+  assert(result_err == nil)
+  assert(result == 9)
+end
+test()
