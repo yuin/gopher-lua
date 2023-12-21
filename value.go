@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 )
 
 type LValueType int
@@ -113,9 +114,9 @@ func (st LString) Format(f fmt.State, c rune) {
 
 func (nm LNumber) String() string {
 	if isInteger(nm) {
-		return fmt.Sprint(int64(nm))
+		return strconv.FormatInt(int64(nm), 10)
 	}
-	return fmt.Sprint(float64(nm))
+	return strconv.FormatFloat(float64(nm), 'g', -1, 64)
 }
 
 func (nm LNumber) Type() LValueType { return LTNumber }
