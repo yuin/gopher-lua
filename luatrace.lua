@@ -90,7 +90,7 @@ end
 -- Record an action reported to the hook.
 local function record(action, line, time)
   accumulated_us = accumulated_us + time
-
+  print("record: ", action, line, time)
   if watch_thread then
     if action == "call" or action == "line" then
       local current_thread = coroutine.running() or "main"
@@ -235,13 +235,13 @@ local function init_trace(line)
   while true do
     depth = depth + 1
     print("depth: ", depth)
-    local frame = debug.getinfo(depth, "S")
-    print("frame1: ", frame)
+    local frame = debug.getinfo(depth, "Sln")
+    print("frame1: ", frame.short_src)
     if not frame then break end
   end
   for i = depth-1, 3, -1 do
     local frame = debug.getinfo(i, "Sln")
-    print("frame2: ", frame)
+    print("frame2: ", frame.short_src,frame.name)
     if should_trace(frame) then
       print("frame3: ", frame)
       recorder.record(">", frame.short_src, frame.linedefined, frame.lastlinedefined)
@@ -288,7 +288,7 @@ local function hook_start()
   local callee = debug.getinfo(2, "Sl")
   if callee.short_src == start_short_src and callee.linedefined == start_line then
     if c_hook then
-      debug.sethook(hook_c_start, "l")
+      debug.sethook(hook_lua_start, "l")
     elseif ffi then
       debug.sethook(hook_luajit_start, "l")
     else

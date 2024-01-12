@@ -16,7 +16,7 @@ local error_count                               -- How many errors we've seen
 
 local profile = {}
 
-
+-- print("trace_file")
 --------------------------------------------------------------------------------
 
 function profile.open()

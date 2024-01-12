@@ -77,6 +77,7 @@ end
 
 
 function trace_file.record(a, b, c, d)
+  print("trace_file.record","a", a, "b", b, "c", c, "d", d)
   if limit < 2 then
     write_trace(a, b, c, d)
   else
