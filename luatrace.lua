@@ -247,7 +247,6 @@ local function init_trace(line)
   end
   for i = depth-1, 3, -1 do
     local frame = debug.getinfo(i, "Sln")
-    print("frame2: ", frame.short_src,frame.name)
     if should_trace(frame) then
       print("frame3: ", frame)
       recorder.record(">", frame.short_src, frame.linedefined, frame.lastlinedefined)
