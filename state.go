@@ -1859,6 +1859,35 @@ func (ls *LState) SetUpvalue(fn *LFunction, no int, lv LValue) string {
 	return ""
 }
 
+func (ls *LState) SetHook(callback *LFunction, event string, count int) error {
+	if callback == nil && event==""{
+		print("sethook nil")
+		ls.lhook = nil
+		ls.chook = nil
+		ls.rhook = nil
+		ls.cthook = nil
+		return nil
+	}
+	frame := ls.stack.At(0)
+	if count > 0 {
+		ls.cthook = newCTHook(callback, count)
+	}
+	for _, c := range event {
+		switch c {
+		case 'l':
+			ls.lhook = newLHook(callback, frame.Fn.Proto.DbgSourcePositions[frame.Pc-1])//callback允许nil
+		case 'c':
+			ls.chook = newCHook(callback)
+		case 'r':
+			ls.rhook = newRHook(callback)
+		default:
+			return newApiErrorS(ApiErrorRun, fmt.Sprintf("invalid hook event: %c", c))
+		}
+	}
+	print("set hook finish\n")
+	return nil
+}
+
 /* }}} */
 
 /* env operations {{{ */
