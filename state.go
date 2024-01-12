@@ -1446,6 +1446,7 @@ func (ls *LState) SetUpvalue(fn *LFunction, no int, lv LValue) string {
 
 func (ls *LState) SetHook(callback *LFunction, event string, count int) error {
 	if callback == nil && event==""{
+		print("sethook nil")
 		ls.lhook = nil
 		ls.chook = nil
 		ls.rhook = nil
@@ -1468,6 +1469,7 @@ func (ls *LState) SetHook(callback *LFunction, event string, count int) error {
 			return newApiErrorS(ApiErrorRun, fmt.Sprintf("invalid hook event: %c", c))
 		}
 	}
+	print("set hook finish\n")
 	return nil
 }
 

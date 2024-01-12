@@ -29,6 +29,7 @@ func mainLoop(L *LState, baseframe *callFrame) {
 		inst = cf.Fn.Proto.Code[cf.Pc]
 		cf.Pc++
 		if L.lhook != nil {
+			// print("call L.lhook2\n")
 			L.lhook.call(L, cf)
 		}
 		if L.cthook != nil {
@@ -64,6 +65,7 @@ func mainLoopWithContext(L *LState, baseframe *callFrame) {
 			return
 		default:
 			if L.lhook != nil {
+				print("call L.lhook1\n")
 				L.lhook.call(L, cf)
 			}
 			if L.cthook != nil {

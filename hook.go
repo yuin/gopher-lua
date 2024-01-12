@@ -18,13 +18,29 @@ func newLHook(callback *LFunction, line int) *LHook {
 		line:     line,
 	}
 }
+func isFunctionInCallFrameChain(cf *callFrame, fn *LFunction) bool {
+	// 检查当前callFrame的Fn是否等于目标LFunction
+	if cf.Fn == fn {
+		return true
+	}
 
+	// 递归检查Parent callFrame
+	if cf.Parent != nil {
+		return isFunctionInCallFrameChain(cf.Parent, fn)
+	}
+
+	// 如果递归到达了顶层（Parent为nil），则说明未找到目标LFunction
+	return false
+}
+
+// cf.Fn != lh.callback
 func (lh *LHook) call(L *LState, cf *callFrame) {
 	currentline := cf.Fn.Proto.DbgSourcePositions[cf.Pc-1]
-	if currentline != 0 && cf.Fn != lh.callback && currentline != L.prevline {
+	if currentline != 0 && !isFunctionInCallFrameChain(cf, lh.callback) && currentline != L.prevline {
 		L.reg.Push(lh.callback)
 		L.reg.Push(LString("line"))
 		L.reg.Push(LNumber(currentline))
+		print("really callback\n")
 		L.callR(2, 0, -1)
 		L.prevline = currentline
 	}
