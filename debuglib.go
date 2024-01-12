@@ -23,6 +23,7 @@ var debugFuncs = map[string]LGFunction{
 	"setupvalue":   debugSetUpvalue,
 	"traceback":    debugTraceback,
 	"sethook":      debugSetHook,
+	"gethook":      debugGetHook,
 }
 
 func debugGetFEnv(L *LState) int {
@@ -52,6 +53,17 @@ func debugSetHook(L *LState) int {
 	}
 	_ = L.SetHook(callbackArg, eventArg, countArg)
 	return 0
+}
+func debugGetHook(L *LState) int {
+	callback, eventArg, countArg := L.GetHook()
+	if callback == nil {
+		L.Push(LNil)
+	} else {
+		L.Push(callback)
+	}
+	L.Push(LString(eventArg))
+	L.Push(LNumber(countArg))
+	return 3
 }
 
 func debugGetInfo(L *LState) int {
@@ -86,7 +98,8 @@ func debugGetInfo(L *LState) int {
 		tbl.RawSetString("name", LNil)
 	}
 	tbl.RawSetString("what", LString(dbg.What))
-	tbl.RawSetString("source", LString(dbg.Source))
+	tbl.RawSetString("source", LString("@"+dbg.Source))
+	tbl.RawSetString("short_src", LString(dbg.Source))
 	tbl.RawSetString("currentline", LNumber(dbg.CurrentLine))
 	tbl.RawSetString("nups", LNumber(dbg.NUpvalues))
 	tbl.RawSetString("linedefined", LNumber(dbg.LineDefined))

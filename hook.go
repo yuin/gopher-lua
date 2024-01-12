@@ -10,6 +10,7 @@ type Hooker interface {
 type LHook struct {
 	callback *LFunction
 	line     int
+	isCalled bool // prevent recursion
 }
 
 func newLHook(callback *LFunction, line int) *LHook {
@@ -36,13 +37,14 @@ func isFunctionInCallFrameChain(cf *callFrame, fn *LFunction) bool {
 // cf.Fn != lh.callback
 func (lh *LHook) call(L *LState, cf *callFrame) {
 	currentline := cf.Fn.Proto.DbgSourcePositions[cf.Pc-1]
-	if currentline != 0 && !isFunctionInCallFrameChain(cf, lh.callback) && currentline != L.prevline {
+	if currentline != 0 && cf.Fn != lh.callback && currentline != L.prevline && !lh.isCalled {
+		lh.isCalled = true
 		L.reg.Push(lh.callback)
 		L.reg.Push(LString("line"))
 		L.reg.Push(LNumber(currentline))
-		print("really callback\n")
 		L.callR(2, 0, -1)
 		L.prevline = currentline
+		lh.isCalled = false
 	}
 }
 

@@ -199,6 +199,8 @@ type LState struct {
 	chook        Hooker
 	rhook        Hooker
 	cthook       Hooker
+	callback     *LFunction
+	hookMask     string
 	prevline     int
 }
 

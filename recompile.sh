@@ -7,3 +7,6 @@ go build cmd/glua/glua.go
 # /home/SENSETIME/wufei2/go/src/github.com/geoffleyland/luatrace
 
 LD_LIBRARY_PATH="/usr/local/lib/lua/5.1/luatrace" ./glua test/wrap-error.lua > test.txt 2>&1
+luatrace.profile
+# lua test/wrap-error.lua > testlua.txt 2>&1
+# luatrace.profile
