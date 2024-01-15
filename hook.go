@@ -38,6 +38,7 @@ func isFunctionInCallFrameChain(cf *callFrame, fn *LFunction) bool {
 func (lh *LHook) call(L *LState, cf *callFrame) {
 	currentline := cf.Fn.Proto.DbgSourcePositions[cf.Pc-1]
 	if currentline != 0 && cf.Fn != lh.callback && currentline != L.prevline && !lh.isCalled {
+		// if currentline != 0 && cf.Fn != lh.callback && currentline != L.prevline && !isFunctionInCallFrameChain(cf, lh.callback) {
 		lh.isCalled = true
 		L.reg.Push(lh.callback)
 		L.reg.Push(LString("line"))

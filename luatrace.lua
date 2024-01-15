@@ -83,7 +83,8 @@ end
 
 -- We only trace Lua functions
 local function should_trace(f)
-  return f and f.source:sub(1,1) == "@"
+  print("f.source:sub(1,1)",f.source:sub(1,1))
+  return f and f.source:sub(1,1) == "@" and f.source:sub(-12) ~= "luatrace.lua"
   -- f.source:sub(-4) == ".lua"
 end
 
@@ -242,7 +243,6 @@ local function init_trace(line)
           print("key",key, "value",value)
       end
     end
-    -- print("frame1: ", frame.short_src)
     if not frame then break end
   end
   for i = depth-1, 3, -1 do
@@ -293,7 +293,7 @@ local function hook_start()
   local callee = debug.getinfo(2, "Sl")
   if callee.short_src == start_short_src and callee.linedefined == start_line then
     if c_hook then
-      debug.sethook(hook_c_start, "l")
+      debug.sethook(hook_lua_start, "l")
     elseif ffi then
       debug.sethook(hook_luajit_start, "l")
     else
