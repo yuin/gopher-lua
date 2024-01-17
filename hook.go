@@ -1,6 +1,8 @@
 package lua
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Hooker interface {
 	call(L *LState, cf *callFrame)
@@ -37,9 +39,15 @@ func isFunctionInCallFrameChain(cf *callFrame, fn *LFunction) bool {
 // cf.Fn != lh.callback
 func (lh *LHook) call(L *LState, cf *callFrame) {
 	currentline := cf.Fn.Proto.DbgSourcePositions[cf.Pc-1]
-	if currentline != 0 && cf.Fn != lh.callback && currentline != L.prevline && !lh.isCalled {
+
+	if currentline != 0 && cf.Fn != lh.callback && currentline != L.prevline && !lh.isCalled && !isFunctionInCallFrameChain(cf, lh.callback) {
 		// if currentline != 0 && cf.Fn != lh.callback && currentline != L.prevline && !isFunctionInCallFrameChain(cf, lh.callback) {
 		lh.isCalled = true
+		// fmt.Println("lh.line", lh.line)
+		// fmt.Println("currentline", currentline)
+		// fmt.Println("cf.Fn.Proto.LastLineDefined", cf.Fn.Proto.LastLineDefined)
+		// fmt.Println("c call debug hook")
+		fmt.Println("cf.Fn.Proto.SourceName", cf.Fn.Proto.SourceName)
 		L.reg.Push(lh.callback)
 		L.reg.Push(LString("line"))
 		L.reg.Push(LNumber(currentline))
@@ -67,8 +75,11 @@ func newCTHook(callback *LFunction, count int) *CTHook {
 }
 
 func (ct *CTHook) call(L *LState, cf *callFrame) {
+
 	ct.currentCount++
 	if ct.currentCount == ct.count {
+		print("ct call debug hook\n")
+		fmt.Println("ct.Fn.Proto.SourceName", cf.Fn.Proto.SourceName)
 		L.reg.Push(ct.callback)
 		L.reg.Push(LString("count"))
 		L.callR(1, 0, -1)
@@ -91,7 +102,10 @@ func newCHook(callback *LFunction) *CHook {
 }
 
 func (ch *CHook) call(L *LState, cf *callFrame) {
+
 	if ch.callback != cf.Fn {
+		fmt.Println("ch.Fn.Proto.SourceName", cf.Fn.Proto.SourceName)
+		print("ch call debug hook\n")
 		L.reg.Push(ch.callback)
 		L.reg.Push(LString("call"))
 		L.callR(1, 0, -1)
@@ -113,7 +127,10 @@ func newRHook(callback *LFunction) *RHook {
 }
 
 func (rh *RHook) call(L *LState, cf *callFrame) {
-	if rh.callback != cf.Fn {
+
+	if rh.callback != cf.Fn && !isFunctionInCallFrameChain(cf, rh.callback) {
+		print("rh call debug hook\n")
+		fmt.Println(".Fn.Proto.SourceName", cf.Fn.Proto.SourceName)
 		L.reg.Push(rh.callback)
 		L.reg.Push(LString("return"))
 		L.callR(1, 0, -1)

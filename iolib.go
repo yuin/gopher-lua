@@ -361,7 +361,6 @@ func fileReadAux(L *LState, file *lFile, idx int) int {
 			for _, opt := range options[1:] {
 				switch opt {
 				case 'n':
-				readagain:
 					var v LNumber
 					_, err = fmt.Fscanf(file.reader, LNumberScanFormat, &v)
 					if err == io.EOF {
@@ -369,10 +368,6 @@ func fileReadAux(L *LState, file *lFile, idx int) int {
 						goto normalreturn
 					}
 					if err != nil {
-						if err.Error() == "unexpected newline" {
-							// skip newline
-							goto readagain
-						}
 						goto errreturn
 					}
 					L.Push(v)

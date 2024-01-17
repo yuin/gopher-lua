@@ -42,7 +42,7 @@ end
 
 
 local function was_that_a_tailcall()
-  if debug.getinfo(stack_depth+3, "l") then
+  if debug.getinfo(stack_depth+2, "l") then
     stack_depth = stack_depth + 1
     return false
   else
@@ -65,10 +65,11 @@ local CALLEE_INDEX, CALLER_INDEX        -- The indexes used for getinfo depend o
 
 local ACCUMULATE_TO_NEXT = -1
 local do_record_time = true
-
+local last_action 
 -- Emit a trace if the current line has changed
 -- and reset the current line and accumulated time
 local function set_current_line(l)
+    print("l",l,"current_line",current_line,"ACCUMULATE_TO_NEXT",ACCUMULATE_TO_NEXT,",accumulated_us",accumulated_us)
   if l ~= current_line then
     -- If current_line is ACCUMULATE_TO_NEXT then leave the time for the new
     -- current_line to pick up
@@ -105,7 +106,7 @@ local function record(action, line, time)
           thread_id = thread_count
         end
         -- Flush any time remaining on the caller
-        print("set current line2",ACCUMULATE_TO_NEXT)
+        print("set_current_line2",ACCUMULATE_TO_NEXT)
 
         set_current_line(ACCUMULATE_TO_NEXT)
         -- Record a resume
@@ -120,28 +121,52 @@ local function record(action, line, time)
   end
 
   if action == "line" then
+    print("action line start")
     local callee = debug.getinfo(CALLEE_INDEX, "Sln")
-    if should_trace(callee) then
+    local caller = debug.getinfo(CALLER_INDEX, "Sl")
+    if caller then
+      print("action line caller",caller.short_src,caller.currentline)
+    end
+    if callee then
+      print("action line callee",callee.short_src,callee.currentline,callee.lastlinedefined)
+    end
+    print("callee",callee.short_src,callee.currentline)
+    if should_trace(callee)then
       count_stack()
+      print("set_current_line action line")
       set_current_line(line)
+    if last_action == "call" then
+      print("bugfix")
+      recorder.record(">", callee.short_src, callee.linedefined, callee.lastlinedefined)
+    end
     end
   elseif action == "call" or action == "return" then
     local callee = debug.getinfo(CALLEE_INDEX, "Sln")
     local caller = debug.getinfo(CALLER_INDEX, "Sl")
-    
+    if caller then
+      print("caller",caller.short_src,caller.currentline)
+    end
+    if callee then
+      print("callee",callee.short_src,callee.currentline,callee.lastlinedefined)
+    end
     if action == "call" then
+      if caller==nil and callee~=nil then
+        -- caller=callee
+        -- callee=debug.getinfo(CALLER_INDEX, "Sl")
+        return
+      end
+
       local c = was_that_a_tailcall() and "T" or ">"
       if should_trace(caller) then
         -- square up the caller's time to the last line executed
-        print("set current line7",caller.currentline)
+        print("set_current_line action call caller",caller.currentline)
         set_current_line(caller.currentline)
       end
       if should_trace(callee) then
         -- start charging the callee for time, and record where we're going
-        print("set current line8",callee.currentline)
+        print("set_current_line action call callee",callee.currentline)
         set_current_line(callee.currentline)
-        print("recordwf",c, callee.short_src, callee.linedefined, callee.lastlinedefined)
-        -- recorder.record(c, callee.short_src, callee.linedefined, callee.lastlinedefined)
+        recorder.record(c, callee.short_src, callee.linedefined, callee.lastlinedefined)
       end
       if callee and callee.source == "=[C]" then
         if callee.name == "yield" then
@@ -173,7 +198,7 @@ local function record(action, line, time)
       if should_trace(callee) then
         -- square up the callee's time to the last line executed
         -- print("callee:source()",callee.source,callee.currentline)
-        print("set current line9",callee.currentline)
+        print("set_current_line action return callee",callee.currentline)
         set_current_line(callee.currentline)
       end
       print("caller",type(caller),caller==nil)
@@ -188,19 +213,18 @@ local function record(action, line, time)
         or caller.source == "=(tail call)" then -- about to get tail-returned
         -- In both cases, there's no point recording time until we're
         -- back on our feet
-        print("set current line3",ACCUMULATE_TO_NEXT)
+        print("set_current_line3",ACCUMULATE_TO_NEXT)
         set_current_line(ACCUMULATE_TO_NEXT)
       elseif watch_thread and callee and callee.source == "=[C]" and callee.name == "yield" then
         -- Don't trace returns from yields, even into traceable functions.
         -- We'll catch them later with watch_thread
       elseif should_trace(caller) then
         -- The caller gets charged for time from here on
-        print("set current line4",caller.currentline)
+        print("set_current_line4",caller.currentline)
         set_current_line(caller.currentline)
       else
         -- Otherwise charge the time to the next line.  I'm not sure it's right
         -- but we have to set it to something
-        -- print("set current line5",ACCUMULATE_TO_NEXT)
         -- set_current_line(ACCUMULATE_TO_NEXT)
       end
       if should_trace(callee) then
@@ -217,7 +241,7 @@ local function record(action, line, time)
     -- If we've got a real caller, we're heading back to non-tail-call land
     -- start charging the caller for time
     if should_trace(caller) then
-      print("set current line6",caller.currentline)
+      print("set_current_line6",caller.currentline)
       set_current_line(caller.currentline)
     end
     recorder.record("<")
@@ -234,10 +258,12 @@ local time_out                          -- Time we last left the hook
 
 -- The hook - note the time and record something
 local function hook_lua(action, line)
+  print("hook_lua debug",action, line)
   local time_in = os.clock()
   -- print("record", action, line, (time_in - time_out) * 1000000)
   record(action, line, (time_in - time_out) * 1000000)
   time_out = os.clock()
+  last_action = action
 end
 local function hook_luajit(action, line)
   local time_in = ffi.C.clock()
@@ -251,6 +277,7 @@ end
 local start_short_src, start_line
 
 local function init_trace(line)
+
   -- Try to record the stack so far
   local depth = 2
   while true do
@@ -275,12 +302,17 @@ local function init_trace(line)
 end
 
 local function hook_lua_start(action, line)
+  local callee = debug.getinfo(2, "Sl")
+  -- print("hook_start2",callee.short_src,callee.linedefined)
+  -- callee=debug.getinfo(3, "Sl")
+  -- print("hook_start3",callee.short_src,callee.linedefined)
+  -- callee=debug.getinfo(4, "Sl")
+  -- print("hook_start4",callee.short_src,callee.linedefined)
   io.stderr:write("luatrace: tracing with Lua hook\n")
   init_trace(line)
   CALLEE_INDEX, CALLER_INDEX = 3, 4
   time_out = os.clock()
   debug.sethook(hook_lua, "crl")
-  
 end
 local function hook_luajit_start(action, line)
   io.stderr:write("luatrace: tracing with FFI hook\n")
@@ -299,6 +331,7 @@ end
 
 local function hook_start()
   local callee = debug.getinfo(2, "Sl")
+  print("hook_start2",callee.short_src,callee.linedefined,start_short_src,start_line)
   if callee.short_src == start_short_src and callee.linedefined == start_line then
     if c_hook then
       debug.sethook(hook_lua_start, "l")
@@ -366,7 +399,8 @@ function luatrace.tron(settings)
 
   local me = debug.getinfo(1, "Sl")
   start_short_src, start_line = me.short_src, me.linedefined
-
+  -- local trondebug = debug.getinfo(2, "Sl")
+  -- print("trondebug",trondebug.short_src,trondebug.lastlinedefined)
   luatrace_exit_trick()
 
   debug.sethook(hook_start, "r")

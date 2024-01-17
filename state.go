@@ -1887,7 +1887,6 @@ func (ls *LState) SetHook(callback *LFunction, event string, count int) error {
 			return newApiErrorS(ApiErrorRun, fmt.Sprintf("invalid hook event: %c", c))
 		}
 	}
-	print("set hook finish\n")
 	return nil
 }
 func (ls *LState) GetHook() (*LFunction, string, int) {

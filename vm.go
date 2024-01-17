@@ -13,7 +13,6 @@ import (
 func mainLoop(L *LState, baseframe *callFrame) {
 	var inst uint32
 	var cf *callFrame
-
 	if L.stack.IsEmpty() {
 		return
 	}
@@ -29,7 +28,6 @@ func mainLoop(L *LState, baseframe *callFrame) {
 		inst = cf.Fn.Proto.Code[cf.Pc]
 		cf.Pc++
 		if L.lhook != nil {
-			// print("call L.lhook2\n")
 			L.lhook.call(L, cf)
 		}
 		if L.cthook != nil {
@@ -44,7 +42,6 @@ func mainLoop(L *LState, baseframe *callFrame) {
 func mainLoopWithContext(L *LState, baseframe *callFrame) {
 	var inst uint32
 	var cf *callFrame
-
 	if L.stack.IsEmpty() {
 		return
 	}
@@ -65,7 +62,6 @@ func mainLoopWithContext(L *LState, baseframe *callFrame) {
 			return
 		default:
 			if L.lhook != nil {
-				print("call L.lhook1\n")
 				L.lhook.call(L, cf)
 			}
 			if L.cthook != nil {
@@ -306,6 +302,7 @@ func threadRun(L *LState) {
 		}
 	}()
 	L.mainLoop(L, nil)
+	// fmt.Println("mainLoop end")
 }
 
 type instFunc func(*LState, uint32, *callFrame) int
@@ -1180,9 +1177,9 @@ func init() {
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_CALL
-			if L.chook != nil {
-				L.chook.call(L, baseframe)
-			}
+				if L.chook != nil {
+					L.chook.call(L, baseframe)
+				}
 			reg := L.reg
 			cf := L.currentFrame
 			lbase := cf.LocalBase
@@ -1320,6 +1317,7 @@ func init() {
 						}
 					}
 				}
+				// fmt.Println("newcfwf", newcf.Fn.Proto.LineDefined)
 				ls.currentFrame = newcf
 			}
 			if callable.IsG && callGFunction(L, false) {

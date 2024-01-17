@@ -37,16 +37,6 @@ func debugSetHook(L *LState) int {
 	callbackArg := L.OptFunction(1, nil) //直接获取即可
 	eventArg := L.OptString(2, "")       //直接获取即可
 	countArg := L.OptInt(3, 0)
-	// if callbackArg != nil {
-	// 	L.Pop(1)
-	// }
-	// if eventArg != "" {
-	// 	L.Pop(1)
-	// }
-	// if countArg != 0 {
-	// 	L.Pop(1)
-	// }
-	// print("callbackArg:", callbackArg, " eventArg:", eventArg, " countArg:", countArg, "\n")
 	if callbackArg == nil || eventArg == "" {
 		callbackArg = nil
 		eventArg = "" //"callbackArg or eventArg is nil,turn off hooks
