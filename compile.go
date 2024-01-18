@@ -1382,11 +1382,7 @@ func compileTableExpr(context *funcContext, reg int, ex *ast.TableExpr, ec *expc
 			if _, ok := field.Key.(*ast.StringExpr); ok {
 				opcode = OP_SETTABLEKS
 			}
-			line := field.Value
-			if field.Key != nil {
-				line = field.Key
-			}
-			code.AddABC(opcode, tablereg, b, c, sline(line))
+			code.AddABC(opcode, tablereg, b, c, sline(ex))
 			reg = regorg
 		}
 		flush := arraycount % FieldsPerFlush
