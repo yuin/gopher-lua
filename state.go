@@ -1766,6 +1766,7 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 				dbg.What = "G"
 			} else if dbg.frame != nil && dbg.frame.TailCall > 0 {
 				dbg.What = "tail"
+				dbg.Source="=(tail call)"
 			} else {
 				dbg.What = "Lua"
 			}
