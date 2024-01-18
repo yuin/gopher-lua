@@ -13,7 +13,6 @@ import (
 func mainLoop(L *LState, baseframe *callFrame) {
 	var inst uint32
 	var cf *callFrame
-
 	if L.stack.IsEmpty() {
 		return
 	}
@@ -27,17 +26,26 @@ func mainLoop(L *LState, baseframe *callFrame) {
 	for {
 		cf = L.currentFrame
 		inst = cf.Fn.Proto.Code[cf.Pc]
-		cf.Pc++
-		if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
+		cf.Pc++		
+		if L.lhook != nil {
+			L.lhook.call(L, cf)
+		}
+		if L.cthook != nil {
+			L.cthook.call(L, cf)
+		}	
+		return_value:=jumpTable[int(inst>>26)](L, inst, baseframe)			
+
+		if return_value == 1 {
 			return
 		}
+
+
 	}
 }
 
 func mainLoopWithContext(L *LState, baseframe *callFrame) {
 	var inst uint32
 	var cf *callFrame
-
 	if L.stack.IsEmpty() {
 		return
 	}
@@ -57,9 +65,18 @@ func mainLoopWithContext(L *LState, baseframe *callFrame) {
 			L.RaiseError(L.ctx.Err().Error())
 			return
 		default:
-			if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
-				return
+			if L.lhook != nil {
+				L.lhook.call(L, cf)
 			}
+			if L.cthook != nil {
+				L.cthook.call(L, cf)
+			}
+			return_value:=jumpTable[int(inst>>26)](L, inst, baseframe)			
+
+			if return_value == 1 {
+			return
+			}
+
 		}
 	}
 }
@@ -292,6 +309,7 @@ func threadRun(L *LState) {
 		}
 	}()
 	L.mainLoop(L, nil)
+	// fmt.Println("mainLoop end")
 }
 
 type instFunc func(*LState, uint32, *callFrame) int
@@ -1166,6 +1184,10 @@ func init() {
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_CALL
+			if L.chook != nil {
+				// fmt.Println("debug op call")
+				L.chook.call(L, baseframe)
+			}
 			reg := L.reg
 			cf := L.currentFrame
 			lbase := cf.LocalBase
@@ -1303,6 +1325,7 @@ func init() {
 						}
 					}
 				}
+				// fmt.Println("newcfwf", newcf.Fn.Proto.LineDefined)
 				ls.currentFrame = newcf
 			}
 			if callable.IsG && callGFunction(L, false) {
@@ -1311,6 +1334,10 @@ func init() {
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_TAILCALL
+			fmt.Println("debug op tailcall")
+			if L.chook != nil {
+				L.chook.call(L, baseframe)
+			}
 			reg := L.reg
 			cf := L.currentFrame
 			lbase := cf.LocalBase
@@ -1354,6 +1381,7 @@ func init() {
 				}
 			}
 			if callable.IsG {
+				fmt.Println("debug op tailcall g")
 				luaframe := cf
 				L.pushCallFrame(callFrame{
 					Fn:         callable,
@@ -1531,6 +1559,9 @@ func init() {
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_RETURN
+			if L.rhook != nil {
+				L.rhook.call(L, baseframe)
+			}
 			reg := L.reg
 			cf := L.currentFrame
 			lbase := cf.LocalBase

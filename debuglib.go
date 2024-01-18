@@ -22,11 +22,38 @@ var debugFuncs = map[string]LGFunction{
 	"setmetatable": debugSetMetatable,
 	"setupvalue":   debugSetUpvalue,
 	"traceback":    debugTraceback,
+	"sethook":      debugSetHook,
+	"gethook":      debugGetHook,
 }
 
 func debugGetFEnv(L *LState) int {
 	L.Push(L.GetFEnv(L.CheckAny(1)))
 	return 1
+}
+
+func debugSetHook(L *LState) int {
+	// L.CheckTypes(3, LTNumber)
+
+	callbackArg := L.OptFunction(1, nil) //直接获取即可
+	eventArg := L.OptString(2, "")       //直接获取即可
+	countArg := L.OptInt(3, 0)
+	if callbackArg == nil || eventArg == "" {
+		callbackArg = nil
+		eventArg = "" //"callbackArg or eventArg is nil,turn off hooks
+	}
+	_ = L.SetHook(callbackArg, eventArg, countArg)
+	return 0
+}
+func debugGetHook(L *LState) int {
+	callback, eventArg, countArg := L.GetHook()
+	if callback == nil {
+		L.Push(LNil)
+	} else {
+		L.Push(callback)
+	}
+	L.Push(LString(eventArg))
+	L.Push(LNumber(countArg))
+	return 3
 }
 
 func debugGetInfo(L *LState) int {
@@ -61,7 +88,8 @@ func debugGetInfo(L *LState) int {
 		tbl.RawSetString("name", LNil)
 	}
 	tbl.RawSetString("what", LString(dbg.What))
-	tbl.RawSetString("source", LString(dbg.Source))
+	tbl.RawSetString("source", LString("@"+dbg.Source))
+	tbl.RawSetString("short_src", LString(dbg.Source))
 	tbl.RawSetString("currentline", LNumber(dbg.CurrentLine))
 	tbl.RawSetString("nups", LNumber(dbg.NUpvalues))
 	tbl.RawSetString("linedefined", LNumber(dbg.LineDefined))

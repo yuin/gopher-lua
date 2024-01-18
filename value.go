@@ -195,6 +195,13 @@ type LState struct {
 	mainLoop     func(*LState, *callFrame)
 	ctx          context.Context
 	ctxCancelFn  context.CancelFunc
+	lhook        Hooker
+	chook        Hooker
+	rhook        Hooker
+	cthook       Hooker
+	callback     *LFunction
+	hookMask     string
+	prevline     int
 }
 
 func (ls *LState) String() string   { return fmt.Sprintf("thread: %p", ls) }
