@@ -9,17 +9,31 @@ import (
 	"strings"
 )
 
-func evalInstruction(L *LState, inst uint32, baseframe *callFrame) bool {
+func mainLoop(L *LState, baseframe *callFrame) {
+	if L.stack.IsEmpty() {
+		return
+	}
+
+	L.currentFrame = L.stack.Last()
+	if L.currentFrame.Fn.IsG {
+		callGFunction(L, false)
+		return
+	}
+
 	reg := L.reg
-	cf := L.currentFrame
-	lbase := cf.LocalBase
-	opcode := int(inst >> 26)
-	switch opcode {
-	case OP_MOVE:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff) //GETB
-		v := reg.Get(lbase + B)
+	for L.ctx == nil || L.ctx.Err() == nil {
+		cf := L.currentFrame
+		inst := cf.Fn.Proto.Code[cf.Pc]
+		lbase := cf.LocalBase
+		cf.Pc++
+
+		opcode := int(inst >> 26)
+		switch opcode {
+		case OP_MOVE:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff) //GETB
+			v := reg.Get(lbase + B)
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -40,38 +54,10 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-	case OP_MOVEN:
-		A := int(inst>>18) & 0xff //GETA
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		v := reg.Get(lbase + B)
-// this section is inlined by go-inline
-// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
-{
-rg := reg
-regi := lbase+A
-vali := v
-	newSize := regi + 1
-// this section is inlined by go-inline
-// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
-{
-requiredSize := newSize
-	if requiredSize > cap(rg.array) {
-		rg.resize(requiredSize)
-	}
-}
-	rg.array[regi] = vali
-	if regi >= rg.top {
-		rg.top = regi + 1
-	}
-}
-		code := cf.Fn.Proto.Code
-		pc := cf.Pc
-		for i := 0; i < C; i++ {
-			inst = code[pc]
-			pc++
-			A = int(inst>>18) & 0xff //GETA
-			B = int(inst & 0x1ff)    //GETB
+		case OP_MOVEN:
+			A := int(inst>>18) & 0xff //GETA
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
 			v := reg.Get(lbase + B)
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
@@ -93,13 +79,41 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		}
-		cf.Pc = pc
-	case OP_LOADK:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		Bx := int(inst & 0x3ffff) //GETBX
-		v := cf.Fn.Proto.Constants[Bx]
+			code := cf.Fn.Proto.Code
+			pc := cf.Pc
+			for i := 0; i < C; i++ {
+				inst = code[pc]
+				pc++
+				A = int(inst>>18) & 0xff //GETA
+				B = int(inst & 0x1ff)    //GETB
+				v := reg.Get(lbase + B)
+// this section is inlined by go-inline
+// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+{
+rg := reg
+regi := lbase+A
+vali := v
+	newSize := regi + 1
+// this section is inlined by go-inline
+// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+{
+requiredSize := newSize
+	if requiredSize > cap(rg.array) {
+		rg.resize(requiredSize)
+	}
+}
+	rg.array[regi] = vali
+	if regi >= rg.top {
+		rg.top = regi + 1
+	}
+}
+			}
+			cf.Pc = pc
+		case OP_LOADK:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			Bx := int(inst & 0x3ffff) //GETBX
+			v := cf.Fn.Proto.Constants[Bx]
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -120,12 +134,12 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-	case OP_LOADBOOL:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		if B != 0 {
+		case OP_LOADBOOL:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			if B != 0 {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -146,7 +160,7 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		} else {
+			} else {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -167,15 +181,15 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		}
-		if C != 0 {
-			cf.Pc++
-		}
-	case OP_LOADNIL:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff) //GETB
-		for i := RA; i <= lbase+B; i++ {
+			}
+			if C != 0 {
+				cf.Pc++
+			}
+		case OP_LOADNIL:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff) //GETB
+			for i := RA; i <= lbase+B; i++ {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -196,15 +210,12 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		}
-	case OP_GETUPVAL:
-		reg := L.reg
-		cf := L.currentFrame
-		lbase := cf.LocalBase
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff) //GETB
-		v := cf.Fn.Upvalues[B].Value()
+			}
+		case OP_GETUPVAL:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff) //GETB
+			v := cf.Fn.Upvalues[B].Value()
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -225,12 +236,12 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-	case OP_GETGLOBAL:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		Bx := int(inst & 0x3ffff) //GETBX
-		//reg.Set(RA, L.getField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx]))
-		v := L.getFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx])
+		case OP_GETGLOBAL:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			Bx := int(inst & 0x3ffff) //GETBX
+			//reg.Set(RA, L.getField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx]))
+			v := L.getFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx])
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -251,12 +262,12 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-	case OP_GETTABLE:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		v := L.getField(reg.Get(lbase+B), L.rkValue(C))
+		case OP_GETTABLE:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			v := L.getField(reg.Get(lbase+B), L.rkValue(C))
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -277,12 +288,12 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-	case OP_GETTABLEKS:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		v := L.getFieldString(reg.Get(lbase+B), L.rkString(C))
+		case OP_GETTABLEKS:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			v := L.getFieldString(reg.Get(lbase+B), L.rkString(C))
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -303,35 +314,35 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-	case OP_SETGLOBAL:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		Bx := int(inst & 0x3ffff) //GETBX
-		//L.setField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx], reg.Get(RA))
-		L.setFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx], reg.Get(RA))
-	case OP_SETUPVAL:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff) //GETB
-		cf.Fn.Upvalues[B].SetValue(reg.Get(RA))
-	case OP_SETTABLE:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		L.setField(reg.Get(RA), L.rkValue(B), L.rkValue(C))
-	case OP_SETTABLEKS:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		L.setFieldString(reg.Get(RA), L.rkString(B), L.rkValue(C))
-	case OP_NEWTABLE:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		v := newLTable(B, C)
+		case OP_SETGLOBAL:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			Bx := int(inst & 0x3ffff) //GETBX
+			//L.setField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx], reg.Get(RA))
+			L.setFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx], reg.Get(RA))
+		case OP_SETUPVAL:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff) //GETB
+			cf.Fn.Upvalues[B].SetValue(reg.Get(RA))
+		case OP_SETTABLE:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			L.setField(reg.Get(RA), L.rkValue(B), L.rkValue(C))
+		case OP_SETTABLEKS:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			L.setFieldString(reg.Get(RA), L.rkString(B), L.rkValue(C))
+		case OP_NEWTABLE:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			v := newLTable(B, C)
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -352,13 +363,13 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-	case OP_SELF:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		selfobj := reg.Get(lbase + B)
-		v := L.getFieldString(selfobj, L.rkString(C))
+		case OP_SELF:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			selfobj := reg.Get(lbase + B)
+			v := L.getFieldString(selfobj, L.rkString(C))
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -399,17 +410,17 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-	case OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_MOD, OP_POW:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		lhs := L.rkValue(B)
-		rhs := L.rkValue(C)
-		v1, ok1 := lhs.(LNumber)
-		v2, ok2 := rhs.(LNumber)
-		if ok1 && ok2 {
-			v := numberArith(L, opcode, LNumber(v1), LNumber(v2))
+		case OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_MOD, OP_POW:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			lhs := L.rkValue(B)
+			rhs := L.rkValue(C)
+			v1, ok1 := lhs.(LNumber)
+			v2, ok2 := rhs.(LNumber)
+			if ok1 && ok2 {
+				v := numberArith(L, opcode, LNumber(v1), LNumber(v2))
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
 {
@@ -430,8 +441,8 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		} else {
-			v := objectArith(L, opcode, lhs, rhs)
+			} else {
+				v := objectArith(L, opcode, lhs, rhs)
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -452,14 +463,14 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		}
+			}
 
-	case OP_UNM:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff) //GETB
-		unaryv := L.rkValue(B)
-		if nm, ok := unaryv.(LNumber); ok {
+		case OP_UNM:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff) //GETB
+			unaryv := L.rkValue(B)
+			if nm, ok := unaryv.(LNumber); ok {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -480,12 +491,12 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		} else {
-			op := L.metaOp1(unaryv, "__unm")
-			if op.Type() == LTFunction {
-				reg.Push(op)
-				reg.Push(unaryv)
-				L.Call(1, 1)
+			} else {
+				op := L.metaOp1(unaryv, "__unm")
+				if op.Type() == LTFunction {
+					reg.Push(op)
+					reg.Push(unaryv)
+					L.Call(1, 1)
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -506,8 +517,8 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-			} else if str, ok1 := unaryv.(LString); ok1 {
-				if num, err := parseNumber(string(str)); err == nil {
+				} else if str, ok1 := unaryv.(LString); ok1 {
+					if num, err := parseNumber(string(str)); err == nil {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -528,18 +539,18 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
+					} else {
+						L.RaiseError("__unm undefined")
+					}
 				} else {
 					L.RaiseError("__unm undefined")
 				}
-			} else {
-				L.RaiseError("__unm undefined")
 			}
-		}
-	case OP_NOT:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff) //GETB
-		if LVIsFalse(reg.Get(lbase + B)) {
+		case OP_NOT:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff) //GETB
+			if LVIsFalse(reg.Get(lbase + B)) {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -560,7 +571,7 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		} else {
+			} else {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -581,13 +592,13 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		}
-	case OP_LEN:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff) //GETB
-		switch lv := L.rkValue(B).(type) {
-		case LString:
+			}
+		case OP_LEN:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff) //GETB
+			switch lv := L.rkValue(B).(type) {
+			case LString:
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
 {
@@ -608,15 +619,15 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		default:
-			op := L.metaOp1(lv, "__len")
-			if op.Type() == LTFunction {
-				reg.Push(op)
-				reg.Push(lv)
-				L.Call(1, 1)
-				ret := reg.Pop()
-				if ret.Type() == LTNumber {
-					v, _ := ret.(LNumber)
+			default:
+				op := L.metaOp1(lv, "__len")
+				if op.Type() == LTFunction {
+					reg.Push(op)
+					reg.Push(lv)
+					L.Call(1, 1)
+					ret := reg.Pop()
+					if ret.Type() == LTNumber {
+						v, _ := ret.(LNumber)
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
 {
@@ -637,7 +648,7 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-				} else {
+					} else {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -658,8 +669,8 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-				}
-			} else if lv.Type() == LTTable {
+					}
+				} else if lv.Type() == LTTable {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
 {
@@ -680,18 +691,18 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-			} else {
-				L.RaiseError("__len undefined")
+				} else {
+					L.RaiseError("__len undefined")
+				}
 			}
-		}
-	case OP_CONCAT:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		RC := lbase + C
-		RB := lbase + B
-		v := stringConcat(L, RC-RB+1, RC)
+		case OP_CONCAT:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			RC := lbase + C
+			RB := lbase + B
+			v := stringConcat(L, RC-RB+1, RC)
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -712,88 +723,86 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-	case OP_JMP:
-		cf := L.currentFrame
-		Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
-		cf.Pc += Sbx
-	case OP_EQ:
-		cf := L.currentFrame
-		A := int(inst>>18) & 0xff //GETA
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		ret := equals(L, L.rkValue(B), L.rkValue(C), false)
-		v := 1
-		if ret {
-			v = 0
-		}
-		if v == A {
-			cf.Pc++
-		}
-	case OP_LT:
-		A := int(inst>>18) & 0xff //GETA
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		ret := lessThan(L, L.rkValue(B), L.rkValue(C))
-		v := 1
-		if ret {
-			v = 0
-		}
-		if v == A {
-			cf.Pc++
-		}
-	case OP_LE:
-		A := int(inst>>18) & 0xff //GETA
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		lhs := L.rkValue(B)
-		rhs := L.rkValue(C)
-		ret := false
+		case OP_JMP:
+			Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
+			cf.Pc += Sbx
+		case OP_EQ:
+			A := int(inst>>18) & 0xff //GETA
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			ret := equals(L, L.rkValue(B), L.rkValue(C), false)
+			v := 1
+			if ret {
+				v = 0
+			}
+			if v == A {
+				cf.Pc++
+			}
+		case OP_LT:
+			A := int(inst>>18) & 0xff //GETA
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			ret := lessThan(L, L.rkValue(B), L.rkValue(C))
+			v := 1
+			if ret {
+				v = 0
+			}
+			if v == A {
+				cf.Pc++
+			}
+		case OP_LE:
+			A := int(inst>>18) & 0xff //GETA
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			lhs := L.rkValue(B)
+			rhs := L.rkValue(C)
+			ret := false
 
-		if v1, ok1 := lhs.(LNumber); ok1 {
-			if v2, ok2 := rhs.(LNumber); ok2 {
-				ret = v1 <= v2
+			if v1, ok1 := lhs.(LNumber); ok1 {
+				if v2, ok2 := rhs.(LNumber); ok2 {
+					ret = v1 <= v2
+				} else {
+					L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
+				}
 			} else {
-				L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
-			}
-		} else {
-			if lhs.Type() != rhs.Type() {
-				L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
-			}
-			switch lhs.Type() {
-			case LTString:
-				ret = strCmp(string(lhs.(LString)), string(rhs.(LString))) <= 0
-			default:
-				switch objectRational(L, lhs, rhs, "__le") {
-				case 1:
-					ret = true
-				case 0:
-					ret = false
+				if lhs.Type() != rhs.Type() {
+					L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
+				}
+				switch lhs.Type() {
+				case LTString:
+					ret = strCmp(string(lhs.(LString)), string(rhs.(LString))) <= 0
 				default:
-					ret = !objectRationalWithError(L, rhs, lhs, "__lt")
+					switch objectRational(L, lhs, rhs, "__le") {
+					case 1:
+						ret = true
+					case 0:
+						ret = false
+					default:
+						ret = !objectRationalWithError(L, rhs, lhs, "__lt")
+					}
 				}
 			}
-		}
 
-		v := 1
-		if ret {
-			v = 0
-		}
-		if v == A {
-			cf.Pc++
-		}
-	case OP_TEST:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		C := int(inst>>9) & 0x1ff //GETC
-		if LVAsBool(reg.Get(RA)) == (C == 0) {
-			cf.Pc++
-		}
-	case OP_TESTSET:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		if value := reg.Get(lbase + B); LVAsBool(value) != (C == 0) {
+			v := 1
+			if ret {
+				v = 0
+			}
+			if v == A {
+				cf.Pc++
+			}
+		case OP_TEST:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			C := int(inst>>9) & 0x1ff //GETC
+			if LVAsBool(reg.Get(RA)) == (C == 0) {
+				cf.Pc++
+			}
+		case OP_TESTSET:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			if value := reg.Get(lbase + B); LVAsBool(value) != (C == 0) {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -814,28 +823,28 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		} else {
-			cf.Pc++
-		}
-	case OP_CALL:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		nargs := B - 1
-		if B == 0 {
-			nargs = reg.Top() - (RA + 1)
-		}
-		lv := reg.Get(RA)
-		nret := C - 1
-		var callable *LFunction
-		var meta bool
-		if fn, ok := lv.(*LFunction); ok {
-			callable = fn
-			meta = false
-		} else {
-			callable, meta = L.metaCall(lv)
-		}
+			} else {
+				cf.Pc++
+			}
+		case OP_CALL:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			nargs := B - 1
+			if B == 0 {
+				nargs = reg.Top() - (RA + 1)
+			}
+			lv := reg.Get(RA)
+			nret := C - 1
+			var callable *LFunction
+			var meta bool
+			if fn, ok := lv.(*LFunction); ok {
+				callable = fn
+				meta = false
+			} else {
+				callable, meta = L.metaCall(lv)
+			}
 // this section is inlined by go-inline
 // source function is 'func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) ' in '_state.go'
 {
@@ -954,32 +963,29 @@ requiredSize := newSize
 }
 	ls.currentFrame = newcf
 }
-		if callable.IsG && callGFunction(L, false) {
-			return true
-		}
-	case OP_TAILCALL:
-		reg := L.reg
-		cf := L.currentFrame
-		lbase := cf.LocalBase
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff) //GETB
-		nargs := B - 1
-		if B == 0 {
-			nargs = reg.Top() - (RA + 1)
-		}
-		lv := reg.Get(RA)
-		var callable *LFunction
-		var meta bool
-		if fn, ok := lv.(*LFunction); ok {
-			callable = fn
-			meta = false
-		} else {
-			callable, meta = L.metaCall(lv)
-		}
-		if callable == nil {
-			L.RaiseError("attempt to call a non-function object")
-		}
+			if callable.IsG && callGFunction(L, false) {
+				return
+			}
+		case OP_TAILCALL:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff) //GETB
+			nargs := B - 1
+			if B == 0 {
+				nargs = reg.Top() - (RA + 1)
+			}
+			lv := reg.Get(RA)
+			var callable *LFunction
+			var meta bool
+			if fn, ok := lv.(*LFunction); ok {
+				callable = fn
+				meta = false
+			} else {
+				callable, meta = L.metaCall(lv)
+			}
+			if callable == nil {
+				L.RaiseError("attempt to call a non-function object")
+			}
 // this section is inlined by go-inline
 // source function is 'func (ls *LState) closeUpvalues(idx int) ' in '_state.go'
 {
@@ -1000,40 +1006,40 @@ idx := lbase
 		}
 	}
 }
-		if callable.IsG {
-			luaframe := cf
-			L.pushCallFrame(callFrame{
-				Fn:         callable,
-				Pc:         0,
-				Base:       RA,
-				LocalBase:  RA + 1,
-				ReturnBase: cf.ReturnBase,
-				NArgs:      nargs,
-				NRet:       cf.NRet,
-				Parent:     cf,
-				TailCall:   0,
-			}, lv, meta)
-			if callGFunction(L, true) {
-				return true
-			}
-			if L.currentFrame == nil || L.currentFrame.Fn.IsG || luaframe == baseframe {
-				return true
-			}
-		} else {
-			base := cf.Base
-			cf.Fn = callable
-			cf.Pc = 0
-			cf.Base = RA
-			cf.LocalBase = RA + 1
-			cf.ReturnBase = cf.ReturnBase
-			cf.NArgs = nargs
-			cf.NRet = cf.NRet
-			cf.TailCall++
-			lbase := cf.LocalBase
-			if meta {
-				cf.NArgs++
-				L.reg.Insert(lv, cf.LocalBase)
-			}
+			if callable.IsG {
+				luaframe := cf
+				L.pushCallFrame(callFrame{
+					Fn:         callable,
+					Pc:         0,
+					Base:       RA,
+					LocalBase:  RA + 1,
+					ReturnBase: cf.ReturnBase,
+					NArgs:      nargs,
+					NRet:       cf.NRet,
+					Parent:     cf,
+					TailCall:   0,
+				}, lv, meta)
+				if callGFunction(L, true) {
+					return
+				}
+				if L.currentFrame == nil || L.currentFrame.Fn.IsG || luaframe == baseframe {
+					return
+				}
+			} else {
+				base := cf.Base
+				cf.Fn = callable
+				cf.Pc = 0
+				cf.Base = RA
+				cf.LocalBase = RA + 1
+				cf.ReturnBase = cf.ReturnBase
+				cf.NArgs = nargs
+				cf.NRet = cf.NRet
+				cf.TailCall++
+				lbase := cf.LocalBase
+				if meta {
+					cf.NArgs++
+					L.reg.Insert(lv, cf.LocalBase)
+				}
 // this section is inlined by go-inline
 // source function is 'func (ls *LState) initCallFrame(cf *callFrame) ' in '_state.go'
 {
@@ -1172,13 +1178,13 @@ requiredSize := newSize
 		}
 	}
 }
-			cf.Base = base
-			cf.LocalBase = base + (cf.LocalBase - lbase + 1)
-		}
-	case OP_RETURN:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff) //GETB
+				cf.Base = base
+				cf.LocalBase = base + (cf.LocalBase - lbase + 1)
+			}
+		case OP_RETURN:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff) //GETB
 // this section is inlined by go-inline
 // source function is 'func (ls *LState) closeUpvalues(idx int) ' in '_state.go'
 {
@@ -1199,16 +1205,16 @@ idx := lbase
 		}
 	}
 }
-		nret := B - 1
-		if B == 0 {
-			nret = reg.Top() - RA
-		}
-		n := cf.NRet
-		if cf.NRet == MultRet {
-			n = nret
-		}
+			nret := B - 1
+			if B == 0 {
+				nret = reg.Top() - RA
+			}
+			n := cf.NRet
+			if cf.NRet == MultRet {
+				n = nret
+			}
 
-		if L.Parent != nil && L.stack.Sp() == 1 {
+			if L.Parent != nil && L.stack.Sp() == 1 {
 // this section is inlined by go-inline
 // source function is 'func copyReturnValues(L *LState, regv, start, n, b int) ' in '_vm.go'
 {
@@ -1315,10 +1321,10 @@ requiredSize := newSize
 		}
 	}
 }
-			switchToParentThread(L, n, false, true)
-			return true
-		}
-		islast := baseframe == L.stack.Pop() || L.stack.IsEmpty()
+				switchToParentThread(L, n, false, true)
+				return
+			}
+			islast := baseframe == L.stack.Pop() || L.stack.IsEmpty()
 // this section is inlined by go-inline
 // source function is 'func copyReturnValues(L *LState, regv, start, n, b int) ' in '_vm.go'
 {
@@ -1425,18 +1431,18 @@ requiredSize := newSize
 		}
 	}
 }
-		L.currentFrame = L.stack.Last()
-		if islast || L.currentFrame == nil || L.currentFrame.Fn.IsG {
-			return true
-		}
-	case OP_FORLOOP:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		if init, ok1 := reg.Get(RA).(LNumber); ok1 {
-			if limit, ok2 := reg.Get(RA + 1).(LNumber); ok2 {
-				if step, ok3 := reg.Get(RA + 2).(LNumber); ok3 {
-					init += step
-					v := LNumber(init)
+			L.currentFrame = L.stack.Last()
+			if islast || L.currentFrame == nil || L.currentFrame.Fn.IsG {
+				return
+			}
+		case OP_FORLOOP:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			if init, ok1 := reg.Get(RA).(LNumber); ok1 {
+				if limit, ok2 := reg.Get(RA + 1).(LNumber); ok2 {
+					if step, ok3 := reg.Get(RA + 2).(LNumber); ok3 {
+						init += step
+						v := LNumber(init)
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
 {
@@ -1457,9 +1463,9 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-					if (step > 0 && init <= limit) || (step <= 0 && init >= limit) {
-						Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
-						cf.Pc += Sbx
+						if (step > 0 && init <= limit) || (step <= 0 && init >= limit) {
+							Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
+							cf.Pc += Sbx
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
 {
@@ -1480,7 +1486,7 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-					} else {
+						} else {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) SetTop(topi int) ' in '_state.go'
 {
@@ -1511,22 +1517,22 @@ requiredSize := topi
 	//	rg.array[i] = LNil
 	//}
 }
+						}
+					} else {
+						L.RaiseError("for statement step must be a number")
 					}
 				} else {
-					L.RaiseError("for statement step must be a number")
+					L.RaiseError("for statement limit must be a number")
 				}
 			} else {
-				L.RaiseError("for statement limit must be a number")
+				L.RaiseError("for statement init must be a number")
 			}
-		} else {
-			L.RaiseError("for statement init must be a number")
-		}
-	case OP_FORPREP:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
-		if init, ok1 := reg.Get(RA).(LNumber); ok1 {
-			if step, ok2 := reg.Get(RA + 2).(LNumber); ok2 {
+		case OP_FORPREP:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
+			if init, ok1 := reg.Get(RA).(LNumber); ok1 {
+				if step, ok2 := reg.Get(RA + 2).(LNumber); ok2 {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
 {
@@ -1547,18 +1553,18 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
+				} else {
+					L.RaiseError("for statement step must be a number")
+				}
 			} else {
-				L.RaiseError("for statement step must be a number")
+				L.RaiseError("for statement init must be a number")
 			}
-		} else {
-			L.RaiseError("for statement init must be a number")
-		}
-		cf.Pc += Sbx
-	case OP_TFORLOOP:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		C := int(inst>>9) & 0x1ff //GETC
-		nret := C
+			cf.Pc += Sbx
+		case OP_TFORLOOP:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			C := int(inst>>9) & 0x1ff //GETC
+			nret := C
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) SetTop(topi int) ' in '_state.go'
 {
@@ -1649,8 +1655,8 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		L.callR(2, nret, RA+3)
-		if value := reg.Get(RA + 3); value != LNil {
+			L.callR(2, nret, RA+3)
+			if value := reg.Get(RA + 3); value != LNil {
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -1671,31 +1677,31 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-			pc := cf.Fn.Proto.Code[cf.Pc]
-			cf.Pc += int(pc&0x3ffff) - opMaxArgSbx
-		}
-		cf.Pc++
-	case OP_SETLIST:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff)    //GETB
-		C := int(inst>>9) & 0x1ff //GETC
-		if C == 0 {
-			C = int(cf.Fn.Proto.Code[cf.Pc])
+				pc := cf.Fn.Proto.Code[cf.Pc]
+				cf.Pc += int(pc&0x3ffff) - opMaxArgSbx
+			}
 			cf.Pc++
-		}
-		offset := (C - 1) * FieldsPerFlush
-		table := reg.Get(RA).(*LTable)
-		nelem := B
-		if B == 0 {
-			nelem = reg.Top() - RA - 1
-		}
-		for i := 1; i <= nelem; i++ {
-			table.RawSetInt(offset+i, reg.Get(RA+i))
-		}
-	case OP_CLOSE:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
+		case OP_SETLIST:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff)    //GETB
+			C := int(inst>>9) & 0x1ff //GETC
+			if C == 0 {
+				C = int(cf.Fn.Proto.Code[cf.Pc])
+				cf.Pc++
+			}
+			offset := (C - 1) * FieldsPerFlush
+			table := reg.Get(RA).(*LTable)
+			nelem := B
+			if B == 0 {
+				nelem = reg.Top() - RA - 1
+			}
+			for i := 1; i <= nelem; i++ {
+				table.RawSetInt(offset+i, reg.Get(RA+i))
+			}
+		case OP_CLOSE:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
 // this section is inlined by go-inline
 // source function is 'func (ls *LState) closeUpvalues(idx int) ' in '_state.go'
 {
@@ -1716,12 +1722,12 @@ idx := RA
 		}
 	}
 }
-	case OP_CLOSURE:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		Bx := int(inst & 0x3ffff) //GETBX
-		proto := cf.Fn.Proto.FunctionPrototypes[Bx]
-		closure := newLFunctionL(proto, cf.Fn.Env, int(proto.NumUpvalues))
+		case OP_CLOSURE:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			Bx := int(inst & 0x3ffff) //GETBX
+			proto := cf.Fn.Proto.FunctionPrototypes[Bx]
+			closure := newLFunctionL(proto, cf.Fn.Env, int(proto.NumUpvalues))
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 {
@@ -1742,30 +1748,30 @@ requiredSize := newSize
 		rg.top = regi + 1
 	}
 }
-		for i := 0; i < int(proto.NumUpvalues); i++ {
-			inst = cf.Fn.Proto.Code[cf.Pc]
-			cf.Pc++
-			B := opGetArgB(inst)
-			switch opGetOpCode(inst) {
-			case OP_MOVE:
-				closure.Upvalues[i] = L.findUpvalue(lbase + B)
-			case OP_GETUPVAL:
-				closure.Upvalues[i] = cf.Fn.Upvalues[B]
+			for i := 0; i < int(proto.NumUpvalues); i++ {
+				inst = cf.Fn.Proto.Code[cf.Pc]
+				cf.Pc++
+				B := opGetArgB(inst)
+				switch opGetOpCode(inst) {
+				case OP_MOVE:
+					closure.Upvalues[i] = L.findUpvalue(lbase + B)
+				case OP_GETUPVAL:
+					closure.Upvalues[i] = cf.Fn.Upvalues[B]
+				}
 			}
-		}
-	case OP_VARARG:
-		A := int(inst>>18) & 0xff //GETA
-		RA := lbase + A
-		B := int(inst & 0x1ff) //GETB
-		nparams := int(cf.Fn.Proto.NumParameters)
-		nvarargs := cf.NArgs - nparams
-		if nvarargs < 0 {
-			nvarargs = 0
-		}
-		nwant := B - 1
-		if B == 0 {
-			nwant = nvarargs
-		}
+		case OP_VARARG:
+			A := int(inst>>18) & 0xff //GETA
+			RA := lbase + A
+			B := int(inst & 0x1ff) //GETB
+			nparams := int(cf.Fn.Proto.NumParameters)
+			nvarargs := cf.NArgs - nparams
+			if nvarargs < 0 {
+				nvarargs = 0
+			}
+			nwant := B - 1
+			if B == 0 {
+				nwant = nvarargs
+			}
 // this section is inlined by go-inline
 // source function is 'func (rg *registry) CopyRange(regv, start, limit, n int) ' in '_state.go'
 {
@@ -1806,31 +1812,7 @@ requiredSize := newSize
 		}
 	}
 }
-	case OP_NOP:
-	}
-	return false
-}
-
-func mainLoop(L *LState, baseframe *callFrame) {
-	var inst uint32
-	var cf *callFrame
-
-	if L.stack.IsEmpty() {
-		return
-	}
-
-	L.currentFrame = L.stack.Last()
-	if L.currentFrame.Fn.IsG {
-		callGFunction(L, false)
-		return
-	}
-
-	for L.ctx == nil || L.ctx.Err() == nil {
-		cf = L.currentFrame
-		inst = cf.Fn.Proto.Code[cf.Pc]
-		cf.Pc++
-		if evalInstruction(L, inst, baseframe) {
-			return
+		case OP_NOP:
 		}
 	}
 
