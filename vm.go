@@ -1825,7 +1825,7 @@ func mainLoop(L *LState, baseframe *callFrame) {
 		return
 	}
 
-	for {
+	for L.ctx == nil || L.ctx.Err() == nil {
 		cf = L.currentFrame
 		inst = cf.Fn.Proto.Code[cf.Pc]
 		cf.Pc++
@@ -1833,36 +1833,8 @@ func mainLoop(L *LState, baseframe *callFrame) {
 			return
 		}
 	}
-}
 
-func mainLoopWithContext(L *LState, baseframe *callFrame) {
-	var inst uint32
-	var cf *callFrame
-
-	if L.stack.IsEmpty() {
-		return
-	}
-
-	L.currentFrame = L.stack.Last()
-	if L.currentFrame.Fn.IsG {
-		callGFunction(L, false)
-		return
-	}
-
-	for {
-		cf = L.currentFrame
-		inst = cf.Fn.Proto.Code[cf.Pc]
-		cf.Pc++
-		select {
-		case <-L.ctx.Done():
-			L.RaiseError(L.ctx.Err().Error())
-			return
-		default:
-			if evalInstruction(L, inst, baseframe) {
-				return
-			}
-		}
-	}
+	L.RaiseError(L.ctx.Err().Error())
 }
 
 // regv is the first target register to copy the return values to.
@@ -2092,7 +2064,7 @@ func threadRun(L *LState) {
 			}
 		}
 	}()
-	L.mainLoop(L, nil)
+	mainLoop(L, nil)
 }
 
 func luaModulo(lhs, rhs LNumber) LNumber {
