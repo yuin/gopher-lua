@@ -1,6 +1,6 @@
 module github.com/yuin/gopher-lua
 
-go 1.17
+go 1.20
 
 require github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 
