@@ -576,7 +576,6 @@ func newLState(options Options) *LState {
 		wrapped:      false,
 		uvcache:      nil,
 		hasErrorFunc: false,
-		mainLoop:     mainLoop,
 		ctx:          nil,
 	}
 	if options.MinimizeStackMemory {
@@ -1051,9 +1050,9 @@ func (ls *LState) callR(nargs, nret, rbase int) {
 	if ls.G.MainThread == nil {
 		ls.G.MainThread = ls
 		ls.G.CurrentThread = ls
-		ls.mainLoop(ls, nil)
+		mainLoop(ls, nil)
 	} else {
-		ls.mainLoop(ls, ls.currentFrame)
+		mainLoop(ls, ls.currentFrame)
 	}
 	if nret != MultRet {
 		ls.reg.SetTop(rbase + nret)
@@ -1404,7 +1403,6 @@ func (ls *LState) NewThread() (*LState, context.CancelFunc) {
 	thread.Env = ls.Env
 	var f context.CancelFunc = nil
 	if ls.ctx != nil {
-		thread.mainLoop = mainLoopWithContext
 		thread.ctx, f = context.WithCancel(ls.ctx)
 		thread.ctxCancelFn = f
 	}
@@ -2044,9 +2042,8 @@ func (ls *LState) SetMx(mx int) {
 	}()
 }
 
-// SetContext set a context ctx to this LState. The provided ctx must be non-nil.
+// SetContext set a context ctx to this LState.
 func (ls *LState) SetContext(ctx context.Context) {
-	ls.mainLoop = mainLoopWithContext
 	ls.ctx = ctx
 }
 
@@ -2058,7 +2055,6 @@ func (ls *LState) Context() context.Context {
 // RemoveContext removes the context associated with this LState and returns this context.
 func (ls *LState) RemoveContext() context.Context {
 	oldctx := ls.ctx
-	ls.mainLoop = mainLoop
 	ls.ctx = nil
 	return oldctx
 }
