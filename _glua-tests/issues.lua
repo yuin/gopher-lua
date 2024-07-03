@@ -457,3 +457,36 @@ function test()
   assert(c == 1)
   assert(type(c) == "number")
 end
+test()
+
+-- issue #452
+function test()
+  local ok, msg = pcall(function()
+    local ok, msg = xpcall(function() error("fn") end, function(err) error("handler") end)
+    assert(not ok and msg)
+    error("expected to reach this.")
+  end)
+  assert(not ok)
+end
+test()
+
+-- issue #455
+function test()
+  local path = "."
+  local fd, _, code = io.open(path, "r")
+  assert(fd ~= nil)
+  local _, _, ecode = fd:read(1)
+  assert(ecode == 1)
+end
+test()
+
+-- issue #459
+function test()
+  local a, b = io.popen("ls", nil)
+  assert(a)
+  assert(b == nil)
+  local a, b = io.popen("ls", nil, nil)
+  assert(a)
+  assert(b == nil)
+end
+test()
