@@ -422,7 +422,7 @@ func (ls *LState) DoString(source string) error {
 // ToStringMeta returns string representation of given LValue.
 // This method calls the `__tostring` meta method if defined.
 func (ls *LState) ToStringMeta(lv LValue) LValue {
-	if fn, ok := ls.metaOp1(lv, "__tostring").assertFunction(); ok {
+	if fn, ok := ls.metaOp1(lv, "__tostring").(*LFunction); ok {
 		ls.Push(fn)
 		ls.Push(lv)
 		ls.Call(1, 1)
