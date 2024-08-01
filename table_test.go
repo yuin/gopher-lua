@@ -5,6 +5,7 @@ import (
 )
 
 func TestTableNewLTable(t *testing.T) {
+	t.Parallel()
 	tbl := newLTable(-1, -2)
 	errorIfNotEqual(t, 0, cap(tbl.array))
 
@@ -13,6 +14,7 @@ func TestTableNewLTable(t *testing.T) {
 }
 
 func TestTableLen(t *testing.T) {
+	t.Parallel()
 	tbl := newLTable(0, 0)
 	tbl.RawSetInt(10, LNil)
 	tbl.RawSetInt(9, LNumber(10))
@@ -28,6 +30,7 @@ func TestTableLen(t *testing.T) {
 }
 
 func TestTableLenType(t *testing.T) {
+	t.Parallel()
 	L := NewState(Options{})
 	err := L.DoString(`
         mt = {
@@ -52,6 +55,7 @@ func TestTableLenType(t *testing.T) {
 }
 
 func TestTableAppend(t *testing.T) {
+	t.Parallel()
 	tbl := newLTable(0, 0)
 	tbl.RawSetInt(1, LNumber(1))
 	tbl.RawSetInt(2, LNumber(2))
@@ -74,6 +78,7 @@ func TestTableAppend(t *testing.T) {
 }
 
 func TestTableInsert(t *testing.T) {
+	t.Parallel()
 	tbl := newLTable(0, 0)
 	tbl.Append(LTrue)
 	tbl.Append(LTrue)
@@ -105,6 +110,7 @@ func TestTableInsert(t *testing.T) {
 }
 
 func TestTableMaxN(t *testing.T) {
+	t.Parallel()
 	tbl := newLTable(0, 0)
 	tbl.Append(LTrue)
 	tbl.Append(LTrue)
@@ -119,6 +125,7 @@ func TestTableMaxN(t *testing.T) {
 }
 
 func TestTableRemove(t *testing.T) {
+	t.Parallel()
 	tbl := newLTable(0, 0)
 	errorIfNotEqual(t, LNil, tbl.Remove(10))
 	tbl.Append(LTrue)
@@ -135,6 +142,7 @@ func TestTableRemove(t *testing.T) {
 }
 
 func TestTableRawSetInt(t *testing.T) {
+	t.Parallel()
 	tbl := newLTable(0, 0)
 	tbl.RawSetInt(MaxArrayIndex+1, LTrue)
 	errorIfNotEqual(t, 0, tbl.MaxN())
@@ -153,6 +161,7 @@ func TestTableRawSetInt(t *testing.T) {
 }
 
 func TestTableRawSetH(t *testing.T) {
+	t.Parallel()
 	tbl := newLTable(0, 0)
 	tbl.RawSetH(LString("key"), LTrue)
 	tbl.RawSetH(LString("key"), LNil)
@@ -166,6 +175,7 @@ func TestTableRawSetH(t *testing.T) {
 }
 
 func TestTableRawGetH(t *testing.T) {
+	t.Parallel()
 	tbl := newLTable(0, 0)
 	errorIfNotEqual(t, LNil, tbl.RawGetH(LNumber(1)))
 	errorIfNotEqual(t, LNil, tbl.RawGetH(LString("key0")))
@@ -179,6 +189,7 @@ func TestTableRawGetH(t *testing.T) {
 }
 
 func TestTableForEach(t *testing.T) {
+	t.Parallel()
 	tbl := newLTable(0, 0)
 	tbl.Append(LNumber(1))
 	tbl.Append(LNumber(2))

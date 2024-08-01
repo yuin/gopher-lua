@@ -9,6 +9,7 @@ import (
 )
 
 func TestChannelMake(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfScriptFail(t, L, `
@@ -30,6 +31,7 @@ func TestChannelMake(t *testing.T) {
 }
 
 func TestChannelSelectError(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfScriptFail(t, L, `ch = channel.make()`)
@@ -42,6 +44,7 @@ func TestChannelSelectError(t *testing.T) {
 }
 
 func TestChannelSelect1(t *testing.T) {
+	t.Parallel()
 	var result LValue
 	var wg sync.WaitGroup
 	receiver := func(ch, quit chan LValue) {
@@ -106,6 +109,7 @@ func TestChannelSelect1(t *testing.T) {
 }
 
 func TestChannelSelect2(t *testing.T) {
+	t.Parallel()
 	var wg sync.WaitGroup
 	receiver := func(ch, quit chan LValue) {
 		defer wg.Done()
@@ -150,6 +154,7 @@ func TestChannelSelect2(t *testing.T) {
 }
 
 func TestChannelSelect3(t *testing.T) {
+	t.Parallel()
 	var wg sync.WaitGroup
 	receiver := func(ch chan LValue) {
 		defer wg.Done()
@@ -196,6 +201,7 @@ func TestChannelSelect3(t *testing.T) {
 }
 
 func TestChannelSelect4(t *testing.T) {
+	t.Parallel()
 	var wg sync.WaitGroup
 	receiver := func(ch chan LValue) {
 		defer wg.Done()
@@ -227,6 +233,7 @@ func TestChannelSelect4(t *testing.T) {
 }
 
 func TestChannelSendReceive1(t *testing.T) {
+	t.Parallel()
 	var wg sync.WaitGroup
 	receiver := func(ch chan LValue) {
 		defer wg.Done()
@@ -262,6 +269,7 @@ func TestChannelSendReceive1(t *testing.T) {
 }
 
 func TestCancelChannelReceive(t *testing.T) {
+	t.Parallel()
 	done := make(chan struct{})
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -278,6 +286,7 @@ func TestCancelChannelReceive(t *testing.T) {
 }
 
 func TestCancelChannelReceive2(t *testing.T) {
+	t.Parallel()
 	done := make(chan struct{})
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {

@@ -7,6 +7,7 @@ import (
 )
 
 func TestCheckInt(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -19,6 +20,7 @@ func TestCheckInt(t *testing.T) {
 }
 
 func TestCheckInt64(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -31,6 +33,7 @@ func TestCheckInt64(t *testing.T) {
 }
 
 func TestCheckNumber(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -45,6 +48,7 @@ func TestCheckNumber(t *testing.T) {
 }
 
 func TestCheckString(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -59,6 +63,7 @@ func TestCheckString(t *testing.T) {
 }
 
 func TestCheckBool(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -71,6 +76,7 @@ func TestCheckBool(t *testing.T) {
 }
 
 func TestCheckTable(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -84,6 +90,7 @@ func TestCheckTable(t *testing.T) {
 }
 
 func TestCheckFunction(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -97,6 +104,7 @@ func TestCheckFunction(t *testing.T) {
 }
 
 func TestCheckUserData(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -110,6 +118,7 @@ func TestCheckUserData(t *testing.T) {
 }
 
 func TestCheckThread(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -123,6 +132,7 @@ func TestCheckThread(t *testing.T) {
 }
 
 func TestCheckChannel(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -136,6 +146,7 @@ func TestCheckChannel(t *testing.T) {
 }
 
 func TestCheckType(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -147,6 +158,7 @@ func TestCheckType(t *testing.T) {
 }
 
 func TestCheckTypes(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -158,6 +170,7 @@ func TestCheckTypes(t *testing.T) {
 }
 
 func TestCheckOption(t *testing.T) {
+	t.Parallel()
 	opts := []string{
 		"opt1",
 		"opt2",
@@ -175,6 +188,7 @@ func TestCheckOption(t *testing.T) {
 }
 
 func TestOptInt(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -188,6 +202,7 @@ func TestOptInt(t *testing.T) {
 }
 
 func TestOptInt64(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -201,6 +216,7 @@ func TestOptInt64(t *testing.T) {
 }
 
 func TestOptNumber(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -214,6 +230,7 @@ func TestOptNumber(t *testing.T) {
 }
 
 func TestOptString(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -227,6 +244,7 @@ func TestOptString(t *testing.T) {
 }
 
 func TestOptBool(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -240,6 +258,7 @@ func TestOptBool(t *testing.T) {
 }
 
 func TestOptTable(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -255,6 +274,7 @@ func TestOptTable(t *testing.T) {
 }
 
 func TestOptFunction(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -270,6 +290,7 @@ func TestOptFunction(t *testing.T) {
 }
 
 func TestOptUserData(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -285,6 +306,7 @@ func TestOptUserData(t *testing.T) {
 }
 
 func TestOptChannel(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
@@ -300,6 +322,7 @@ func TestOptChannel(t *testing.T) {
 }
 
 func TestLoadFileForShebang(t *testing.T) {
+	t.Parallel()
 	tmpFile, err := ioutil.TempFile("", "")
 	errorIfNotNil(t, err)
 
@@ -321,6 +344,7 @@ print("hello")
 }
 
 func TestLoadFileForEmptyFile(t *testing.T) {
+	t.Parallel()
 	tmpFile, err := ioutil.TempFile("", "")
 	errorIfNotNil(t, err)
 
