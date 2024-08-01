@@ -8,12 +8,14 @@ import (
 )
 
 func TestLStateIsClosed(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	L.Close()
 	errorIfNotEqual(t, true, L.IsClosed())
 }
 
 func TestCallStackOverflowWhenFixed(t *testing.T) {
+	t.Parallel()
 	L := NewState(Options{
 		CallStackSize: 3,
 	})
@@ -40,6 +42,7 @@ func TestCallStackOverflowWhenFixed(t *testing.T) {
 }
 
 func TestCallStackOverflowWhenAutoGrow(t *testing.T) {
+	t.Parallel()
 	L := NewState(Options{
 		CallStackSize:       3,
 		MinimizeStackMemory: true,
@@ -67,6 +70,7 @@ func TestCallStackOverflowWhenAutoGrow(t *testing.T) {
 }
 
 func TestSkipOpenLibs(t *testing.T) {
+	t.Parallel()
 	L := NewState(Options{SkipOpenLibs: true})
 	defer L.Close()
 	errorIfScriptNotFail(t, L, `print("")`,
@@ -77,6 +81,7 @@ func TestSkipOpenLibs(t *testing.T) {
 }
 
 func TestGetAndReplace(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	L.Push(LString("a"))
@@ -130,6 +135,7 @@ func TestGetAndReplace(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	L.Push(LString("a"))
@@ -163,6 +169,7 @@ func TestRemove(t *testing.T) {
 }
 
 func TestToInt(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	L.Push(LNumber(10))
@@ -174,6 +181,7 @@ func TestToInt(t *testing.T) {
 }
 
 func TestToInt64(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	L.Push(LNumber(10))
@@ -185,6 +193,7 @@ func TestToInt64(t *testing.T) {
 }
 
 func TestToNumber(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	L.Push(LNumber(10))
@@ -196,6 +205,7 @@ func TestToNumber(t *testing.T) {
 }
 
 func TestToString(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	L.Push(LNumber(10))
@@ -207,6 +217,7 @@ func TestToString(t *testing.T) {
 }
 
 func TestToTable(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	L.Push(LNumber(10))
@@ -218,6 +229,7 @@ func TestToTable(t *testing.T) {
 }
 
 func TestToFunction(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	L.Push(LNumber(10))
@@ -229,6 +241,7 @@ func TestToFunction(t *testing.T) {
 }
 
 func TestToUserData(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	L.Push(LNumber(10))
@@ -240,6 +253,7 @@ func TestToUserData(t *testing.T) {
 }
 
 func TestToChannel(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	L.Push(LNumber(10))
@@ -252,6 +266,7 @@ func TestToChannel(t *testing.T) {
 }
 
 func TestObjLen(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfNotEqual(t, 3, L.ObjLen(LString("abc")))
@@ -271,12 +286,14 @@ func TestObjLen(t *testing.T) {
 }
 
 func TestConcat(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errorIfNotEqual(t, "a1c", L.Concat(LString("a"), LNumber(1), LString("c")))
 }
 
 func TestPCall(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	L.Register("f1", func(L *LState) int {
@@ -327,6 +344,7 @@ func TestPCall(t *testing.T) {
 }
 
 func TestCoroutineApi1(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	co, _ := L.NewThread()
@@ -399,6 +417,7 @@ func TestCoroutineApi1(t *testing.T) {
 }
 
 func TestContextTimeout(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -422,6 +441,7 @@ func TestContextTimeout(t *testing.T) {
 }
 
 func TestContextCancel(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -445,6 +465,7 @@ func TestContextCancel(t *testing.T) {
 }
 
 func TestContextWithCroutine(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -475,6 +496,7 @@ func TestContextWithCroutine(t *testing.T) {
 }
 
 func TestPCallAfterFail(t *testing.T) {
+	t.Parallel()
 	L := NewState()
 	defer L.Close()
 	errFn := L.NewFunction(func(L *LState) int {
@@ -495,6 +517,7 @@ func TestPCallAfterFail(t *testing.T) {
 }
 
 func TestRegistryFixedOverflow(t *testing.T) {
+	t.Parallel()
 	state := NewState()
 	defer state.Close()
 	reg := state.reg
@@ -523,6 +546,7 @@ func TestRegistryFixedOverflow(t *testing.T) {
 }
 
 func TestRegistryAutoGrow(t *testing.T) {
+	t.Parallel()
 	state := NewState(Options{RegistryMaxSize: 300, RegistrySize: 200, RegistryGrowStep: 25})
 	defer state.Close()
 	expectedPanic := false
@@ -552,6 +576,7 @@ func TestRegistryAutoGrow(t *testing.T) {
 // directly to the reg's array, but crucially, before it had updated "top". This meant when the resize occurred, the
 // values beyond top where not copied, and were lost, leading to a later uninitialised value being found in the registry.
 func TestUninitializedVarAccess(t *testing.T) {
+	t.Parallel()
 	L := NewState(Options{
 		RegistrySize:    128,
 		RegistryMaxSize: 256,
