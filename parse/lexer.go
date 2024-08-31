@@ -148,8 +148,14 @@ func (sc *Scanner) skipComments(ch int) error {
 
 func (sc *Scanner) scanIdent(ch int, buf *bytes.Buffer) error {
 	writeChar(buf, ch)
-	for isIdent(sc.Peek(), 1) {
-		writeChar(buf, sc.Next())
+	for isChinese(rune(sc.Peek())) || isIdent(sc.Peek(), 1) {
+		if isChinese(rune(sc.Peek())) {
+			writeRune(buf, rune(sc.Next()))
+		} else {
+			if isIdent(sc.Peek(), 1) {
+				writeChar(buf, sc.Next())
+			}
+		}
 	}
 	return nil
 }
