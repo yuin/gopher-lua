@@ -225,7 +225,7 @@ func (sc *Scanner) scanString(quote int, buf *bytes.Buffer) error {
 				return err
 			}
 		} else {
-			writeChar(buf, ch)
+			writeRune(buf, rune(ch))
 		}
 		ch = sc.Next()
 	}
@@ -305,7 +305,7 @@ func (sc *Scanner) scanMultilineString(ch int, buf *bytes.Buffer) error {
 			buf.WriteString(strings.Repeat("=", count2))
 			continue
 		}
-		writeChar(buf, ch)
+		writeRune(buf, rune(ch))
 		ch = sc.Next()
 	}
 
