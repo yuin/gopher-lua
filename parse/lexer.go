@@ -144,7 +144,6 @@ func (sc *Scanner) skipComments(ch int) error {
 
 func (sc *Scanner) scanIdent(ch int, buf *bytes.Buffer) error {
 	writeChar(buf, ch)
-	fmt.Println(isIdent(sc.Peek(), 1))
 	for isIdent(sc.Peek(), 1) {
 		writeChar(buf, sc.Next())
 	}
