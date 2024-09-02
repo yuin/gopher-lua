@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 
 	"github.com/yuin/gopher-lua/ast"
 )
@@ -33,12 +32,16 @@ func (e *Error) Error() string {
 	}
 }
 
-func writeChar(buf *bytes.Buffer, c int)  { buf.WriteByte(byte(c)) }
-func writeRune(buf *bytes.Buffer, c rune) { buf.WriteRune(c) }
+func writeChar(buf *bytes.Buffer, c int) {
+	buf.WriteRune(rune(c))
+}
 
 func isDecimal(ch int) bool { return '0' <= ch && ch <= '9' }
 
 func isIdent(ch int, pos int) bool {
+	if isChinese(rune(ch)) {
+		return true
+	}
 	return ch == '_' || 'A' <= ch && ch <= 'Z' || 'a' <= ch && ch <= 'z' || isDecimal(ch) && pos > 0
 }
 
@@ -87,25 +90,21 @@ func (sc *Scanner) Newline(ch int) {
 	sc.Pos.Column = 0
 	next := sc.Peek()
 	if ch == '\n' && next == '\r' || ch == '\r' && next == '\n' {
-		sc.reader.ReadRune()
+		sc.reader.ReadByte()
 	}
 }
 
 func (sc *Scanner) Next() int {
 	ch := sc.readNext()
-	if isChinese(rune(ch)) {
-		sc.Pos.Column += utf8.RuneLen(rune(ch))
-	} else {
-		switch ch {
-		case '\n', '\r':
-			sc.Newline(ch)
-			ch = int('\n')
-		case EOF:
-			sc.Pos.Line = EOF
-			sc.Pos.Column = 0
-		default:
-			sc.Pos.Column++
-		}
+	switch ch {
+	case '\n', '\r':
+		sc.Newline(ch)
+		ch = int('\n')
+	case EOF:
+		sc.Pos.Line = EOF
+		sc.Pos.Column = 0
+	default:
+		sc.Pos.Column++
 	}
 	return ch
 }
@@ -148,28 +147,10 @@ func (sc *Scanner) skipComments(ch int) error {
 
 func (sc *Scanner) scanIdent(ch int, buf *bytes.Buffer) error {
 	writeChar(buf, ch)
-	sc.scanIdentAndChinese(buf)
-	return nil
-}
-
-// scanIdentAndChinese
-func (sc *Scanner) scanIdentAndChinese(buf *bytes.Buffer) error {
-	for isChinese(rune(sc.Peek())) || isIdent(sc.Peek(), 1) {
-		if isChinese(rune(sc.Peek())) {
-			writeRune(buf, rune(sc.Next()))
-		} else {
-			if isIdent(sc.Peek(), 1) {
-				writeChar(buf, sc.Next())
-			}
-		}
+	fmt.Println(isIdent(sc.Peek(), 1))
+	for isIdent(sc.Peek(), 1) {
+		writeChar(buf, sc.Next())
 	}
-	return nil
-}
-
-// scanChinese
-func (sc *Scanner) scanChinese(ch int, buf *bytes.Buffer) error {
-	writeRune(buf, rune(ch))
-	sc.scanIdentAndChinese(buf)
 	return nil
 }
 
@@ -225,7 +206,7 @@ func (sc *Scanner) scanString(quote int, buf *bytes.Buffer) error {
 				return err
 			}
 		} else {
-			writeRune(buf, rune(ch))
+			writeChar(buf, ch)
 		}
 		ch = sc.Next()
 	}
@@ -305,7 +286,7 @@ func (sc *Scanner) scanMultilineString(ch int, buf *bytes.Buffer) error {
 			buf.WriteString(strings.Repeat("=", count2))
 			continue
 		}
-		writeRune(buf, rune(ch))
+		writeChar(buf, ch)
 		ch = sc.Next()
 	}
 
@@ -343,16 +324,6 @@ redo:
 	tok.Pos = sc.Pos
 
 	switch {
-	case isChinese(rune(ch)):
-		tok.Type = TIdent
-		err = sc.scanChinese(ch, buf)
-		tok.Str = buf.String()
-		if err != nil {
-			goto finally
-		}
-		if typ, ok := reservedWords[tok.Str]; ok {
-			tok.Type = typ
-		}
 	case isIdent(ch, 0):
 		tok.Type = TIdent
 		err = sc.scanIdent(ch, buf)
