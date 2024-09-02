@@ -32,9 +32,7 @@ func (e *Error) Error() string {
 	}
 }
 
-func writeChar(buf *bytes.Buffer, c int) {
-	buf.WriteRune(rune(c))
-}
+func writeChar(buf *bytes.Buffer, c int) { buf.WriteRune(rune(c)) }
 
 func isDecimal(ch int) bool { return '0' <= ch && ch <= '9' }
 
@@ -43,9 +41,7 @@ func isIdent(ch int, pos int) bool {
 }
 
 // isChinese
-func isChinese(ch rune) bool {
-	return unicode.Is(unicode.Han, ch)
-}
+func isChinese(ch rune) bool { return unicode.Is(unicode.Han, ch) }
 
 func isDigit(ch int) bool {
 	return '0' <= ch && ch <= '9' || 'a' <= ch && ch <= 'f' || 'A' <= ch && ch <= 'F'
