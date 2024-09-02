@@ -39,10 +39,7 @@ func writeChar(buf *bytes.Buffer, c int) {
 func isDecimal(ch int) bool { return '0' <= ch && ch <= '9' }
 
 func isIdent(ch int, pos int) bool {
-	if isChinese(rune(ch)) {
-		return true
-	}
-	return ch == '_' || 'A' <= ch && ch <= 'Z' || 'a' <= ch && ch <= 'z' || isDecimal(ch) && pos > 0
+	return isChinese(rune(ch)) || ch == '_' || 'A' <= ch && ch <= 'Z' || 'a' <= ch && ch <= 'z' || isDecimal(ch) && pos > 0
 }
 
 // isChinese
