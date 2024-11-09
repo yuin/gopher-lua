@@ -15,7 +15,7 @@ func mainLoop(L *LState, baseframe *callFrame) {
 	}
 
 	L.currentFrame = L.stack.Last()
-	if L.currentFrame.Fn.IsG {
+	if L.currentFrame.Fn.IsG() {
 		callGFunction(L, false)
 		return
 	}
@@ -39,7 +39,7 @@ func mainLoopWithContext(L *LState, baseframe *callFrame) {
 	}
 
 	L.currentFrame = L.stack.Last()
-	if L.currentFrame.Fn.IsG {
+	if L.currentFrame.Fn.IsG() {
 		callGFunction(L, false)
 		return
 	}
@@ -579,7 +579,7 @@ func init() {
 				callable, meta = L.metaCall(lv)
 			}
 			// +inline-call L.pushCallFrame callFrame{Fn:callable,Pc:0,Base:RA,LocalBase:RA+1,ReturnBase:RA,NArgs:nargs,NRet:nret,Parent:cf,TailCall:0} lv meta
-			if callable.IsG && callGFunction(L, false) {
+			if callable.IsG() && callGFunction(L, false) {
 				return 1
 			}
 			return 0
@@ -608,7 +608,7 @@ func init() {
 				L.RaiseError("attempt to call a non-function object")
 			}
 			// +inline-call L.closeUpvalues lbase
-			if callable.IsG {
+			if callable.IsG() {
 				luaframe := cf
 				L.pushCallFrame(callFrame{
 					Fn:         callable,
@@ -624,7 +624,7 @@ func init() {
 				if callGFunction(L, true) {
 					return 1
 				}
-				if L.currentFrame == nil || L.currentFrame.Fn.IsG || luaframe == baseframe {
+				if L.currentFrame == nil || L.currentFrame.Fn.IsG() || luaframe == baseframe {
 					return 1
 				}
 			} else {
@@ -674,7 +674,7 @@ func init() {
 			islast := baseframe == L.stack.Pop() || L.stack.IsEmpty()
 			// +inline-call copyReturnValues L cf.ReturnBase RA n B
 			L.currentFrame = L.stack.Last()
-			if islast || L.currentFrame == nil || L.currentFrame.Fn.IsG {
+			if islast || L.currentFrame == nil || L.currentFrame.Fn.IsG() {
 				return 1
 			}
 			return 0

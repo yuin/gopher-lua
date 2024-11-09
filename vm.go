@@ -19,7 +19,7 @@ func mainLoop(L *LState, baseframe *callFrame) {
 	}
 
 	L.currentFrame = L.stack.Last()
-	if L.currentFrame.Fn.IsG {
+	if L.currentFrame.Fn.IsG() {
 		callGFunction(L, false)
 		return
 	}
@@ -43,7 +43,7 @@ func mainLoopWithContext(L *LState, baseframe *callFrame) {
 	}
 
 	L.currentFrame = L.stack.Last()
-	if L.currentFrame.Fn.IsG {
+	if L.currentFrame.Fn.IsG() {
 		callGFunction(L, false)
 		return
 	}
@@ -1209,7 +1209,7 @@ func init() {
 				// source function is 'func (ls *LState) initCallFrame(cf *callFrame) ' in '_state.go'
 				{
 					cf := newcf
-					if cf.Fn.IsG {
+					if cf.Fn.IsG() {
 						ls.reg.SetTop(cf.LocalBase + cf.NArgs)
 					} else {
 						proto := cf.Fn.Proto
@@ -1305,7 +1305,7 @@ func init() {
 				}
 				ls.currentFrame = newcf
 			}
-			if callable.IsG && callGFunction(L, false) {
+			if callable.IsG() && callGFunction(L, false) {
 				return 1
 			}
 			return 0
@@ -1353,7 +1353,7 @@ func init() {
 					}
 				}
 			}
-			if callable.IsG {
+			if callable.IsG() {
 				luaframe := cf
 				L.pushCallFrame(callFrame{
 					Fn:         callable,
@@ -1369,7 +1369,7 @@ func init() {
 				if callGFunction(L, true) {
 					return 1
 				}
-				if L.currentFrame == nil || L.currentFrame.Fn.IsG || luaframe == baseframe {
+				if L.currentFrame == nil || L.currentFrame.Fn.IsG() || luaframe == baseframe {
 					return 1
 				}
 			} else {
@@ -1391,7 +1391,7 @@ func init() {
 				// source function is 'func (ls *LState) initCallFrame(cf *callFrame) ' in '_state.go'
 				{
 					ls := L
-					if cf.Fn.IsG {
+					if cf.Fn.IsG() {
 						ls.reg.SetTop(cf.LocalBase + cf.NArgs)
 					} else {
 						proto := cf.Fn.Proto
@@ -1784,7 +1784,7 @@ func init() {
 				}
 			}
 			L.currentFrame = L.stack.Last()
-			if islast || L.currentFrame == nil || L.currentFrame.Fn.IsG {
+			if islast || L.currentFrame == nil || L.currentFrame.Fn.IsG() {
 				return 1
 			}
 			return 0
