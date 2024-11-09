@@ -582,6 +582,107 @@ func TestUninitializedVarAccess(t *testing.T) {
 	`)
 }
 
+func TestExecutionLimit(t *testing.T) {
+	code := `
+		local function test(count)
+			for i=0,count do
+				print(i)
+			end
+		end
+		test(100)
+	`
+	L := NewState(Options{ExecutionLimit: 400})
+	defer L.Close()
+	errorIfScriptNotFail(t, L, code, "execution limit reached")
+
+	L2 := NewState(Options{ExecutionLimit: 500})
+	defer L2.Close()
+	errorIfScriptFail(t, L2, code)
+}
+
+func TestExecutionLimitWithContext(t *testing.T) {
+	code := `
+		local function test(count)
+			for i=0,count do
+				print(i)
+			end
+		end
+		test(100)
+	`
+	L := NewState(Options{ExecutionLimit: 400})
+	defer L.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	L.SetContext(ctx)
+	errorIfScriptNotFail(t, L, code, "execution limit reached")
+
+	L2 := NewState(Options{ExecutionLimit: 500})
+	defer L2.Close()
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel2()
+	L2.SetContext(ctx2)
+	errorIfScriptFail(t, L2, code)
+}
+
+func TestExecutionLimitCoroutineApi(t *testing.T) {
+	L := NewState(Options{ExecutionLimit: 100})
+	defer L.Close()
+	co, _ := L.NewThread()
+	errorIfScriptFail(t, L, `
+		function coro(x)
+			repeat
+				x = coroutine.yield(0)
+			until x > 0
+			return x
+		end
+    `)
+	fn := L.GetGlobal("coro").(*LFunction)
+
+	for i := 0; i < 14; i++ {
+		st, err, values := L.Resume(co, fn, LNumber(0))
+		errorIfNotNil(t, err)
+		errorIfNotEqual(t, ResumeYield, st)
+		errorIfNotEqual(t, 1, len(values))
+		errorIfNotEqual(t, LNumber(0), values[0].(LNumber))
+	}
+	st, err, _ := L.Resume(co, fn, LNumber(0))
+	errorIfFalse(t, err.Error() != "execution limit reached", "expected execution limit reached exception, got "+err.Error())
+	errorIfNotEqual(t, ResumeError, st)
+}
+
+func benchmarkExecutionLimit(limit bool, b *testing.B) {
+	var L *LState
+	if limit {
+		L = NewState(Options{ExecutionLimit: ^uint(0)})
+	} else {
+		L = NewState()
+	}
+	defer L.Close()
+
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		err := L.DoString(`
+			local function test(count)
+				local j = 0
+				for i=0,count do
+					j = j + 1
+				end
+			end
+			test(100)
+		`)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func BenchmarkExecutionLimit(b *testing.B) {
+	benchmarkExecutionLimit(true, b)
+}
+func BenchmarkNoExecutionLimit(b *testing.B) {
+	benchmarkExecutionLimit(false, b)
+}
+
 func BenchmarkCallFrameStackPushPopAutoGrow(t *testing.B) {
 	stack := newAutoGrowingCallFrameStack(256)
 
