@@ -850,7 +850,7 @@ Lua has an interpreter called ``lua`` . GopherLua has an interpreter called ``gl
 ----------------------------------------------------------------
 How to Contribute
 ----------------------------------------------------------------
-See `Guidlines for contributors <https://github.com/yuin/gopher-lua/tree/master/.github/CONTRIBUTING.md>`_ .
+See `Guidelines for contributors <https://github.com/yuin/gopher-lua/tree/master/.github/CONTRIBUTING.md>`_ .
 
 ----------------------------------------------------------------
 Libraries for GopherLua
@@ -868,6 +868,7 @@ Libraries for GopherLua
 - `gluaxmlpath <https://github.com/ailncode/gluaxmlpath>`_ : An xmlpath module for gopher-lua
 - `gmoonscript <https://github.com/rucuriousyet/gmoonscript>`_ : Moonscript Compiler for the Gopher Lua VM
 - `loguago <https://github.com/rucuriousyet/loguago>`_ : Zerolog wrapper for Gopher-Lua
+- `gluabit32 <https://github.com/PeerDB-io/gluabit32>`_ : [Port of Lua 5.2 bit32](https://www.lua.org/manual/5.2/manual.html#6.7)
 - `gluacrypto <https://github.com/tengattack/gluacrypto>`_ : A native Go implementation of crypto library for the GopherLua VM.
 - `gluasql <https://github.com/tengattack/gluasql>`_ : A native Go implementation of SQL client for the GopherLua VM.
 - `purr <https://github.com/leyafo/purr>`_ : A http mock testing tool.
