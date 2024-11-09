@@ -876,6 +876,8 @@ Libraries for GopherLua
 - `glua-async <https://github.com/CuberL/glua-async>`_ : An async/await implement for gopher-lua.
 - `gopherlua-debugger <https://github.com/edolphin-ydf/gopherlua-debugger>`_ : A debugger for gopher-lua
 - `gluamahonia <https://github.com/super1207/gluamahonia>`_ : An encoding converter for gopher-lua
+- `awesome-gopher-lua <https://github.com/Root-lee/awesome-gopher-lua>`_ : Collections of awesome libraries for GopherLua.
+
 ----------------------------------------------------------------
 Donation
 ----------------------------------------------------------------
