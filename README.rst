@@ -595,7 +595,10 @@ Sharing byte code is safe as it is read only and cannot be altered by lua script
 
     // Example shows how to share the compiled byte code from a lua script between multiple VMs.
     func Example() {
-        codeToShare := CompileLua("mylua.lua")
+        codeToShare, err := CompileLua("mylua.lua")
+        if err != nil {
+            panic(err)
+        }
         a := lua.NewState()
         b := lua.NewState()
         c := lua.NewState()
