@@ -222,7 +222,7 @@ func strGsubStr(L *LState, str string, repl string, matches []*pm.MatchData) str
 	infoList := make([]replaceInfo, 0, len(matches))
 	for _, match := range matches {
 		start, end := match.Capture(0), match.Capture(1)
-		sc := newFlagScanner('%', "", "", repl)
+		sc := newFlagScanner('%', "", "", "", repl)
 		for c, eos := sc.Next(); !eos; c, eos = sc.Next() {
 			if !sc.ChangeFlag {
 				if sc.HasFlag {
