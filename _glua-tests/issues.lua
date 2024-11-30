@@ -490,3 +490,18 @@ function test()
   assert(b == nil)
 end
 test()
+
+-- issue #462
+function test()
+  local x = string.gmatch("asdf", "a")
+  assert(x() == "a", "check gmatch callback")
+
+  local expected = {
+    "a",
+    "c",
+  }
+  for i in string.gmatch("abc", "[ac]") do
+    assert(i == table.remove(expected, 1), "check gmatch inside loop")
+  end
+end
+test()
