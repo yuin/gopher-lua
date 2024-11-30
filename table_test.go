@@ -1,6 +1,7 @@
 package lua
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -230,4 +231,30 @@ func TestTableForEach(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestTableForEachWithError(t *testing.T) {
+	tbl := newLTable(0, 0)
+	tbl.Append(LNumber(1))
+	tbl.Append(LNumber(2))
+	tbl.Append(LNumber(3))
+	tbl.Append(LNil)
+	tbl.Append(LNumber(5))
+
+	tbl.RawSetH(LString("a"), LString("a"))
+	tbl.RawSetH(LString("b"), LString("b"))
+	tbl.RawSetH(LString("c"), LString("c"))
+
+	tbl.RawSetH(LTrue, LString("true"))
+	tbl.RawSetH(LFalse, LString("false"))
+
+	testError := fmt.Errorf("test error")
+	runCount := 0
+	err := tbl.ForEachWithError(func(key, value LValue) error {
+		runCount += 1
+		return testError
+	})
+
+	errorIfNotEqual(t, testError, err)
+	errorIfNotEqual(t, 1, runCount)
 }

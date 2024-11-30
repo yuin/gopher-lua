@@ -324,27 +324,44 @@ func (tb *LTable) RawGetString(key string) LValue {
 
 // ForEach iterates over this table of elements, yielding each in turn to a given function.
 func (tb *LTable) ForEach(cb func(LValue, LValue)) {
+	tb.ForEachWithError(func(key, value LValue) error {
+		cb(key, value)
+		return nil
+	})
+}
+
+// ForEachWithError iterates over this table of elements, yielding each in turn
+// to a given function.  If it receives a non-nil error from its callback, it
+// breaks and passes it back to its caller.
+func (tb *LTable) ForEachWithError(cb func(LValue, LValue) error) error {
 	if tb.array != nil {
 		for i, v := range tb.array {
 			if v != LNil {
-				cb(LNumber(i+1), v)
+				if err := cb(LNumber(i+1), v); err != nil {
+					return err
+				}
 			}
 		}
 	}
 	if tb.strdict != nil {
 		for k, v := range tb.strdict {
 			if v != LNil {
-				cb(LString(k), v)
+				if err := cb(LString(k), v); err != nil {
+					return err
+				}
 			}
 		}
 	}
 	if tb.dict != nil {
 		for k, v := range tb.dict {
 			if v != LNil {
-				cb(k, v)
+				if err := cb(k, v); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	return nil
 }
 
 // This function is equivalent to lua_next ( http://www.lua.org/manual/5.1/manual.html#lua_next ).
