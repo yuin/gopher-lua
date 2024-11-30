@@ -231,3 +231,17 @@ func TestTableForEach(t *testing.T) {
 		}
 	})
 }
+
+func TestTableForEachWithBreak(t *testing.T) {
+	tbl := newLTable(0, 0)
+	tbl.Append(LNumber(1))
+	tbl.Append(LNumber(2))
+	tbl.Append(LNumber(3))
+
+	var cnt int
+	tbl.ForEachWithBreak(func(key, value LValue) bool {
+		cnt++
+		return false
+	})
+	errorIfNotEqual(t, 1, cnt)
+}
