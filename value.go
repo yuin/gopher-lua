@@ -154,7 +154,6 @@ func (tb *LTable) String() string   { return fmt.Sprintf("table: %p", tb) }
 func (tb *LTable) Type() LValueType { return LTTable }
 
 type LFunction struct {
-	IsG       bool
 	Env       *LTable
 	Proto     *FunctionProto
 	GFunction LGFunction
@@ -164,6 +163,7 @@ type LGFunction func(*LState) int
 
 func (fn *LFunction) String() string   { return fmt.Sprintf("function: %p", fn) }
 func (fn *LFunction) Type() LValueType { return LTFunction }
+func (fn *LFunction) IsG() bool        { return fn.GFunction != nil }
 
 type Global struct {
 	MainThread    *LState

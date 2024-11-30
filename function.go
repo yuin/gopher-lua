@@ -154,7 +154,6 @@ func (fp *FunctionProto) str(level int, count int) string {
 
 func newLFunctionL(proto *FunctionProto, env *LTable, nupvalue int) *LFunction {
 	return &LFunction{
-		IsG: false,
 		Env: env,
 
 		Proto:     proto,
@@ -165,7 +164,6 @@ func newLFunctionL(proto *FunctionProto, env *LTable, nupvalue int) *LFunction {
 
 func newLFunctionG(gfunc LGFunction, env *LTable, nupvalue int) *LFunction {
 	return &LFunction{
-		IsG: true,
 		Env: env,
 
 		Proto:     nil,
@@ -175,7 +173,7 @@ func newLFunctionG(gfunc LGFunction, env *LTable, nupvalue int) *LFunction {
 }
 
 func (fn *LFunction) LocalName(regno, pc int) (string, bool) {
-	if fn.IsG {
+	if fn.IsG() {
 		return "", false
 	}
 	p := fn.Proto

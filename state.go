@@ -715,7 +715,7 @@ func (ls *LState) printCallStack() {
 		if frame == nil {
 			break
 		}
-		if frame.Fn.IsG {
+		if frame.Fn.IsG() {
 			println("IsG:", true, "Frame:", frame, "Fn:", frame.Fn)
 		} else {
 			println("IsG:", false, "Frame:", frame, "Fn:", frame.Fn, "pc:", frame.Pc)
@@ -726,7 +726,7 @@ func (ls *LState) printCallStack() {
 
 func (ls *LState) closeAllUpvalues() { // +inline-start
 	for cf := ls.currentFrame; cf != nil; cf = cf.Parent {
-		if !cf.Fn.IsG {
+		if !cf.Fn.IsG() {
 			ls.closeUpvalues(cf.LocalBase)
 		}
 	}
@@ -753,7 +753,7 @@ func (ls *LState) raiseError(level int, format string, args ...interface{}) {
 
 func (ls *LState) findLocal(frame *callFrame, no int) string {
 	fn := frame.Fn
-	if !fn.IsG {
+	if !fn.IsG() {
 		if name, ok := fn.LocalName(no, frame.Pc-1); ok {
 			return name
 		}
@@ -800,7 +800,7 @@ func (ls *LState) stackTrace(level int) string {
 		for dbg, ok := ls.GetStack(i); ok; dbg, ok = ls.GetStack(i) {
 			cf := dbg.frame
 			buf = append(buf, fmt.Sprintf("\t%v in %v", ls.Where(i), ls.formattedFrameFuncName(cf)))
-			if !cf.Fn.IsG && cf.TailCall > 0 {
+			if !cf.Fn.IsG() && cf.TailCall > 0 {
 				for tc := cf.TailCall; tc > 0; tc-- {
 					buf = append(buf, "\t(tailcall): ?")
 					i++
@@ -846,19 +846,19 @@ func (ls *LState) frameFuncName(fr *callFrame) (string, bool) {
 			return "corountine", true
 		}
 	}
-	if !frame.Fn.IsG {
+	if !frame.Fn.IsG() {
 		pc := frame.Pc - 1
 		for _, call := range frame.Fn.Proto.DbgCalls {
 			if call.Pc == pc {
 				name := call.Name
-				if (name == "?" || fr.TailCall > 0) && !fr.Fn.IsG {
+				if (name == "?" || fr.TailCall > 0) && !fr.Fn.IsG() {
 					name = fmt.Sprintf("<%v:%v>", fr.Fn.Proto.SourceName, fr.Fn.Proto.LineDefined)
 				}
 				return name, false
 			}
 		}
 	}
-	if !fr.Fn.IsG {
+	if !fr.Fn.IsG() {
 		return fmt.Sprintf("<%v:%v>", fr.Fn.Proto.SourceName, fr.Fn.Proto.LineDefined), false
 	}
 	return "(anonymous)", false
@@ -1034,7 +1034,7 @@ func (ls *LState) metaCall(lvalue LValue) (*LFunction, bool) {
 }
 
 func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
-	if cf.Fn.IsG {
+	if cf.Fn.IsG() {
 		ls.reg.SetTop(cf.LocalBase + cf.NArgs)
 	} else {
 		proto := cf.Fn.Proto
@@ -1146,7 +1146,7 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 	// source function is 'func (ls *LState) initCallFrame(cf *callFrame) ' in '_state.go'
 	{
 		cf := newcf
-		if cf.Fn.IsG {
+		if cf.Fn.IsG() {
 			ls.reg.SetTop(cf.LocalBase + cf.NArgs)
 		} else {
 			proto := cf.Fn.Proto
@@ -1762,20 +1762,20 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 		case 'S':
 			if dbg.frame != nil && dbg.frame.Parent == nil {
 				dbg.What = "main"
-			} else if f.IsG {
+			} else if f.IsG() {
 				dbg.What = "G"
 			} else if dbg.frame != nil && dbg.frame.TailCall > 0 {
 				dbg.What = "tail"
 			} else {
 				dbg.What = "Lua"
 			}
-			if !f.IsG {
+			if !f.IsG() {
 				dbg.Source = f.Proto.SourceName
 				dbg.LineDefined = f.Proto.LineDefined
 				dbg.LastLineDefined = f.Proto.LastLineDefined
 			}
 		case 'l':
-			if !f.IsG && dbg.frame != nil {
+			if !f.IsG() && dbg.frame != nil {
 				if dbg.frame.Pc > 0 {
 					dbg.CurrentLine = f.Proto.DbgSourcePositions[dbg.frame.Pc-1]
 				}
@@ -1804,7 +1804,7 @@ func (ls *LState) GetStack(level int) (*Debug, bool) {
 	frame := ls.currentFrame
 	for ; level > 0 && frame != nil; frame = frame.Parent {
 		level--
-		if !frame.Fn.IsG {
+		if !frame.Fn.IsG() {
 			level -= frame.TailCall
 		}
 	}
@@ -1835,7 +1835,7 @@ func (ls *LState) SetLocal(dbg *Debug, no int, lv LValue) string {
 }
 
 func (ls *LState) GetUpvalue(fn *LFunction, no int) (string, LValue) {
-	if fn.IsG {
+	if fn.IsG() {
 		return "", LNil
 	}
 
@@ -1847,7 +1847,7 @@ func (ls *LState) GetUpvalue(fn *LFunction, no int) (string, LValue) {
 }
 
 func (ls *LState) SetUpvalue(fn *LFunction, no int, lv LValue) string {
-	if fn.IsG {
+	if fn.IsG() {
 		return ""
 	}
 
