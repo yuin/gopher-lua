@@ -230,4 +230,15 @@ func TestTableForEach(t *testing.T) {
 			}
 		}
 	})
+
+	i := 0
+	tbl.ForEachB(func(k LValue, v LValue) bool {
+		i++
+		return false
+	})
+
+	if i != 1 {
+		t.Log("ForEachB should stop iteration.")
+		t.Fail()
+	}
 }
