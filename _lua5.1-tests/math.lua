@@ -33,6 +33,8 @@ assert(tonumber'+ 0.01' == nil and tonumber'+.e1' == nil and
        tonumber'.' == nil)
 assert(tonumber('-12') == -10-2)
 assert(tonumber('-1.2e2') == - - -120)
+assert(tonumber('2e2') == 200)
+assert(tonumber('2e2', 15) == 662)
 assert(f(tonumber('1  a')) == nil)
 assert(f(tonumber('e1')) == nil)
 assert(f(tonumber('e  1')) == nil)
