@@ -1,5 +1,7 @@
 package lua
 
+import "unsafe"
+
 const defaultArrayCap = 32
 const defaultHashCap = 32
 
@@ -41,7 +43,7 @@ func newLTable(acap int, hcap int) *LTable {
 		tb.array = make([]LValue, 0, acap)
 	}
 	if hcap != 0 {
-		tb.strdict = make(map[string]LValue, hcap)
+		tb.strdict = newMap(KeyKindStr, uint32(hcap))
 	}
 	return tb
 }
@@ -157,10 +159,26 @@ func (tb *LTable) RawSet(key LValue, value LValue) {
 			case index == alen:
 				tb.array = append(tb.array, value)
 			case index > alen:
-				for i := 0; i < (index - alen); i++ {
-					tb.array = append(tb.array, LNil)
+				if int(v) > cap(tb.array) {
+					// Optimize the capacity expansion process to avoid generating a
+					// large amount of GC during the append expansion process after large jumps.
+					capSize := int(float64(v) * 1.25)
+					if capSize > MaxArrayIndex {
+						capSize = MaxArrayIndex
+					}
+					temp := make([]LValue, int(v), capSize)
+					copy(temp, tb.array)
+					for i := alen; i < index; i++ {
+						temp[i] = LNil
+					}
+					temp[index] = value
+					tb.array = temp
+				} else {
+					for i := 0; i < (index - alen); i++ {
+						tb.array = append(tb.array, LNil)
+					}
+					tb.array = append(tb.array, value)
 				}
-				tb.array = append(tb.array, value)
 			case index < alen:
 				tb.array[index] = value
 			}
@@ -189,10 +207,26 @@ func (tb *LTable) RawSetInt(key int, value LValue) {
 	case index == alen:
 		tb.array = append(tb.array, value)
 	case index > alen:
-		for i := 0; i < (index - alen); i++ {
-			tb.array = append(tb.array, LNil)
+		if key > cap(tb.array) {
+			// Optimize the capacity expansion process to avoid generating a
+			// large amount of GC during the append expansion process after large jumps.
+			capSize := int(float64(key) * 1.25)
+			if capSize > MaxArrayIndex {
+				capSize = MaxArrayIndex
+			}
+			temp := make([]LValue, key, capSize)
+			copy(temp, tb.array)
+			for i := alen; i < index; i++ {
+				temp[i] = LNil
+			}
+			temp[index] = value
+			tb.array = temp
+		} else {
+			for i := 0; i < (index - alen); i++ {
+				tb.array = append(tb.array, LNil)
+			}
+			tb.array = append(tb.array, value)
 		}
-		tb.array = append(tb.array, value)
 	case index < alen:
 		tb.array[index] = value
 	}
@@ -201,23 +235,13 @@ func (tb *LTable) RawSetInt(key int, value LValue) {
 // RawSetString sets a given LValue to a given string index without the __newindex metamethod.
 func (tb *LTable) RawSetString(key string, value LValue) {
 	if tb.strdict == nil {
-		tb.strdict = make(map[string]LValue, defaultHashCap)
-	}
-	if tb.keys == nil {
-		tb.keys = []LValue{}
-		tb.k2i = map[LValue]int{}
+		tb.strdict = newMap(KeyKindStr, defaultHashCap)
 	}
 
 	if value == LNil {
-		// TODO tb.keys and tb.k2i should also be removed
-		delete(tb.strdict, key)
+		tb.strdict.delete(unsafe.Pointer(&key))
 	} else {
-		tb.strdict[key] = value
-		lkey := LString(key)
-		if _, ok := tb.k2i[lkey]; !ok {
-			tb.k2i[lkey] = len(tb.keys)
-			tb.keys = append(tb.keys, lkey)
-		}
+		tb.strdict.put(unsafe.Pointer(&key), value)
 	}
 }
 
@@ -228,22 +252,13 @@ func (tb *LTable) RawSetH(key LValue, value LValue) {
 		return
 	}
 	if tb.dict == nil {
-		tb.dict = make(map[LValue]LValue, len(tb.strdict))
-	}
-	if tb.keys == nil {
-		tb.keys = []LValue{}
-		tb.k2i = map[LValue]int{}
+		tb.dict = newMap(keyKindIntr, defaultHashCap)
 	}
 
 	if value == LNil {
-		// TODO tb.keys and tb.k2i should also be removed
-		delete(tb.dict, key)
+		tb.dict.delete(unsafe.Pointer(&key))
 	} else {
-		tb.dict[key] = value
-		if _, ok := tb.k2i[key]; !ok {
-			tb.k2i[key] = len(tb.keys)
-			tb.keys = append(tb.keys, key)
-		}
+		tb.dict.put(unsafe.Pointer(&key), value)
 	}
 }
 
@@ -265,7 +280,7 @@ func (tb *LTable) RawGet(key LValue) LValue {
 		if tb.strdict == nil {
 			return LNil
 		}
-		if ret, ok := tb.strdict[string(v)]; ok {
+		if ret, ok := tb.strdict.get((unsafe.Pointer)(&v)); ok {
 			return ret
 		}
 		return LNil
@@ -273,7 +288,7 @@ func (tb *LTable) RawGet(key LValue) LValue {
 	if tb.dict == nil {
 		return LNil
 	}
-	if v, ok := tb.dict[key]; ok {
+	if v, ok := tb.dict.get((unsafe.Pointer)(&key)); ok {
 		return v
 	}
 	return LNil
@@ -297,7 +312,7 @@ func (tb *LTable) RawGetH(key LValue) LValue {
 		if tb.strdict == nil {
 			return LNil
 		}
-		if v, vok := tb.strdict[string(s)]; vok {
+		if v, vok := tb.strdict.get((unsafe.Pointer)(&s)); vok {
 			return v
 		}
 		return LNil
@@ -305,7 +320,7 @@ func (tb *LTable) RawGetH(key LValue) LValue {
 	if tb.dict == nil {
 		return LNil
 	}
-	if v, ok := tb.dict[key]; ok {
+	if v, ok := tb.dict.get((unsafe.Pointer)(&key)); ok {
 		return v
 	}
 	return LNil
@@ -316,7 +331,7 @@ func (tb *LTable) RawGetString(key string) LValue {
 	if tb.strdict == nil {
 		return LNil
 	}
-	if v, vok := tb.strdict[string(key)]; vok {
+	if v, vok := tb.strdict.get((unsafe.Pointer)(&key)); vok {
 		return v
 	}
 	return LNil
@@ -332,18 +347,20 @@ func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 		}
 	}
 	if tb.strdict != nil {
-		for k, v := range tb.strdict {
+		tb.strdict.iter(func(k unsafe.Pointer, v LValue) bool {
 			if v != LNil {
-				cb(LString(k), v)
+				cb(LString(*(*string)(k)), v)
 			}
-		}
+			return false
+		})
 	}
 	if tb.dict != nil {
-		for k, v := range tb.dict {
+		tb.dict.iter(func(k unsafe.Pointer, v LValue) bool {
 			if v != LNil {
-				cb(k, v)
+				cb(*(*LValue)(k), v)
 			}
-		}
+			return false
+		})
 	}
 }
 
@@ -351,36 +368,49 @@ func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 func (tb *LTable) Next(key LValue) (LValue, LValue) {
 	init := false
 	if key == LNil {
-		key = LNumber(0)
 		init = true
 	}
 
-	if init || key != LNumber(0) {
-		if kv, ok := key.(LNumber); ok && isInteger(kv) && int(kv) >= 0 && kv < LNumber(MaxArrayIndex) {
-			index := int(kv)
-			if tb.array != nil {
-				for ; index < len(tb.array); index++ {
-					if v := tb.array[index]; v != LNil {
-						return LNumber(index + 1), v
-					}
-				}
-			}
-			if tb.array == nil || index == len(tb.array) {
-				if (tb.dict == nil || len(tb.dict) == 0) && (tb.strdict == nil || len(tb.strdict) == 0) {
-					return LNil, LNil
-				}
-				key = tb.keys[0]
-				if v := tb.RawGetH(key); v != LNil {
-					return key, v
+	if kv, ok := key.(LNumber); (ok && isInteger(kv) && int(kv) > 0 && kv < LNumber(MaxArrayIndex)) || init {
+		index := int(kv)
+		if tb.array != nil {
+			for ; index < len(tb.array); index++ {
+				if v := tb.array[index]; v != LNil {
+					return LNumber(index + 1), v
 				}
 			}
 		}
+
+		if tb.strdict != nil && tb.strdict.count() > 0 {
+			key, val, _ := tb.strdict.first()
+			return LString(*(*string)(key)), val
+		} else if tb.dict != nil && tb.dict.count() > 0 {
+			key, val, _ := tb.dict.first()
+			return *(*LValue)(key), val
+		} else {
+			return LNil, LNil
+		}
 	}
 
-	for i := tb.k2i[key] + 1; i < len(tb.keys); i++ {
-		key := tb.keys[i]
-		if v := tb.RawGetH(key); v != LNil {
-			return key, v
+	if kstr, ok := key.(LString); ok {
+		if tb.strdict != nil {
+			nextKey, nextVal, ok2 := tb.strdict.findNext((unsafe.Pointer)(&kstr))
+			if ok2 {
+				return LString(*(*string)(nextKey)), nextVal
+			}
+		}
+		if tb.dict != nil && tb.dict.count() > 0 {
+			key, val, _ := tb.dict.first()
+			return *(*LValue)(key), val
+		} else {
+			return LNil, LNil
+		}
+	}
+
+	if tb.dict != nil {
+		nextKey, nextVal, ok := tb.dict.findNext((unsafe.Pointer)(&key))
+		if ok {
+			return *(*LValue)(nextKey), nextVal
 		}
 	}
 	return LNil, LNil

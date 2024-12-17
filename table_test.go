@@ -2,6 +2,7 @@ package lua
 
 import (
 	"testing"
+	"unsafe"
 )
 
 func TestTableNewLTable(t *testing.T) {
@@ -156,12 +157,14 @@ func TestTableRawSetH(t *testing.T) {
 	tbl := newLTable(0, 0)
 	tbl.RawSetH(LString("key"), LTrue)
 	tbl.RawSetH(LString("key"), LNil)
-	_, found := tbl.dict[LString("key")]
+	var val LValue = LString("key")
+	_, found := tbl.dict.get(unsafe.Pointer(&val))
 	errorIfNotEqual(t, false, found)
 
 	tbl.RawSetH(LTrue, LTrue)
 	tbl.RawSetH(LTrue, LNil)
-	_, foundb := tbl.dict[LTrue]
+	val = LTrue
+	_, foundb := tbl.dict.get((unsafe.Pointer(&val)))
 	errorIfNotEqual(t, false, foundb)
 }
 
