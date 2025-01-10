@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -148,6 +147,33 @@ func TestLua(t *testing.T) {
 	testScriptDir(t, luaTests, "_lua5.1-tests")
 }
 
+func TestMergingLoadNilBug2(t *testing.T) {
+	// there was a bug where the LOADNIL merging optimisation would merge LOADNILs that were the targets of
+	// JMP instructions, causing the JMP to jump to the wrong location and breaking the logic and resulting in
+	// a panic.
+	s := `
+	id = "foo"
+
+	function get_def()
+	  return {}
+	end
+
+	function test()
+	  local def = id ~= nil and get_def() or nil
+	  if def ~= nil then
+		print("def is not nil")
+	  end
+	end
+
+	test()
+`
+	L := NewState()
+	defer L.Close()
+	if err := L.DoString(s); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestMergingLoadNilBug(t *testing.T) {
 	// there was a bug where a multiple load nils were being incorrectly merged, and the following code exposed it
 	s := `
@@ -185,48 +211,50 @@ func TestMergingLoadNilBug(t *testing.T) {
 	}
 }
 
-func TestMergingLoadNil(t *testing.T) {
-	// multiple nil assignments to consecutive registers should be merged
-	s := `
-		function test()
-			local a = 0
-			local b = 1
-			local c = 2
-
-			-- this should generate just one LOADNIL byte code instruction
-			a = nil
-			b = nil
-			c = nil
-
-			print(a,b,c)
-		end
-
-		test()`
-
-	chunk, err := parse.Parse(strings.NewReader(s), "test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	compiled, err := Compile(chunk, "test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(compiled.FunctionPrototypes) != 1 {
-		t.Fatal("expected 1 function prototype")
-	}
-
-	// there should be exactly 1 LOADNIL instruction in the byte code generated for the above
-	// anymore, and the LOADNIL merging is not working correctly
-	count := 0
-	for _, instr := range compiled.FunctionPrototypes[0].Code {
-		if opGetOpCode(instr) == OP_LOADNIL {
-			count++
-		}
-	}
-
-	if count != 1 {
-		t.Fatalf("expected 1 LOADNIL instruction, found %d", count)
-	}
-}
+// This test is disabled because the LOADNIL merging optimisation has been disabled. See the comment in the
+// AddLoadNil() function for more information.
+//func TestMergingLoadNil(t *testing.T) {
+//	// multiple nil assignments to consecutive registers should be merged
+//	s := `
+//		function test()
+//			local a = 0
+//			local b = 1
+//			local c = 2
+//
+//			-- this should generate just one LOADNIL byte code instruction
+//			a = nil
+//			b = nil
+//			c = nil
+//
+//			print(a,b,c)
+//		end
+//
+//		test()`
+//
+//	chunk, err := parse.Parse(strings.NewReader(s), "test")
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	compiled, err := Compile(chunk, "test")
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	if len(compiled.FunctionPrototypes) != 1 {
+//		t.Fatal("expected 1 function prototype")
+//	}
+//
+//	// there should be exactly 1 LOADNIL instruction in the byte code generated for the above
+//	// anymore, and the LOADNIL merging is not working correctly
+//	count := 0
+//	for _, instr := range compiled.FunctionPrototypes[0].Code {
+//		if opGetOpCode(instr) == OP_LOADNIL {
+//			count++
+//		}
+//	}
+//
+//	if count != 1 {
+//		t.Fatalf("expected 1 LOADNIL instruction, found %d", count)
+//	}
+//}
