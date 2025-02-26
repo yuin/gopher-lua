@@ -2,6 +2,7 @@ package lua
 
 import (
 	"sort"
+	"strings"
 )
 
 func OpenTable(L *LState) int {
@@ -66,19 +67,18 @@ func tableConcat(L *LState) int {
 		L.Push(emptyLString)
 		return 1
 	}
-	//TODO should flushing?
-	retbottom := L.GetTop()
+	var sb strings.Builder
 	for ; i <= j; i++ {
 		v := tbl.RawGetInt(i)
 		if !LVCanConvToString(v) {
 			L.RaiseError("invalid value (%s) at index %d in table for concat", v.Type().String(), i)
 		}
-		L.Push(v)
+		sb.WriteString(LVAsString(v))
 		if i != j {
-			L.Push(sep)
+			sb.WriteString(LVAsString(sep))
 		}
 	}
-	L.Push(stringConcat(L, L.GetTop()-retbottom, L.reg.Top()-1))
+	L.Push(LString(sb.String()))
 	return 1
 }
 
