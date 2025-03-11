@@ -595,7 +595,10 @@ Sharing byte code is safe as it is read only and cannot be altered by lua script
 
     // Example shows how to share the compiled byte code from a lua script between multiple VMs.
     func Example() {
-        codeToShare := CompileLua("mylua.lua")
+        codeToShare, err := CompileLua("mylua.lua")
+        if err != nil {
+            panic(err)
+        }
         a := lua.NewState()
         b := lua.NewState()
         c := lua.NewState()
@@ -847,7 +850,7 @@ Lua has an interpreter called ``lua`` . GopherLua has an interpreter called ``gl
 ----------------------------------------------------------------
 How to Contribute
 ----------------------------------------------------------------
-See `Guidlines for contributors <https://github.com/yuin/gopher-lua/tree/master/.github/CONTRIBUTING.md>`_ .
+See `Guidelines for contributors <https://github.com/yuin/gopher-lua/tree/master/.github/CONTRIBUTING.md>`_ .
 
 ----------------------------------------------------------------
 Libraries for GopherLua
@@ -865,6 +868,7 @@ Libraries for GopherLua
 - `gluaxmlpath <https://github.com/ailncode/gluaxmlpath>`_ : An xmlpath module for gopher-lua
 - `gmoonscript <https://github.com/rucuriousyet/gmoonscript>`_ : Moonscript Compiler for the Gopher Lua VM
 - `loguago <https://github.com/rucuriousyet/loguago>`_ : Zerolog wrapper for Gopher-Lua
+- `gluabit32 <https://github.com/PeerDB-io/gluabit32>`_ : [Port of Lua 5.2 bit32](https://www.lua.org/manual/5.2/manual.html#6.7)
 - `gluacrypto <https://github.com/tengattack/gluacrypto>`_ : A native Go implementation of crypto library for the GopherLua VM.
 - `gluasql <https://github.com/tengattack/gluasql>`_ : A native Go implementation of SQL client for the GopherLua VM.
 - `purr <https://github.com/leyafo/purr>`_ : A http mock testing tool.
@@ -873,6 +877,8 @@ Libraries for GopherLua
 - `glua-async <https://github.com/CuberL/glua-async>`_ : An async/await implement for gopher-lua.
 - `gopherlua-debugger <https://github.com/edolphin-ydf/gopherlua-debugger>`_ : A debugger for gopher-lua
 - `gluamahonia <https://github.com/super1207/gluamahonia>`_ : An encoding converter for gopher-lua
+- `awesome-gopher-lua <https://github.com/Root-lee/awesome-gopher-lua>`_ : Collections of awesome libraries for GopherLua.
+
 ----------------------------------------------------------------
 Donation
 ----------------------------------------------------------------

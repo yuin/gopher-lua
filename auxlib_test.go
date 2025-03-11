@@ -1,7 +1,6 @@
 package lua
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -300,10 +299,10 @@ func TestOptChannel(t *testing.T) {
 }
 
 func TestLoadFileForShebang(t *testing.T) {
-	tmpFile, err := ioutil.TempFile("", "")
+	tmpFile, err := os.CreateTemp("", "")
 	errorIfNotNil(t, err)
 
-	err = ioutil.WriteFile(tmpFile.Name(), []byte(`#!/path/to/lua
+	err = os.WriteFile(tmpFile.Name(), []byte(`#!/path/to/lua
 print("hello")
 `), 0644)
 	errorIfNotNil(t, err)
@@ -321,7 +320,7 @@ print("hello")
 }
 
 func TestLoadFileForEmptyFile(t *testing.T) {
-	tmpFile, err := ioutil.TempFile("", "")
+	tmpFile, err := os.CreateTemp("", "")
 	errorIfNotNil(t, err)
 
 	defer func() {

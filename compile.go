@@ -237,7 +237,7 @@ func (cd *codeStore) PropagateMV(top int, save *int, reg *int, inc int) {
 
 func (cd *codeStore) AddLoadNil(a, b, line int) {
 	last := cd.Last()
-	if opGetOpCode(last) == OP_LOADNIL && (opGetArgA(last)+opGetArgB(last)) == a {
+	if opGetOpCode(last) == OP_LOADNIL && (opGetArgB(last)+1) == a {
 		cd.SetB(cd.LastPC(), b)
 	} else {
 		cd.AddABC(OP_LOADNIL, a, b, 0, line)
