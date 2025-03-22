@@ -490,3 +490,22 @@ function test()
   assert(b == nil)
 end
 test()
+
+-- issue #514
+function test()
+  local tbl = {foo = 42, bar = "baz"}
+  local iter = function(s,k)
+    k,_ = next(tbl, k)
+    return k
+  end
+  local seen1, seen2 = {}, {}
+  for item in iter do
+    seen1[item] = true
+  end
+  for item in iter do
+    seen2[item] = true
+  end
+  assert(seen1.foo and seen1.bar)
+  assert(seen2.foo and seen2.bar)
+end
+test()
