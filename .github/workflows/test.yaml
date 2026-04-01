@@ -5,16 +5,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: [1.18.x, 1.19.x]
+        go-version: [1.24.x, 1.25.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
     - name: Install Go
-      uses: actions/setup-go@v1
+      uses: actions/setup-go@v4
       with:
         go-version: ${{ matrix.go-version }}
     - name: Checkout code
-      uses: actions/checkout@v1
+      uses: actions/checkout@v3
     - name: Run tests
       run: ./_tools/go-inline *.go && go fmt . &&  go test -v ./... -covermode=count -coverprofile=coverage.out -coverpkg=$(go list ./... | sed 's/\n/,/g')
     - name: Send coverage
