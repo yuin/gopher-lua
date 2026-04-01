@@ -15,6 +15,15 @@ assert(#tbl == 10)
 setmetatable(tbl, nil)
 assert(#tbl == 3)
 
+setmetatable(tbl, {__index = function(t, i)
+  return i <= 5 and -i or nil
+end})
+local s = 0
+for _, x in ipairs(tbl) do
+  s = s+x
+end
+assert(s == -3) -- == 1+2+3-4-5
+
 local ok, msg = pcall(function()
   return 1 < "hoge"
 end)

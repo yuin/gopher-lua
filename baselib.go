@@ -133,23 +133,24 @@ func baseGetMetatable(L *LState) int {
 }
 
 func ipairsaux(L *LState) int {
-	tb := L.CheckTable(1)
+	tb := L.Get(1)
 	i := L.CheckInt(2)
 	i++
-	v := tb.RawGetInt(i)
+	li := LNumber(i)
+	v := L.getField(tb, li)
 	if v == LNil {
 		return 0
 	} else {
 		L.Pop(1)
-		L.Push(LNumber(i))
-		L.Push(LNumber(i))
+		L.Push(li)
+		L.Push(li)
 		L.Push(v)
 		return 2
 	}
 }
 
 func baseIpairs(L *LState) int {
-	tb := L.CheckTable(1)
+	tb := L.Get(1)
 	L.Push(L.Get(UpvalueIndex(1)))
 	L.Push(tb)
 	L.Push(LNumber(0))
