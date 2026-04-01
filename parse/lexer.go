@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/yuin/gopher-lua/ast"
 )
@@ -31,13 +32,16 @@ func (e *Error) Error() string {
 	}
 }
 
-func writeChar(buf *bytes.Buffer, c int) { buf.WriteByte(byte(c)) }
+func writeChar(buf *bytes.Buffer, c int) { buf.WriteRune(rune(c)) }
 
 func isDecimal(ch int) bool { return '0' <= ch && ch <= '9' }
 
 func isIdent(ch int, pos int) bool {
-	return ch == '_' || 'A' <= ch && ch <= 'Z' || 'a' <= ch && ch <= 'z' || isDecimal(ch) && pos > 0
+	return isChinese(rune(ch)) || ch == '_' || 'A' <= ch && ch <= 'Z' || 'a' <= ch && ch <= 'z' || isDecimal(ch) && pos > 0
 }
+
+// isChinese
+func isChinese(ch rune) bool { return unicode.Is(unicode.Han, ch) }
 
 func isDigit(ch int) bool {
 	return '0' <= ch && ch <= '9' || 'a' <= ch && ch <= 'f' || 'A' <= ch && ch <= 'F'
@@ -64,7 +68,7 @@ func (sc *Scanner) Error(tok string, msg string) *Error { return &Error{sc.Pos, 
 func (sc *Scanner) TokenError(tok ast.Token, msg string) *Error { return &Error{tok.Pos, msg, tok.Str} }
 
 func (sc *Scanner) readNext() int {
-	ch, err := sc.reader.ReadByte()
+	ch, _, err := sc.reader.ReadRune()
 	if err == io.EOF {
 		return EOF
 	}
@@ -101,7 +105,7 @@ func (sc *Scanner) Next() int {
 func (sc *Scanner) Peek() int {
 	ch := sc.readNext()
 	if ch != EOF {
-		sc.reader.UnreadByte()
+		sc.reader.UnreadRune()
 	}
 	return ch
 }
