@@ -45,8 +45,6 @@ There are some benchmarks on the [wiki page](https://github.com/yuin/gopher-lua/
 $ go get github.com/yuin/gopher-lua
 ```
 
-GopherLua supports >= Go1.9.
-
 ## Usage
 
 GopherLua APIs perform in much the same way as Lua, **but the stack is used only
