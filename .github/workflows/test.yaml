@@ -17,11 +17,12 @@ jobs:
       uses: actions/checkout@v3
     - name: Run tests
       run: ./_tools/go-inline *.go && go fmt . &&  go test -v ./... -covermode=count -coverprofile=coverage.out -coverpkg=$(go list ./... | sed 's/\n/,/g')
+    - name: Install goveralls
+      if: "matrix.platform == 'ubuntu-latest'"
+      run: go install github.com/mattn/goveralls@latest
     - name: Send coverage
       if: "matrix.platform == 'ubuntu-latest'"
       env:
         COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        GO111MODULE=off go get github.com/mattn/goveralls
-        ./_tools/go-inline *.go && go fmt .
         $(go env GOPATH)/bin/goveralls -coverprofile=coverage.out -service=github
