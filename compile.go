@@ -813,20 +813,19 @@ func compileAssignStmt(context *funcContext, stmt *ast.AssignStmt) { // {{{
 	}
 } // }}}
 
-func compileRegAssignment(context *funcContext, names []string, exprs []ast.Expr, reg int, nvars int, line int) { // {{{
-	lennames := len(names)
+func compileRegAssignment(context *funcContext, exprs []ast.Expr, reg int, nvars int, line int) { // {{{
 	lenexprs := len(exprs)
 	namesassigned := 0
 	ec := &expcontext{}
 
-	for namesassigned < lennames && namesassigned < lenexprs {
+	for namesassigned < nvars && namesassigned < lenexprs {
 		if isVarArgReturnExpr(exprs[namesassigned]) && (lenexprs-namesassigned-1) <= 0 {
 
 			varargopt := nvars - namesassigned
 			ecupdate(ec, ecVararg, reg, varargopt-1)
 			compileExpr(context, reg, exprs[namesassigned], ec)
 			reg += varargopt
-			namesassigned = lennames
+			namesassigned = nvars
 		} else {
 			ecupdate(ec, ecLocal, reg, 0)
 			compileExpr(context, reg, exprs[namesassigned], ec)
@@ -836,8 +835,8 @@ func compileRegAssignment(context *funcContext, names []string, exprs []ast.Expr
 	}
 
 	// extra left names
-	if lennames > namesassigned {
-		restleft := lennames - namesassigned - 1
+	if nvars > namesassigned {
+		restleft := nvars - namesassigned - 1
 		context.Code.AddLoadNil(reg, reg+restleft, line)
 		reg += restleft
 	}
@@ -858,12 +857,12 @@ func compileLocalAssignStmt(context *funcContext, stmt *ast.LocalAssignStmt) { /
 	if len(stmt.Names) == 1 && len(stmt.Exprs) == 1 {
 		if _, ok := stmt.Exprs[0].(*ast.FunctionExpr); ok {
 			context.RegisterLocalVar(stmt.Names[0])
-			compileRegAssignment(context, stmt.Names, stmt.Exprs, reg, len(stmt.Names), sline(stmt))
+			compileRegAssignment(context, stmt.Exprs, reg, len(stmt.Names), sline(stmt))
 			return
 		}
 	}
 
-	compileRegAssignment(context, stmt.Names, stmt.Exprs, reg, len(stmt.Names), sline(stmt))
+	compileRegAssignment(context, stmt.Exprs, reg, len(stmt.Names), sline(stmt))
 	for _, name := range stmt.Names {
 		context.RegisterLocalVar(name)
 	}
@@ -1101,7 +1100,7 @@ func compileGenericForStmt(context *funcContext, stmt *ast.GenericForStmt) { // 
 	context.RegisterLocalVar("(for state)")
 	context.RegisterLocalVar("(for control)")
 
-	compileRegAssignment(context, stmt.Names, stmt.Exprs, context.RegTop()-3, 3, sline(stmt))
+	compileRegAssignment(context, stmt.Exprs, context.RegTop()-3, 3, sline(stmt))
 
 	code.AddASbx(OP_JMP, 0, fllabel, sline(stmt))
 
