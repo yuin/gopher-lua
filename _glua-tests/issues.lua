@@ -480,6 +480,26 @@ function test()
 end
 test()
 
+-- issue #457
+function test()
+  local file = os.tmpname()
+  os.remove(file)
+  assert(io.open(file) == nil)
+
+  local fh = io.open(file, 'r+b')
+  assert(fh == nil)
+  local fh = io.open(file, 'w+b')
+  assert(fh ~= nil)
+  fh:close()
+  os.remove(file)
+  assert(io.open(file) == nil)
+  local fh = io.open(file, 'a+b')
+  assert(fh ~= nil)
+  fh:close()
+  os.remove(file)
+end
+test()
+
 -- issue #459
 function test()
   local a, b = io.popen("ls", nil)
