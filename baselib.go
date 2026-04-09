@@ -410,7 +410,7 @@ func baseToNumber(L *LState) int {
 		L.Push(lv)
 	case LString:
 		str := strings.Trim(string(lv), " \n\t")
-		if strings.Index(str, ".") > -1 {
+		if strings.Contains(str, ".") || strings.ContainsAny(str, "eE") {
 			if v, err := strconv.ParseFloat(str, LNumberBit); err != nil {
 				L.Push(LNil)
 			} else {
