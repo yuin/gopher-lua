@@ -14,7 +14,7 @@ func OpenString(L *LState) int {
 	//_, ok := L.G.builtinMts[int(LTString)]
 	//if !ok {
 	mod = L.RegisterModule(StringLibName, strFuncs).(*LTable)
-	gmatch := L.NewClosure(strGmatch, L.NewFunction(strGmatchIter))
+	gmatch := L.NewFunction(strGmatch)
 	mod.RawSetString("gmatch", gmatch)
 	mod.RawSetString("gfind", gmatch)
 	mod.RawSetString("__index", mod)
@@ -299,7 +299,7 @@ type strMatchData struct {
 }
 
 func strGmatchIter(L *LState) int {
-	md := L.CheckUserData(1).Value.(*strMatchData)
+	md := L.CheckUserData(UpvalueIndex(1)).Value.(*strMatchData)
 	str := md.str
 	matches := md.matches
 	idx := md.pos
@@ -331,11 +331,11 @@ func strGmatch(L *LState) int {
 	if err != nil {
 		L.RaiseError(err.Error())
 	}
-	L.Push(L.Get(UpvalueIndex(1)))
 	ud := L.NewUserData()
 	ud.Value = &strMatchData{str, 0, mds}
-	L.Push(ud)
-	return 2
+	f := L.NewClosure(strGmatchIter, ud)
+	L.Push(f)
+	return 1
 }
 
 func strLen(L *LState) int {
