@@ -31,3 +31,16 @@ func TestOsWrite(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestOsDateFmt(t *testing.T) {
+	s := "return os.date('!weekday=%w|%a|%A, month=%b|%B, year=%y, time=%I:%M|%H:%M:%S|%X, date=%Y-%m-%d|%x', 1136214245)"
+	L := NewState()
+	defer L.Close()
+	if err := L.DoString(s); err != nil {
+		t.Error(err)
+	} else {
+		ret := L.Get(-1)
+		expected := LString("weekday=1|mon|Monday, month=Jan|January, year=06, time=03:04|15:04:05|15:04:05, date=2006-01-02|01/02/06")
+		errorIfNotEqual(t, expected, ret)
+	}
+}
