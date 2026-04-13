@@ -410,21 +410,14 @@ func baseToNumber(L *LState) int {
 		L.Push(lv)
 	case LString:
 		str := strings.Trim(string(lv), " \n\t")
-		if strings.Index(str, ".") > -1 {
+		if v, err := strconv.ParseInt(str, base, LNumberBit); err != nil {
 			if v, err := strconv.ParseFloat(str, LNumberBit); err != nil {
 				L.Push(LNil)
 			} else {
 				L.Push(LNumber(v))
 			}
 		} else {
-			if noBase && strings.HasPrefix(strings.ToLower(str), "0x") {
-				base, str = 16, str[2:] // Hex number
-			}
-			if v, err := strconv.ParseInt(str, base, LNumberBit); err != nil {
-				L.Push(LNil)
-			} else {
-				L.Push(LNumber(v))
-			}
+			L.Push(LNumber(v))
 		}
 	default:
 		L.Push(LNil)
