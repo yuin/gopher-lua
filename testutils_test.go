@@ -14,12 +14,14 @@ func positionString(level int) string {
 }
 
 func errorIfNotEqual(t *testing.T, v1, v2 interface{}) {
+	t.Helper()
 	if v1 != v2 {
 		t.Errorf("%v '%v' expected, but got '%v'", positionString(1), v1, v2)
 	}
 }
 
 func errorIfFalse(t *testing.T, cond bool, msg string, args ...interface{}) {
+	t.Helper()
 	if !cond {
 		if len(args) > 0 {
 			t.Errorf("%v %v", positionString(1), fmt.Sprintf(msg, args...))
@@ -30,30 +32,35 @@ func errorIfFalse(t *testing.T, cond bool, msg string, args ...interface{}) {
 }
 
 func errorIfNotNil(t *testing.T, v1 interface{}) {
+	t.Helper()
 	if fmt.Sprint(v1) != "<nil>" {
 		t.Errorf("%v nil expected, but got '%v'", positionString(1), v1)
 	}
 }
 
 func errorIfNil(t *testing.T, v1 interface{}) {
+	t.Helper()
 	if fmt.Sprint(v1) == "<nil>" {
 		t.Errorf("%v non-nil value expected, but got nil", positionString(1))
 	}
 }
 
 func errorIfScriptFail(t *testing.T, L *LState, script string) {
+	t.Helper()
 	if err := L.DoString(script); err != nil {
 		t.Errorf("%v %v", positionString(1), err.Error())
 	}
 }
 
 func errorIfGFuncFail(t *testing.T, L *LState, f LGFunction) {
+	t.Helper()
 	if err := L.GPCall(f, LNil); err != nil {
 		t.Errorf("%v %v", positionString(1), err.Error())
 	}
 }
 
 func errorIfScriptNotFail(t *testing.T, L *LState, script string, pattern string) {
+	t.Helper()
 	if err := L.DoString(script); err != nil {
 		reg := regexp.MustCompile(pattern)
 		if len(reg.FindStringIndex(err.Error())) == 0 {
@@ -66,6 +73,7 @@ func errorIfScriptNotFail(t *testing.T, L *LState, script string, pattern string
 }
 
 func errorIfGFuncNotFail(t *testing.T, L *LState, f LGFunction, pattern string) {
+	t.Helper()
 	if err := L.GPCall(f, LNil); err != nil {
 		reg := regexp.MustCompile(pattern)
 		if len(reg.FindStringIndex(err.Error())) == 0 {
