@@ -97,7 +97,7 @@ func baseGetFEnv(L *LState) int {
 	}
 
 	if fn, ok := value.(*LFunction); ok {
-		if !fn.IsG {
+		if !fn.IsG() {
 			L.Push(fn.Env)
 		} else {
 			L.Push(L.G.Global)
@@ -114,7 +114,7 @@ func baseGetFEnv(L *LState) int {
 			for i := 0; i < level && cf != nil; i++ {
 				cf = cf.Parent
 			}
-			if cf == nil || cf.Fn.IsG {
+			if cf == nil || cf.Fn.IsG() {
 				L.Push(L.G.Global)
 			} else {
 				L.Push(cf.Fn.Env)
@@ -351,7 +351,7 @@ func baseSetFEnv(L *LState) int {
 	env := L.CheckTable(2)
 
 	if fn, ok := value.(*LFunction); ok {
-		if fn.IsG {
+		if fn.IsG() {
 			L.RaiseError("cannot change the environment of given object")
 		} else {
 			fn.Env = env
@@ -371,7 +371,7 @@ func baseSetFEnv(L *LState) int {
 		for i := 0; i < level && cf != nil; i++ {
 			cf = cf.Parent
 		}
-		if cf == nil || cf.Fn.IsG {
+		if cf == nil || cf.Fn.IsG() {
 			L.RaiseError("cannot change the environment of given object")
 		} else {
 			cf.Fn.Env = env
@@ -506,7 +506,7 @@ func loModule(L *LState) int {
 	caller := L.currentFrame.Parent
 	if caller == nil {
 		L.RaiseError("no calling stack.")
-	} else if caller.Fn.IsG {
+	} else if caller.Fn.IsG() {
 		L.RaiseError("module() can not be called from GFunctions.")
 	}
 	L.SetFEnv(caller.Fn, tb)
