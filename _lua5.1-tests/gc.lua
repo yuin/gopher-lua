@@ -295,7 +295,7 @@ do
     assert(getmetatable(o) == tt)
     -- create new objects during GC
     local a = 'xuxu'..(10+3)..'joao', {}
-    ___Glob = o  -- ressurect object!
+    ___Glob = o  -- resurrect object!
     newproxy(o)  -- creates a new one with same metatable
     print(">>> closing state " .. "<<<\n")
   end
