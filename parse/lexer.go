@@ -512,7 +512,7 @@ func dump(node interface{}, level int, s string) string {
 		tt := rt.Elem()
 		indicies := []int{}
 		for i := 0; i < tt.NumField(); i++ {
-			if strings.Index(tt.Field(i).Name, "Base") > -1 {
+			if strings.Contains(tt.Field(i).Name, "Base") {
 				continue
 			}
 			indicies = append(indicies, i)
