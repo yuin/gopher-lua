@@ -6,7 +6,7 @@ end
 if osname == "linux" then
   -- travis ci failed to start date command?
   -- assert(os.execute("date") == 0)
-  assert(os.execute("date -a") == 1)
+  assert(os.execute("date -a 2>/dev/null") == 1)
 else
   assert(os.execute("date /T") == 0)
   assert(os.execute("md") == 1)
