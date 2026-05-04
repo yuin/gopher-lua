@@ -143,14 +143,26 @@ func isArrayKey(v LNumber) bool {
 func parseNumber(number string) (LNumber, error) {
 	var value LNumber
 	number = strings.Trim(number, " \t\n")
-	if v, err := strconv.ParseInt(number, 0, LNumberBit); err != nil {
-		if v2, err2 := strconv.ParseFloat(number, LNumberBit); err2 != nil {
-			return LNumber(0), err2
-		} else {
-			value = LNumber(v2)
-		}
-	} else {
+	if v, err := strconv.ParseInt(number, 10, LNumberBit); err == nil {
 		value = LNumber(v)
+		return value, nil
+	}
+	if len(number) > 2 {
+		prefix := number
+		if number[0] == '+' || number[0] == '-' {
+			prefix = number[1:]
+		}
+		if strings.HasPrefix(prefix, "0x") || strings.HasPrefix(prefix, "0X") {
+			if v, err := strconv.ParseInt(number, 0, LNumberBit); err == nil {
+				value = LNumber(v)
+				return value, nil
+			}
+		}
+	}
+	if v2, err := strconv.ParseFloat(number, LNumberBit); err != nil {
+		return LNumber(0), err
+	} else {
+		value = LNumber(v2)
 	}
 	return value, nil
 }

@@ -276,6 +276,28 @@ func TestConcat(t *testing.T) {
 	errorIfNotEqual(t, "a1c", L.Concat(LString("a"), LNumber(1), LString("c")))
 }
 
+func TestDoStringNumericStringCoercion(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+
+	err := L.DoString(`a = "00001" + "00011"`)
+	errorIfNotNil(t, err)
+
+	v := L.GetGlobal("a")
+	errorIfNotEqual(t, LNumber(12), v)
+}
+
+func TestDoStringNumericStringHexCoercion(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+
+	err := L.DoString(`a = "0x7d6" + "1"`)
+	errorIfNotNil(t, err)
+
+	v := L.GetGlobal("a")
+	errorIfNotEqual(t, LNumber(2007), v)
+}
+
 func TestPCall(t *testing.T) {
 	L := NewState()
 	defer L.Close()
