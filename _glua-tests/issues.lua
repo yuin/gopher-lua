@@ -490,3 +490,10 @@ function test()
   assert(b == nil)
 end
 test()
+
+-- issue #478
+function test()
+  local a = "00001" + "00011"
+  assert(a == 12)
+end
+test()
