@@ -1361,6 +1361,13 @@ func compileTableExpr(context *funcContext, reg int, ex *ast.TableExpr, ec *expc
 	tablepc := code.LastPC()
 	regbase := reg
 
+	// Tracks whether any extended (C=0) OP_SETLIST was emitted. The next
+	// instruction in the stream is then a raw page-index word that
+	// happens to look like OP_MOVE A=0 B=0 to PropagateKMV. If no real
+	// instruction follows, the page-word gets popped by the caller's
+	// propagation pass, corrupting the bytecode. See safety MOVE below.
+	extendedSetlistEmitted := false
+
 	arraycount := 0
 	lastvararg := false
 	for i, field := range ex.Fields {
@@ -1393,7 +1400,8 @@ func compileTableExpr(context *funcContext, reg int, ex *ast.TableExpr, ec *expc
 			if num == 0 {
 				num = FieldsPerFlush
 			}
-			c := (arraycount-1)/FieldsPerFlush + 1
+			realC := (arraycount-1)/FieldsPerFlush + 1
+			c := realC
 			b := num
 			if islast && isVarArgReturnExpr(field.Value) {
 				b = 0
@@ -1407,7 +1415,10 @@ func compileTableExpr(context *funcContext, reg int, ex *ast.TableExpr, ec *expc
 			}
 			code.AddABC(OP_SETLIST, tablereg, b, c, sline(line))
 			if c == 0 {
-				code.Add(uint32(c), sline(line))
+				// Extended OP_SETLIST: the next code word is the real
+				// page index (>= 512), bypassing the 9-bit C field.
+				code.Add(uint32(realC), sline(line))
+				extendedSetlistEmitted = true
 			}
 		}
 	}
@@ -1415,6 +1426,12 @@ func compileTableExpr(context *funcContext, reg int, ex *ast.TableExpr, ec *expc
 	code.SetC(tablepc, int2Fb(len(ex.Fields)-arraycount))
 	if shouldmove(ec, tablereg) {
 		code.AddABC(OP_MOVE, ec.reg, tablereg, 0, sline(ex))
+	} else if extendedSetlistEmitted {
+		// Guard: ensure the last instruction is a real OP_MOVE that the
+		// caller's PropagateKMV pass can safely pop, instead of the raw
+		// page-word left by the extended OP_SETLIST. MOVE tablereg <-
+		// tablereg is a no-op at runtime and propagates correctly.
+		code.AddABC(OP_MOVE, tablereg, tablereg, 0, sline(ex))
 	}
 } // }}}
 

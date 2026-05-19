@@ -1,6 +1,8 @@
 package lua
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -230,4 +232,90 @@ func TestTableForEach(t *testing.T) {
 			}
 		}
 	})
+}
+
+// genArrayLiteral builds `return { ["outer"] = { ["arr"] = { 1, 2, ..., n } } }`.
+// The nested shape is important: it puts the array inside a parent table
+// expression, which is what triggers the PropagateKMV cascade for the
+// second bug (see compile.go compileTableExpr / extended OP_SETLIST).
+func genArrayLiteral(n int) string {
+	var b strings.Builder
+	b.WriteString(`return { ["outer"] = { ["arr"] = {`)
+	for i := 0; i < n; i++ {
+		fmt.Fprintf(&b, "%d,", i+1)
+	}
+	b.WriteString("} } }")
+	return b.String()
+}
+
+// TestCompileTableExpr_LargeArrayLiteral exercises OP_SETLIST's extended
+// (C=0) form, which is required once a single array literal exceeds
+// 25,550 elements (MAXARG_C * FieldsPerFlush). Pre-fix, the compiler
+// emitted a 0 page-index instead of the real one AND the page-index
+// word was incorrectly popped by PropagateKMV, dropping the parent
+// key's SETTABLE entirely. We assert both the array contents and the
+// parent key assignment survive.
+func TestCompileTableExpr_LargeArrayLiteral(t *testing.T) {
+	for _, n := range []int{
+		FieldsPerFlush,                 // 50  — one full batch
+		FieldsPerFlush * 511,           // 25550 — last single-instruction page (C=511)
+		FieldsPerFlush*511 + 1,         // 25551 — first extended (C=0) page
+		FieldsPerFlush * 600,           // 30000 — well past the threshold
+		FieldsPerFlush*511 + (50 * 50), // hybrid: many extended pages
+	} {
+		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
+			L := NewState()
+			defer L.Close()
+			if err := L.DoString(genArrayLiteral(n)); err != nil {
+				t.Fatalf("DoString: %v", err)
+			}
+			root := L.Get(-1)
+			if root.Type() != LTTable {
+				t.Fatalf("root: want table, got %s", root.Type())
+			}
+			outer := root.(*LTable).RawGetString("outer")
+			if outer.Type() != LTTable {
+				t.Fatalf("outer: want table, got %s — parent SETTABLE was dropped", outer.Type())
+			}
+			arr := outer.(*LTable).RawGetString("arr")
+			if arr.Type() != LTTable {
+				t.Fatalf("outer.arr: want table, got %s — parent SETTABLE was dropped", arr.Type())
+			}
+			arrT := arr.(*LTable)
+			errorIfNotEqual(t, n, arrT.Len())
+			// Spot-check first, middle, last to confirm we didn't get a
+			// zero-offset corruption (where elements land at index 0/-1).
+			errorIfNotEqual(t, LNumber(1), arrT.RawGetInt(1))
+			errorIfNotEqual(t, LNumber(n/2), arrT.RawGetInt(n/2))
+			errorIfNotEqual(t, LNumber(n), arrT.RawGetInt(n))
+		})
+	}
+}
+
+// TestCompileTableExpr_ExtendedSetlistAtTopLevel covers the simpler case
+// where the oversized array literal is returned directly (not nested).
+// Only Bug #1 (page-index = 0) hits here; the PropagateKMV cascade
+// requires a parent expression. Pre-fix, every element after index
+// 25,550 was written to negative array indices and lost.
+func TestCompileTableExpr_ExtendedSetlistAtTopLevel(t *testing.T) {
+	const n = 30000
+	var b strings.Builder
+	b.WriteString("return {")
+	for i := 0; i < n; i++ {
+		fmt.Fprintf(&b, "%d,", i+1)
+	}
+	b.WriteString("}")
+
+	L := NewState()
+	defer L.Close()
+	if err := L.DoString(b.String()); err != nil {
+		t.Fatalf("DoString: %v", err)
+	}
+	tv := L.Get(-1)
+	if tv.Type() != LTTable {
+		t.Fatalf("want table, got %s", tv.Type())
+	}
+	arr := tv.(*LTable)
+	errorIfNotEqual(t, n, arr.Len())
+	errorIfNotEqual(t, LNumber(n), arr.RawGetInt(n))
 }
