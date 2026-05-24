@@ -47,6 +47,13 @@ func newAllocator(size int) *allocator {
 	return al
 }
 
+// LNumber2I is the same as the allocator method, exposed on LState
+// so callers building LValues from Go-side data (e.g. encoders) can
+// share the same amortized alloc strategy used internally.
+func (ls *LState) LNumber2I(v LNumber) LValue {
+	return ls.alloc.LNumber2I(v)
+}
+
 // LNumber2I takes a number value and returns an interface LValue representing the same number.
 // Converting an LNumber to a LValue naively, by doing:
 // `var val LValue = myLNumber`

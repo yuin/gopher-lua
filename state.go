@@ -109,6 +109,11 @@ type Options struct {
 	// If `MinimizeStackMemory` is set, the call stack will be automatically grown or shrank up to a limit of
 	// `CallStackSize` in order to minimize memory usage. This does incur a slight performance penalty.
 	MinimizeStackMemory bool
+	// NumberPoolSize controls the page size of the internal LNumber
+	// allocator. Larger values reduce per-call allocations when many
+	// LNumbers are produced (e.g., encoding large numeric slices).
+	// Defaults to 32 if zero.
+	NumberPoolSize int
 }
 
 /* }}} */
@@ -662,7 +667,11 @@ func panicWithoutTraceback(L *LState) {
 }
 
 func newLState(options Options) *LState {
-	al := newAllocator(32)
+	pageSize := options.NumberPoolSize
+	if pageSize <= 0 {
+		pageSize = 32
+	}
+	al := newAllocator(pageSize)
 	ls := &LState{
 		G:       newGlobal(),
 		Parent:  nil,
@@ -787,7 +796,12 @@ func (ls *LState) where(level int, skipg bool) string {
 	}
 	line := ""
 	if proto != nil {
-		line = fmt.Sprintf("%v:", proto.DbgSourcePositions[cf.Pc-1])
+		pos := cf.Pc - 1
+		if pos >= 0 && pos < len(proto.DbgSourcePositions) {
+			line = fmt.Sprintf("%v:", proto.DbgSourcePositions[pos])
+		} else {
+			line = "?:"
+		}
 	}
 	return fmt.Sprintf("%v:%v", sourcename, line)
 }
