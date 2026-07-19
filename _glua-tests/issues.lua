@@ -490,3 +490,37 @@ function test()
   assert(b == nil)
 end
 test()
+
+-- issue #524
+-- Assigning to a field or index of a non-table value must raise a Lua error,
+-- never panic the VM or silently corrupt an unrelated value. The object of an
+-- assignment target is operand A of OP_SETTABLE(KS), which the VM reads as a
+-- register; a constant object such as ("s").k = v used to be folded into an RK
+-- operand that aliased another register.
+function test()
+  -- (1) silent corruption: the write must not fall through into a nearby local.
+  -- Compiled as a top-level chunk to exercise the register layout in which the
+  -- bug corrupted rather than erroring.
+  local chunk = assert(loadstring("local t = {}; (5).field = 1; return t"))
+  local ok = pcall(chunk)
+  assert(not ok, "assigning a field of a number must error, not corrupt a local")
+
+  -- (2) VM panic: the reported crash, with the string metatable replaced by one
+  -- that has no __newindex.
+  local savedmt = debug.getmetatable("")
+  local ok2, msg2 = pcall(assert(loadstring([[debug.setmetatable("", {}); ("Lua").key = 1]])))
+  debug.setmetatable("", savedmt)
+  assert(not ok2)
+  assert(string.find(msg2, "attempt to index a non%-table object"), msg2)
+
+  -- (3) the raised error reports the correct type of the indexed value.
+  local ok3, msg3 = pcall(function() (5).field = 1 end)
+  assert(not ok3)
+  assert(string.find(msg3, "non%-table object%(number%)"), msg3)
+
+  -- (4) a valid parenthesised table assignment target keeps working.
+  local t = {}
+  ;(t).x = 1
+  assert(t.x == 1)
+end
+test()

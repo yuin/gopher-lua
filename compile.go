@@ -705,7 +705,13 @@ func compileAssignStmtLeft(context *funcContext, stmt *ast.AssignStmt) (int, []*
 			acs = append(acs, &assigncontext{ec, 0, 0, false, false})
 		case *ast.AttrGetExpr:
 			ac := &assigncontext{&expcontext{ecTable, regNotDefined, 0}, 0, 0, false, false}
-			compileExprWithKMVPropagation(context, st.Object, &reg, &ac.ec.reg)
+			// The assignment target object becomes operand A of OP_SETTABLE(KS),
+			// which the VM always reads as a register R(A), never as a constant.
+			// Use MV (not KMV) propagation: KMV would fold a constant object such
+			// as ("s").k = v into an RK operand, whose truncated index then aliases
+			// an unrelated register - silently writing to the wrong value, or
+			// panicking when that register is unset. This mirrors the read path.
+			compileExprWithMVPropagation(context, st.Object, &reg, &ac.ec.reg)
 			ac.keyrk = reg
 			reg += compileExpr(context, reg, st.Key, ecnone(0))
 			if _, ok := st.Key.(*ast.StringExpr); ok {
