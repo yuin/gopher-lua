@@ -398,6 +398,89 @@ func TestCoroutineApi1(t *testing.T) {
 
 }
 
+func TestCoroutineGoStackTrace(t *testing.T) {
+	for _, mode := range []struct {
+		name   string
+		script string
+	}{
+		{name: "GoResume"},
+		{name: "LuaResume", script: `ok, result = coroutine.resume(coroutine.create(failInCoroutine))`},
+		{name: "LuaWrap", script: `ok, result = pcall(coroutine.wrap(failInCoroutine))`},
+	} {
+		for _, option := range []struct {
+			name    string
+			include bool
+		}{
+			{name: "enabled", include: true},
+			{name: "disabled"},
+		} {
+			for _, failure := range []string{"GoPanic", "ApiError", "LuaError"} {
+				t.Run(mode.name+"/"+option.name+"/"+failure, func(t *testing.T) {
+					L := NewState(Options{IncludeGoStackTrace: option.include})
+					defer L.Close()
+					marker := L.NewTable()
+					L.SetGlobal("marker", marker)
+					L.Register("fail", func(L *LState) int {
+						if failure == "ApiError" {
+							panic(&ApiError{Type: ApiErrorRun, Object: marker, StackTrace: "existing Lua stack"})
+						}
+						panic("coroutine panic")
+					})
+					script := `fail()`
+					if failure == "LuaError" {
+						script = `error(marker, 0)`
+					}
+					fn, err := L.LoadString(script)
+					if err != nil {
+						t.Fatal(err)
+					}
+					var result LValue
+					if mode.script == "" {
+						co, _ := L.NewThread()
+						status, err, values := L.Resume(co, fn)
+						if status != ResumeError || err == nil || len(values) != 0 {
+							t.Fatalf("expected ResumeError, got status=%v, err=%v, values=%v", status, err, values)
+						}
+						apiErr, ok := err.(*ApiError)
+						if !ok {
+							t.Fatalf("expected *ApiError, got %T", err)
+						}
+						result = apiErr.Object
+					} else {
+						L.SetGlobal("failInCoroutine", fn)
+						if err := L.DoString(mode.script); err != nil {
+							t.Fatal(err)
+						}
+						if L.GetGlobal("ok") != LFalse {
+							t.Fatal("expected coroutine failure")
+						}
+						result = L.GetGlobal("result")
+					}
+					if failure != "GoPanic" {
+						if result != marker {
+							t.Fatalf("error object changed: got %v, want %v", result, marker)
+						}
+						return
+					}
+					message, ok := result.(LString)
+					if !ok {
+						t.Fatalf("expected string panic message, got %T", result)
+					}
+					if option.include {
+						if !strings.HasPrefix(string(message), "coroutine panic\n") ||
+							!strings.Contains(string(message), "goroutine ") ||
+							!strings.Contains(string(message), "TestCoroutineGoStackTrace") {
+							t.Fatalf("expected panic message and Go stack trace, got %q", message)
+						}
+					} else if message != "coroutine panic" {
+						t.Fatalf("unexpected panic message with stack trace disabled: %q", message)
+					}
+				})
+			}
+		}
+	}
+}
+
 func TestContextTimeout(t *testing.T) {
 	L := NewState()
 	defer L.Close()

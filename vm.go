@@ -7,6 +7,7 @@ package lua
 import (
 	"fmt"
 	"math"
+	"runtime/debug"
 	"strings"
 )
 
@@ -274,6 +275,8 @@ func threadRun(L *LState) {
 			var lv LValue
 			if v, ok := rcv.(*ApiError); ok {
 				lv = v.Object
+			} else if L.Options.IncludeGoStackTrace {
+				lv = LString(fmt.Sprintf("%v\n%s", rcv, debug.Stack()))
 			} else {
 				lv = LString(fmt.Sprint(rcv))
 			}
