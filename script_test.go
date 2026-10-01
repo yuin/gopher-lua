@@ -1,6 +1,7 @@
 package lua
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -145,6 +146,36 @@ func TestGlua(t *testing.T) {
 
 func TestLua(t *testing.T) {
 	testScriptDir(t, luaTests, "_lua5.1-tests")
+}
+
+func TestGenericForConstantFalseBranch(t *testing.T) {
+	tests := []struct {
+		name   string
+		script string
+		want   LNumber
+	}{
+		{"return", `for k, v in ipairs({1}) do if false then local y end end return 1`, 1},
+		{"sum", `local n = 0 for k, v in ipairs({1, 2, 3}) do if false then local y end n = n + v end return n`, 6},
+		{"preceding_loop", `for i = 1, 1 do end for k, v in ipairs({1}) do if false then local y end end return 1`, 1},
+		{"break", `local n = 0 for k, v in ipairs({1, 2, 3}) do if false then break end n = n + v end return n`, 6},
+		{"nested_loop", `local n = 0 for k, v in ipairs({1, 2, 3}) do if false then for x in pairs({}) do end end n = n + v end return n`, 6},
+		{"runtime_false", `local n = 0 for k, v in ipairs({1, 2, 3}) do if v == 9 then local y end n = n + v end return n`, 6},
+		{"numeric_for", `local n = 0 for i = 1, 3 do if false then local y end n = n + i end return n`, 6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			L := NewState()
+			defer L.Close()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			L.SetContext(ctx)
+			if err := L.DoString(tt.script); err != nil {
+				t.Fatal(err)
+			}
+			errorIfNotEqual(t, 1, L.GetTop())
+			errorIfNotEqual(t, tt.want, L.Get(1))
+		})
+	}
 }
 
 func TestMergingLoadNilBug2(t *testing.T) {

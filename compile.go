@@ -1815,6 +1815,10 @@ func patchCode(context *funcContext) { // {{{
 					break
 				}
 				distance = d
+				// Earlier instructions have already had their labels patched to offsets.
+				if distance < 0 {
+					break
+				}
 				count++
 			}
 			if distance == 0 {
