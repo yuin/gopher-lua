@@ -192,6 +192,7 @@ type LState struct {
 	wrapped      bool
 	uvcache      *Upvalue
 	hasErrorFunc bool
+	nCcalls      int // Go-to-Lua calls (callR) in progress on this thread
 	mainLoop     func(*LState, *callFrame)
 	ctx          context.Context
 	ctxCancelFn  context.CancelFunc

@@ -205,6 +205,11 @@ func callGFunction(L *LState, tailcall bool) bool {
 	}
 
 	if gfnret < 0 {
+		if L.nCcalls > 0 && L.Parent != nil {
+			// The yield would unwind a Go frame (pcall, a metamethod, a Go
+			// function calling Lua) that cannot be resumed: Lua 5.1 behavior.
+			L.RaiseError("attempt to yield across metamethod/C-call boundary")
+		}
 		switchToParentThread(L, L.GetTop(), false, false)
 		return true
 	}

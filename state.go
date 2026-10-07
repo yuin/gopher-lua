@@ -1261,6 +1261,7 @@ func (ls *LState) callR(nargs, nret, rbase int) {
 		Parent:     ls.currentFrame,
 		TailCall:   0,
 	}, lv, meta)
+	ls.nCcalls++
 	if ls.G.MainThread == nil {
 		ls.G.MainThread = ls
 		ls.G.CurrentThread = ls
@@ -1268,6 +1269,7 @@ func (ls *LState) callR(nargs, nret, rbase int) {
 	} else {
 		ls.mainLoop(ls, ls.currentFrame)
 	}
+	ls.nCcalls--
 	if nret != MultRet {
 		ls.reg.SetTop(rbase + nret)
 	}
@@ -2030,6 +2032,7 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 	err = nil
 	sp := ls.stack.Sp()
 	base := ls.reg.Top() - nargs - 1
+	nccalls := ls.nCcalls
 	oldpanic := ls.Panic
 	ls.Panic = panicWithoutTraceback
 	if errfunc != nil {
@@ -2040,6 +2043,7 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 		ls.hasErrorFunc = false
 		rcv := recover()
 		if rcv != nil {
+			ls.nCcalls = nccalls
 			if _, ok := rcv.(*ApiError); !ok {
 				err = newApiErrorS(ApiErrorPanic, fmt.Sprint(rcv))
 				if ls.Options.IncludeGoStackTrace {
@@ -2069,6 +2073,7 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 							err = rcv.(*ApiError)
 							err.(*ApiError).StackTrace = ls.stackTrace(0)
 						}
+						ls.nCcalls = nccalls
 						ls.stack.SetSp(sp)
 						ls.currentFrame = ls.stack.Last()
 						ls.reg.SetTop(base)
