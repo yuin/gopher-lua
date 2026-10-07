@@ -369,7 +369,7 @@ func strMatch(L *LState) int {
 	}
 	if len(mds) == 0 {
 		L.Push(LNil)
-		return 0
+		return 1
 	}
 	md := mds[0]
 	nsubs := md.CaptureLength() / 2

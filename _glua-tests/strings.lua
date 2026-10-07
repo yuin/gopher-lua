@@ -11,3 +11,9 @@ assert(ret1 == 1)
 assert(ret2 == 3)
 assert(ret3 == "aaa")
 assert(ret4 == 4)
+
+-- issue #543: string.match returns nil when there is no match
+assert(select("#", ("abc"):match("(%d+)")) == 1)
+assert(("abc"):match("(%d+)") == nil)
+assert(tonumber(("abc"):match("(%d+)")) == nil)
+assert(select("#", string.match("abc", "%d")) == 1)
