@@ -64,8 +64,33 @@ func baseAssert(L *LState) int {
 }
 
 func baseCollectGarbage(L *LState) int {
-	runtime.GC()
-	return 0
+	switch opt := L.OptString(1, "collect"); opt {
+	case "collect":
+		runtime.GC()
+		L.Push(LNumber(0))
+	case "count":
+		// Kbytes in use by the Go heap (the Lua state has no heap of its own).
+		var ms runtime.MemStats
+		runtime.ReadMemStats(&ms)
+		L.Push(LNumber(float64(ms.HeapAlloc) / 1024))
+	case "step":
+		runtime.GC()
+		L.Push(LTrue)
+	case "stop", "restart":
+		// The Go collector cannot be stopped for one state.
+		L.Push(LNumber(0))
+	case "setpause":
+		prev := L.G.gcPause
+		L.G.gcPause = L.OptInt(2, 0)
+		L.Push(LNumber(prev))
+	case "setstepmul":
+		prev := L.G.gcStepMul
+		L.G.gcStepMul = L.OptInt(2, 0)
+		L.Push(LNumber(prev))
+	default:
+		L.ArgError(1, "invalid option '"+opt+"'")
+	}
+	return 1
 }
 
 func baseDoFile(L *LState) int {

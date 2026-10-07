@@ -174,6 +174,8 @@ type Global struct {
 	builtinMts map[int]LValue
 	tempFiles  []*os.File
 	gccount    int32
+	gcPause    int // collectgarbage("setpause"): kept and returned, no effect on the Go collector
+	gcStepMul  int // collectgarbage("setstepmul"): idem
 }
 
 type LState struct {
