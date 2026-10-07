@@ -734,7 +734,7 @@ func (ls *LState) closeAllUpvalues() { // +inline-start
 
 func (ls *LState) raiseError(level int, format string, args ...interface{}) {
 	if !ls.hasErrorFunc {
-		ls.closeAllUpvalues()
+		ls.closeUpvalues(ls.pcallBase)
 	}
 	message := format
 	if len(args) > 0 {
@@ -1736,7 +1736,7 @@ func (ls *LState) Error(lv LValue, level int) {
 		ls.raiseError(level, string(str))
 	} else {
 		if !ls.hasErrorFunc {
-			ls.closeAllUpvalues()
+			ls.closeUpvalues(ls.pcallBase)
 		}
 		ls.Push(lv)
 		ls.Panic(ls)
@@ -2035,6 +2035,10 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 	if errfunc != nil {
 		ls.hasErrorFunc = true
 	}
+	// This call is the innermost protected boundary until it returns (#448).
+	oldPcallBase := ls.pcallBase
+	ls.pcallBase = base
+	defer func() { ls.pcallBase = oldPcallBase }()
 	defer func() {
 		ls.Panic = oldpanic
 		ls.hasErrorFunc = false
@@ -2069,6 +2073,7 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 							err = rcv.(*ApiError)
 							err.(*ApiError).StackTrace = ls.stackTrace(0)
 						}
+						ls.closeUpvalues(base)
 						ls.stack.SetSp(sp)
 						ls.currentFrame = ls.stack.Last()
 						ls.reg.SetTop(base)
@@ -2079,6 +2084,9 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 			} else if len(err.(*ApiError).StackTrace) == 0 {
 				err.(*ApiError).StackTrace = ls.stackTrace(0)
 			}
+			// The frames above base are gone; close the upvalues they own
+			// (also after a Go panic or an xpcall handler, which skip the close in raiseError).
+			ls.closeUpvalues(base)
 			ls.stack.SetSp(sp)
 			ls.currentFrame = ls.stack.Last()
 			ls.reg.SetTop(base)

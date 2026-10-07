@@ -760,3 +760,15 @@ func BenchmarkRegistrySetTop(t *testing.B) {
 		reg.SetTop(0)
 	}
 }
+
+// An error with no pcall on the Lua stack still closes every open upvalue of
+// the state, so a closure keeps its value when the host reuses the state (#448).
+func TestUnprotectedErrorClosesUpvalues(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	errorIfScriptNotFail(t, L, `
+		local s = "kept"
+		keep = function() return s end
+		error("top level")`, "top level")
+	errorIfScriptFail(t, L, `local a, b, c, d = 9, 9, 9, 9; assert(keep() == "kept")`)
+}

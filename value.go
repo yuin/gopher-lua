@@ -192,6 +192,7 @@ type LState struct {
 	wrapped      bool
 	uvcache      *Upvalue
 	hasErrorFunc bool
+	pcallBase    int // register base of the innermost PCall (0: none), see #448
 	mainLoop     func(*LState, *callFrame)
 	ctx          context.Context
 	ctxCancelFn  context.CancelFunc

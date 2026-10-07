@@ -490,3 +490,72 @@ function test()
   assert(b == nil)
 end
 test()
+
+-- issue #448: a caught error must not close the upvalues of the frames that
+-- called pcall and keep running
+function test()
+  local a
+  local function use_a() return a("test") end
+  pcall(function() error("an error") end)
+  a = function(v) return v end
+  assert(use_a() == "test")
+
+  local x = 1
+  local set = function(v) x = v end
+  local get = function() return x end
+  pcall(function() error("boom") end)
+  set(2)
+  assert(x == 2)
+  x = 3
+  assert(get() == 3)
+
+  pcall(string.rep)
+  x = 4
+  assert(get() == 4)
+
+  pcall(function() local y; return y.z end)
+  x = 5
+  assert(get() == 5)
+
+  local function inner() pcall(function() error("e") end) end
+  inner()
+  x = 6
+  assert(get() == 6)
+
+  pcall(function()
+    local y = 1
+    local gy = function() return y end
+    pcall(function() error("in") end)
+    y = 2
+    x = gy() + 10
+  end)
+  assert(get() == 12)
+
+  local passed, failed = 0, 0
+  local function check(ok) if ok then passed = passed + 1 else failed = failed + 1 end end
+  for i = 1, 3 do
+    check(pcall(function() if i == 2 then error("case " .. i) end end))
+  end
+  assert(passed == 2 and failed == 1)
+end
+test()
+
+-- issue #448: a closure created inside a failed xpcall/pcall keeps its own value
+function test()
+  local keep
+  xpcall(function() local s = "inner"; keep = function() return s end; error("x") end,
+    function(e) return e end)
+  local function clobber() local a, b, c, d, e, f, g, h = 1, 2, 3, 4, 5, 6, 7, 8; return a end
+  clobber()
+  assert(keep() == "inner")
+
+  pcall(function() local s = "inner2"; keep = function() return s end; error("x") end)
+  clobber()
+  assert(keep() == "inner2")
+
+  local co = coroutine.create(function() local s = "co"; keep = function() return s end; error("die") end)
+  coroutine.resume(co)
+  clobber()
+  assert(keep() == "co")
+end
+test()
