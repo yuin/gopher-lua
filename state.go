@@ -1769,8 +1769,13 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 			} else {
 				dbg.What = "Lua"
 			}
-			if !f.IsG {
+			if f.IsG {
+				dbg.Source = "=[C]" // as Lua 5.1 reports a function that is not Lua code
+			} else {
 				dbg.Source = f.Proto.SourceName
+				if f.Proto.fromFile {
+					dbg.Source = "@" + f.Proto.SourceName
+				}
 				dbg.LineDefined = f.Proto.LineDefined
 				dbg.LastLineDefined = f.Proto.LastLineDefined
 			}

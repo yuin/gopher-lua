@@ -62,6 +62,7 @@ func debugGetInfo(L *LState) int {
 	}
 	tbl.RawSetString("what", LString(dbg.What))
 	tbl.RawSetString("source", LString(dbg.Source))
+	tbl.RawSetString("short_src", LString(chunkID(dbg.Source)))
 	tbl.RawSetString("currentline", LNumber(dbg.CurrentLine))
 	tbl.RawSetString("nups", LNumber(dbg.NUpvalues))
 	tbl.RawSetString("linedefined", LNumber(dbg.LineDefined))
@@ -170,4 +171,37 @@ func debugTraceback(L *LState) int {
 	}
 	L.Push(LString(traceback))
 	return 1
+}
+
+// chunkID is the short_src of a source, as luaO_chunkid in Lua 5.1:
+// "=name" -> name, "@file" -> file, a string chunk -> [string "first line..."].
+func chunkID(source string) string {
+	const idSize = 60
+	switch {
+	case strings.HasPrefix(source, "="):
+		s := source[1:]
+		if len(s) > idSize-1 {
+			s = s[:idSize-1]
+		}
+		return s
+	case strings.HasPrefix(source, "@"):
+		s := source[1:]
+		if len(s) > idSize-1 {
+			s = "..." + s[len(s)-(idSize-1-3):]
+		}
+		return s
+	default:
+		s := source
+		cut := false
+		if i := strings.IndexAny(s, "\r\n"); i >= 0 {
+			s, cut = s[:i], true
+		}
+		if max := idSize - len(`[string "..."]`) - 1; len(s) > max {
+			s, cut = s[:max], true
+		}
+		if cut {
+			s += "..."
+		}
+		return `[string "` + s + `"]`
+	}
 }

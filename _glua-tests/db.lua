@@ -19,9 +19,9 @@ local function f2()
   assert(info.nups == 1)
   assert(info.name == "f2")
   assert(info.what == "Lua")
-  if string.find(_VERSION, "GopherLua") then
-    assert(info.source == "db.lua")
-  end
+  assert(info.source == "@db.lua")
+  assert(info.short_src == "db.lua")
+  assert(debug.getinfo(2, "S").short_src == "db.lua")
 end
 f2()
 
@@ -35,9 +35,18 @@ assert(info.lastlinedefined == 29)
 assert(info.nups == 0)
 assert(info.name == nil)
 assert(info.what == "Lua")
-if string.find(_VERSION, "GopherLua") then
-  assert(info.source == "db.lua")
-end
+assert(info.source == "@db.lua")
+assert(info.short_src == "db.lua")
+
+-- source and short_src as in Lua 5.1 (#547)
+local s = debug.getinfo(print, "S")
+assert(s.source == "=[C]" and s.short_src == "[C]")
+s = loadstring("return debug.getinfo(1, 'S')", "=custom")()
+assert(s.source == "=custom" and s.short_src == "custom")
+s = loadstring("return debug.getinfo(1, 'S')", "@virtual.lua")()
+assert(s.source == "@virtual.lua" and s.short_src == "virtual.lua")
+s = loadstring("return debug.getinfo(1, 'S')", "chunk\nsecond line")()
+assert(s.short_src == '[string "chunk..."]')
 
 local function f4()
   local a,b,c = 1,2,3

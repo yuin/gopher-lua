@@ -39,6 +39,8 @@ type FunctionProto struct {
 	DbgCalls           []DbgCall
 	DbgUpvalues        []string
 
+	fromFile bool // loaded by LoadFile: debug info reports the source as "@" + SourceName
+
 	stringConstants []string
 }
 

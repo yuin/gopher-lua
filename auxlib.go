@@ -386,7 +386,18 @@ func (ls *LState) LoadFile(path string) (*LFunction, error) {
 		}
 	}
 
-	return ls.Load(reader, path)
+	fn, err := ls.Load(reader, path)
+	if err == nil && len(path) > 0 {
+		markLoadedFromFile(fn.Proto)
+	}
+	return fn, err
+}
+
+func markLoadedFromFile(proto *FunctionProto) {
+	proto.fromFile = true
+	for _, p := range proto.FunctionPrototypes {
+		markLoadedFromFile(p)
+	}
 }
 
 func (ls *LState) LoadString(source string) (*LFunction, error) {
