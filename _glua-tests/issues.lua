@@ -490,3 +490,14 @@ function test()
   assert(b == nil)
 end
 test()
+
+-- xpcall with a callable table as the first argument
+function test()
+  local f = setmetatable({}, {__call = function() return 42 end})
+  local ok, v = xpcall(f, function(e) return e end)
+  assert(ok == true and v == 42)
+  local g = setmetatable({}, {__call = function() error("boom", 0) end})
+  local ok, v = xpcall(g, function(e) return "handled: " .. e end)
+  assert(ok == false and v == "handled: boom")
+end
+test()

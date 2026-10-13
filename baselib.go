@@ -458,7 +458,7 @@ func baseUnpack(L *LState) int {
 }
 
 func baseXPCall(L *LState) int {
-	fn := L.CheckFunction(1)
+	fn := L.CheckAny(1)
 	errfunc := L.CheckFunction(2)
 
 	top := L.GetTop()
