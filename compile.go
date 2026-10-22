@@ -1668,7 +1668,7 @@ func compileLogicalOpExprAux(context *funcContext, reg int, expr ast.Expr, ec *e
 		}
 	} else {
 		reg += compileExpr(context, reg, expr, ecnone(0))
-		if !hasnextcond {
+		if !hasnextcond && !isLastAnd {
 			code.AddABC(OP_TEST, a, 0, 0^flip, sline(expr))
 		} else {
 			code.AddABC(OP_TESTSET, sreg, a, 0^flip, sline(expr))

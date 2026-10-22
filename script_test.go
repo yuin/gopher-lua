@@ -258,3 +258,29 @@ func TestMergingLoadNilBug(t *testing.T) {
 //		t.Fatalf("expected 1 LOADNIL instruction, found %d", count)
 //	}
 //}
+
+func TestShortCircuitAssignmentWithCalls(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	if err := L.DoString(`
+function greaterThan(a, b)
+  return a > b
+end
+
+function lessThan(a, b)
+  return a < b
+end
+
+function betweenViaFunctions(val, a, b)
+  local result = true
+  result = result and (greaterThan(val, a) and lessThan(val, b))
+  return result
+end
+
+for _, case in ipairs({{2, false}, {3, false}, {4, true}, {5, false}, {6, false}}) do
+  assert(betweenViaFunctions(case[1], 3, 5) == case[2], "unexpected result for " .. case[1])
+end
+`); err != nil {
+		t.Fatal(err)
+	}
+}
