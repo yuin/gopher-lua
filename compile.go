@@ -541,10 +541,10 @@ func (fc *funcContext) BlockLocalVarsCount() int {
 	return count
 }
 
-func (fc *funcContext) RegisterLocalVar(name string) int {
+func (fc *funcContext) RegisterLocalVar(name string, line int) int {
 	ret := fc.Block.LocalVars.Register(name)
 	fc.Proto.DbgLocals = append(fc.Proto.DbgLocals, &DbgLocalInfo{Name: name, StartPc: fc.Code.LastPC() + 1})
-	fc.SetRegTop(fc.RegTop() + 1)
+	fc.SetRegTop(fc.RegTop()+1, line)
 	return ret
 }
 
@@ -592,7 +592,7 @@ func (fc *funcContext) LeaveBlock() int {
 		fc.ResolveCurrentBlockGotosWithParentBlock()
 	}
 	fc.Block = fc.Block.Parent
-	fc.SetRegTop(fc.Block.LocalVars.LastIndex())
+	fc.SetRegTop(fc.Block.LocalVars.LastIndex(), fc.Proto.LineDefined)
 	return closed
 }
 
@@ -602,9 +602,9 @@ func (fc *funcContext) EndScope() {
 	}
 }
 
-func (fc *funcContext) SetRegTop(top int) {
+func (fc *funcContext) SetRegTop(top, line int) {
 	if top > maxRegisters {
-		raiseCompileError(fc, fc.Proto.LineDefined, "too many local variables")
+		raiseCompileError(fc, line, "too many local variables")
 	}
 	fc.regTop = top
 }
@@ -857,7 +857,7 @@ func compileLocalAssignStmt(context *funcContext, stmt *ast.LocalAssignStmt) { /
 	reg := context.RegTop()
 	if len(stmt.Names) == 1 && len(stmt.Exprs) == 1 {
 		if _, ok := stmt.Exprs[0].(*ast.FunctionExpr); ok {
-			context.RegisterLocalVar(stmt.Names[0])
+			context.RegisterLocalVar(stmt.Names[0], sline(stmt))
 			compileRegAssignment(context, stmt.Names, stmt.Exprs, reg, len(stmt.Names), sline(stmt))
 			return
 		}
@@ -865,7 +865,7 @@ func compileLocalAssignStmt(context *funcContext, stmt *ast.LocalAssignStmt) { /
 
 	compileRegAssignment(context, stmt.Names, stmt.Exprs, reg, len(stmt.Names), sline(stmt))
 	for _, name := range stmt.Names {
-		context.RegisterLocalVar(name)
+		context.RegisterLocalVar(name, sline(stmt))
 	}
 } // }}}
 
@@ -1054,17 +1054,17 @@ func compileNumberForStmt(context *funcContext, stmt *ast.NumberForStmt) { // {{
 
 	context.EnterBlock(endlabel, stmt)
 	reg := context.RegTop()
-	rindex := context.RegisterLocalVar("(for index)")
+	rindex := context.RegisterLocalVar("(for index)", sline(stmt))
 	ecupdate(ec, ecLocal, rindex, 0)
 	compileExpr(context, reg, stmt.Init, ec)
 
 	reg = context.RegTop()
-	rlimit := context.RegisterLocalVar("(for limit)")
+	rlimit := context.RegisterLocalVar("(for limit)", sline(stmt))
 	ecupdate(ec, ecLocal, rlimit, 0)
 	compileExpr(context, reg, stmt.Limit, ec)
 
 	reg = context.RegTop()
-	rstep := context.RegisterLocalVar("(for step)")
+	rstep := context.RegisterLocalVar("(for step)", sline(stmt))
 	if stmt.Step == nil {
 		stmt.Step = &ast.NumberExpr{Value: "1"}
 		stmt.Step.SetLine(sline(stmt.Init))
@@ -1074,7 +1074,7 @@ func compileNumberForStmt(context *funcContext, stmt *ast.NumberForStmt) { // {{
 
 	code.AddASbx(OP_FORPREP, rindex, 0, sline(stmt))
 
-	context.RegisterLocalVar(stmt.Name)
+	context.RegisterLocalVar(stmt.Name, sline(stmt))
 
 	bodypc := code.LastPC()
 	compileChunk(context, stmt.Stmts, false)
@@ -1097,16 +1097,16 @@ func compileGenericForStmt(context *funcContext, stmt *ast.GenericForStmt) { // 
 	nnames := len(stmt.Names)
 
 	context.EnterBlock(endlabel, stmt)
-	rgen := context.RegisterLocalVar("(for generator)")
-	context.RegisterLocalVar("(for state)")
-	context.RegisterLocalVar("(for control)")
+	rgen := context.RegisterLocalVar("(for generator)", sline(stmt))
+	context.RegisterLocalVar("(for state)", sline(stmt))
+	context.RegisterLocalVar("(for control)", sline(stmt))
 
 	compileRegAssignment(context, stmt.Names, stmt.Exprs, context.RegTop()-3, 3, sline(stmt))
 
 	code.AddASbx(OP_JMP, 0, fllabel, sline(stmt))
 
 	for _, name := range stmt.Names {
-		context.RegisterLocalVar(name)
+		context.RegisterLocalVar(name, sline(stmt))
 	}
 
 	context.SetLabelPc(bodylabel, code.LastPC())
@@ -1313,16 +1313,16 @@ func compileFunctionExpr(context *funcContext, funcexpr *ast.FunctionExpr, ec *e
 	context.Proto.NumParameters = uint8(len(funcexpr.ParList.Names))
 	if ec.ctype == ecMethod {
 		context.Proto.NumParameters += 1
-		context.RegisterLocalVar("self")
+		context.RegisterLocalVar("self", sline(funcexpr))
 	}
 	for _, name := range funcexpr.ParList.Names {
-		context.RegisterLocalVar(name)
+		context.RegisterLocalVar(name, sline(funcexpr))
 	}
 	if funcexpr.ParList.HasVargs {
 		if CompatVarArg {
 			context.Proto.IsVarArg = VarArgHasArg | VarArgNeedsArg
 			if context.Parent != nil {
-				context.RegisterLocalVar("arg")
+				context.RegisterLocalVar("arg", sline(funcexpr))
 			}
 		}
 		context.Proto.IsVarArg |= VarArgIsVarArg
@@ -1336,6 +1336,9 @@ func compileFunctionExpr(context *funcContext, funcexpr *ast.FunctionExpr, ec *e
 	context.Proto.Code = context.Code.List()
 	context.Proto.DbgSourcePositions = context.Code.PosList()
 	context.Proto.DbgUpvalues = context.Upvalues.Names()
+	if len(context.Proto.DbgUpvalues) > math.MaxUint8 {
+		raiseCompileError(context, context.Proto.LineDefined, "too many upvalues")
+	}
 	context.Proto.NumUpvalues = uint8(len(context.Proto.DbgUpvalues))
 	for _, clv := range context.Proto.Constants {
 		sv := ""
@@ -1770,13 +1773,16 @@ func getExprName(context *funcContext, expr ast.Expr) string { // {{{
 
 func patchCode(context *funcContext) { // {{{
 	maxreg := 1
+	overflowLine := context.Proto.LineDefined
 	if np := int(context.Proto.NumParameters); np > 1 {
 		maxreg = np
 	}
 	moven := 0
 	code := context.Code.List()
+	lines := context.Code.PosList()
 	for pc := 0; pc < len(code); pc++ {
 		inst := code[pc]
+		previousMax := maxreg
 		curop := opGetOpCode(inst)
 		switch curop {
 		case OP_CLOSURE:
@@ -1827,6 +1833,9 @@ func patchCode(context *funcContext) { // {{{
 				maxreg = reg
 			}
 		}
+		if previousMax < maxRegisters && maxreg >= maxRegisters {
+			overflowLine = lines[pc]
+		}
 
 		// bulk move optimization(reducing op dipatch costs)
 		if curop == OP_MOVE {
@@ -1841,7 +1850,7 @@ func patchCode(context *funcContext) { // {{{
 	}
 	maxreg++
 	if maxreg > maxRegisters {
-		raiseCompileError(context, context.Proto.LineDefined, "register overflow(too many local variables)")
+		raiseCompileError(context, overflowLine, "register overflow(too many local variables)")
 	}
 	context.Proto.NumUsedRegisters = uint8(maxreg)
 } // }}}
