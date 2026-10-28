@@ -133,15 +133,144 @@ func strFind(L *LState) int {
 	return md.CaptureLength()/2 + 1
 }
 
+// strFormatQuoted implements the %q conversion the way Lua 5.1's addquoted
+// (lstrlib.c) does: '"', '\\' and newline keep a backslash (the newline stays
+// a real newline byte), '\r' becomes \r, a NUL byte becomes the three-digit
+// \000, and every other byte is copied through untouched.
+func strFormatQuoted(buf *[]byte, s string) {
+	*buf = append(*buf, '"')
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch c {
+		case '"', '\\', '\n':
+			*buf = append(*buf, '\\', c)
+		case '\r':
+			*buf = append(*buf, '\\', 'r')
+		case 0:
+			*buf = append(*buf, '\\', '0', '0', '0')
+		default:
+			*buf = append(*buf, c)
+		}
+	}
+	*buf = append(*buf, '"')
+}
+
+func strFormatPad(buf *[]byte, item string, width int, leftAlign bool) {
+	pad := width - len(item)
+	if !leftAlign {
+		for ; pad > 0; pad-- {
+			*buf = append(*buf, ' ')
+		}
+	}
+	*buf = append(*buf, item...)
+	if leftAlign {
+		for ; pad > 0; pad-- {
+			*buf = append(*buf, ' ')
+		}
+	}
+}
+
 func strFormat(L *LState) int {
 	str := L.CheckString(1)
-	args := make([]interface{}, L.GetTop()-1)
-	top := L.GetTop()
-	for i := 2; i <= top; i++ {
-		args[i-2] = L.Get(i)
+	arg := 1
+	out := make([]byte, 0, len(str)+16)
+	i := 0
+	for i < len(str) {
+		c := str[i]
+		if c != '%' {
+			out = append(out, c)
+			i++
+			continue
+		}
+		spec := i
+		i++
+		if i < len(str) && str[i] == '%' {
+			out = append(out, '%')
+			i++
+			continue
+		}
+		leftAlign := false
+		for i < len(str) && strings.IndexByte("-+ #0", str[i]) >= 0 {
+			if str[i] == '-' {
+				leftAlign = true
+			}
+			i++
+		}
+		width := -1
+		for i < len(str) && str[i] >= '0' && str[i] <= '9' {
+			if width < 0 {
+				width = 0
+			}
+			width = width*10 + int(str[i]-'0')
+			i++
+		}
+		prec := -1
+		if i < len(str) && str[i] == '.' {
+			i++
+			prec = 0
+			for i < len(str) && str[i] >= '0' && str[i] <= '9' {
+				prec = prec*10 + int(str[i]-'0')
+				i++
+			}
+		}
+		if i >= len(str) {
+			L.RaiseError("invalid format string to 'format'")
+		}
+		d := str[i]
+		i++
+		arg++
+		switch d {
+		case 's':
+			var ss string
+			switch v := L.Get(arg).(type) {
+			case LString:
+				ss = string(v)
+			case LNumber:
+				ss = v.String()
+			default:
+				L.TypeError(arg, LTString)
+			}
+			// Lua 5.1's str_format keeps a string with no precision and
+			// length >= 100 whole (too long for its C sprintf buffer), so
+			// only shorter strings are cut at the first NUL byte the way
+			// C sprintf's %s would cut them.
+			if prec < 0 && len(ss) >= 100 {
+				strFormatPad(&out, ss, width, leftAlign)
+				break
+			}
+			if i0 := strings.IndexByte(ss, 0); i0 >= 0 {
+				ss = ss[:i0]
+			}
+			if prec >= 0 && len(ss) > prec {
+				ss = ss[:prec]
+			}
+			strFormatPad(&out, ss, width, leftAlign)
+		case 'q':
+			var qs string
+			switch v := L.Get(arg).(type) {
+			case LString:
+				qs = string(v)
+			case LNumber:
+				qs = v.String()
+			default:
+				L.TypeError(arg, LTString)
+			}
+			strFormatQuoted(&out, qs)
+		case 'c':
+			// Lua 5.1 writes (char)n through sprintf and measures the
+			// result with strlen, so %c emits a single byte and a zero
+			// byte adds nothing.
+			n := int64(L.CheckNumber(arg))
+			item := ""
+			if b := byte(n); b != 0 {
+				item = string([]byte{b})
+			}
+			strFormatPad(&out, item, width, leftAlign)
+		default:
+			out = append(out, []byte(fmt.Sprintf(str[spec:i], L.Get(arg)))...)
+		}
 	}
-	npat := strings.Count(str, "%") - strings.Count(str, "%%")
-	L.Push(LString(fmt.Sprintf(str, args[:intMin(npat, len(args))]...)))
+	L.Push(LString(string(out)))
 	return 1
 }
 

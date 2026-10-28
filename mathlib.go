@@ -8,7 +8,7 @@ import (
 func OpenMath(L *LState) int {
 	mod := L.RegisterModule(MathLibName, mathFuncs).(*LTable)
 	mod.RawSetString("pi", LNumber(math.Pi))
-	mod.RawSetString("huge", LNumber(math.MaxFloat64))
+	mod.RawSetString("huge", LNumber(math.Inf(1)))
 	L.Push(mod)
 	return 1
 }

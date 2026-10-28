@@ -99,10 +99,10 @@ assert(tostring(false) == "false")
 print('+')
 
 x = '"ílo"\n\\'
--- assert(string.format('%q%s', x, x) == '"\\"ílo\\"\\\n\\\\""ílo"\n\\')
--- assert(string.format('%q', "\0") == [["\000"]])
---assert(string.format("\0%c\0%c%x\0", string.byte("á"), string.byte("b"), 140) ==
---              "\0á\0b8c\0")
+assert(string.format('%q%s', x, x) == '"\\"ílo\\"\\\n\\\\""ílo"\n\\')
+assert(string.format('%q', "\0") == [["\000"]])
+assert(string.format("\0%c\0%c%x\0", string.byte("á"), string.byte("b"), 140) ==
+              "\0á\0b8c\0")
 assert(string.format('') == "")
 assert(string.format("%c",34)..string.format("%c",48)..string.format("%c",90)..string.format("%c",100) ==
        string.format("%c%c%c%c", 34, 48, 90, 100))

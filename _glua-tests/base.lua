@@ -46,3 +46,33 @@ local ok, a, b = xpcall(function()
      return err .. "!", "b"
   end)
 assert(not ok and string.find(a, "error!!") and b == nil)
+
+-- numbers convert to text with the reference Lua 5.1 "%.14g" rendering
+assert(tostring(100) == "100")
+assert(tostring(0.1) == "0.1")
+assert(tostring(0.1 + 0.2) == "0.3")
+assert(tostring(1e-10) == "1e-10")
+assert(tostring(1e15) == "1e+15")
+assert(tostring(2^53) == "9.007199254741e+15")
+assert(tostring(123456789012345678) == "1.2345678901235e+17")
+assert(tostring(1/0) == "inf")
+assert(tostring(-1/0) == "-inf")
+local nan = 0/0
+local s1, s2 = tostring(nan), tostring(-nan)
+assert(s1 == "nan" or s1 == "-nan")
+assert(s2 == "nan" or s2 == "-nan")
+assert(s1 ~= s2)
+
+-- negative zero renders with its sign
+local zero = 0.0
+local negzero = -zero
+assert(tostring(zero) == "0")
+assert(tostring(negzero) == "-0")
+assert(tostring(negzero * 1) == "-0")
+
+-- the same rendering applies to concatenation and table.concat
+assert((1e15 .. "") == "1e+15")
+assert((2^53 .. "x") == "9.007199254741e+15x")
+assert((1.5 .. "") == "1.5")
+assert(("" .. negzero) == "-0")
+assert(table.concat({1e15, 2^53}, ",") == "1e+15,9.007199254741e+15")

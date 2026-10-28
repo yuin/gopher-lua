@@ -3,6 +3,7 @@ package lua
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 )
 
@@ -111,11 +112,24 @@ func (st LString) Format(f fmt.State, c rune) {
 	}
 }
 
+// String renders the number the way the reference Lua 5.1 interpreter does:
+// lua_number2str uses LUAI_NUMFMT "%.14g" (luaconf.h), and infinities and
+// NaNs print as C's printf spells them ("inf", "-inf", "nan", "-nan").
 func (nm LNumber) String() string {
-	if isInteger(nm) {
-		return fmt.Sprint(int64(nm))
+	f := float64(nm)
+	if math.IsInf(f, 1) {
+		return "inf"
 	}
-	return fmt.Sprint(float64(nm))
+	if math.IsInf(f, -1) {
+		return "-inf"
+	}
+	if math.IsNaN(f) {
+		if math.Signbit(f) {
+			return "-nan"
+		}
+		return "nan"
+	}
+	return fmt.Sprintf("%.14g", f)
 }
 
 func (nm LNumber) Type() LValueType { return LTNumber }

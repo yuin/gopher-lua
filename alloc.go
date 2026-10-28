@@ -1,6 +1,7 @@
 package lua
 
 import (
+	"math"
 	"reflect"
 	"unsafe"
 )
@@ -55,8 +56,10 @@ func newAllocator(size int) *allocator {
 // The downside of this is that all of the floats on a given block have to become eligible for gc before the block
 // as a whole can be gc-ed.
 func (al *allocator) LNumber2I(v LNumber) LValue {
-	// first check for shared preloaded numbers
-	if v >= 0 && v < preloadLimit && float64(v) == float64(int64(v)) {
+	// first check for shared preloaded numbers; negative zero compares equal
+	// to zero but must not share the preloaded +0, or it loses its sign
+	// (tostring(-0.0) is "-0" in Lua 5.1)
+	if v >= 0 && v < preloadLimit && float64(v) == float64(int64(v)) && !math.Signbit(float64(v)) {
 		return preloads[int(v)]
 	}
 
