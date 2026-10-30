@@ -112,7 +112,7 @@ func strFind(L *LState) int {
 		return 2
 	}
 
-	mds, err := pm.Find(pattern, unsafeFastStringToReadOnlyBytes(str), init, 1)
+	mds, err := L.G.patCache.Find(pattern, unsafeFastStringToReadOnlyBytes(str), init, 1)
 	if err != nil {
 		L.RaiseError(err.Error())
 	}
@@ -152,7 +152,7 @@ func strGsub(L *LState) int {
 	repl := L.CheckAny(3)
 	limit := L.OptInt(4, -1)
 
-	mds, err := pm.Find(pat, unsafeFastStringToReadOnlyBytes(str), 0, limit)
+	mds, err := L.G.patCache.Find(pat, unsafeFastStringToReadOnlyBytes(str), 0, limit)
 	if err != nil {
 		L.RaiseError(err.Error())
 	}
@@ -201,27 +201,27 @@ func capturedString(L *LState, m *pm.MatchData, str string, idx int) string {
 }
 
 func strGsubDoReplace(str string, info []replaceInfo) string {
-	offset := 0
-	buf := []byte(str)
-	for _, replace := range info {
-		oldlen := len(buf)
-		b1 := append([]byte(""), buf[0:offset+replace.Indicies[0]]...)
-		b2 := []byte("")
-		index2 := offset + replace.Indicies[1]
-		if index2 <= len(buf) {
-			b2 = append(b2, buf[index2:len(buf)]...)
-		}
-		buf = append(b1, replace.String...)
-		buf = append(buf, b2...)
-		offset += len(buf) - oldlen
+	var sb strings.Builder
+	sb.Grow(len(str))
+	prev := 0
+	for _, r := range info {
+		sb.WriteString(str[prev:r.Indicies[0]])
+		sb.WriteString(r.String)
+		prev = r.Indicies[1]
 	}
-	return string(buf)
+	sb.WriteString(str[prev:])
+	return sb.String()
 }
 
 func strGsubStr(L *LState, str string, repl string, matches []*pm.MatchData) string {
 	infoList := make([]replaceInfo, 0, len(matches))
+	plain := strings.IndexByte(repl, '%') < 0
 	for _, match := range matches {
 		start, end := match.Capture(0), match.Capture(1)
+		if plain {
+			infoList = append(infoList, replaceInfo{[]int{start, end}, repl})
+			continue
+		}
 		sc := newFlagScanner('%', "", "", repl)
 		for c, eos := sc.Next(); !eos; c, eos = sc.Next() {
 			if !sc.ChangeFlag {
@@ -327,7 +327,7 @@ func strGmatchIter(L *LState) int {
 func strGmatch(L *LState) int {
 	str := L.CheckString(1)
 	pattern := L.CheckString(2)
-	mds, err := pm.Find(pattern, []byte(str), 0, -1)
+	mds, err := L.G.patCache.Find(pattern, []byte(str), 0, -1)
 	if err != nil {
 		L.RaiseError(err.Error())
 	}
@@ -363,7 +363,7 @@ func strMatch(L *LState) int {
 		offset = 0
 	}
 
-	mds, err := pm.Find(pattern, unsafeFastStringToReadOnlyBytes(str), offset, 1)
+	mds, err := L.G.patCache.Find(pattern, unsafeFastStringToReadOnlyBytes(str), offset, 1)
 	if err != nil {
 		L.RaiseError(err.Error())
 	}

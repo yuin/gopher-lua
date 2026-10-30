@@ -3,6 +3,8 @@ package pm
 
 import (
 	"fmt"
+	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -11,11 +13,19 @@ const (
 	maxRecursionLevel = 1000000
 )
 
+const maxCachedPatterns = 1024
+
 /* Error {{{ */
 
 type Error struct {
 	Pos     int
 	Message string
+}
+
+type compiled struct {
+	insts    []inst
+	mustHead bool
+	ncap     int
 }
 
 func newError(pos int, message string, args ...interface{}) *Error {
@@ -521,60 +531,89 @@ func compilePattern(p pattern, ps ...*iptr) []inst {
 	return ptr.insts
 }
 
+type Cache struct {
+	m sync.Map
+	n int32
+}
+
+func (c *Cache) getCompiled(p string) *compiled {
+	if c != nil {
+		if v, ok := c.m.Load(p); ok {
+			return v.(*compiled)
+		}
+	}
+	pat := parsePattern(newScanner([]byte(p)), true)
+	insts := compilePattern(pat)
+	ncap := 0
+	for _, in := range insts {
+		switch in.OpCode {
+		case opSave:
+			if in.Operand1+1 > ncap {
+				ncap = in.Operand1 + 1
+			}
+		case opPSave:
+			if in.Operand1+2 > ncap {
+				ncap = in.Operand1 + 2
+			}
+		}
+	}
+	cp := &compiled{insts, pat.MustHead, ncap}
+	if c != nil && atomic.LoadInt32(&c.n) < maxCachedPatterns {
+		if _, loaded := c.m.LoadOrStore(p, cp); !loaded {
+			atomic.AddInt32(&c.n, 1)
+		}
+	}
+	return cp
+}
+
 /* }}} parse */
 
 /* VM {{{ */
 
 // Simple recursive virtual machine based on the
 // "Regular Expression Matching: the Virtual Machine Approach" (https://swtch.com/~rsc/regexp/regexp2.html)
-func recursiveVM(src []byte, insts []inst, pc, sp, recLevel int, ms ...*MatchData) (bool, int, *MatchData) {
+func recursiveVM(src []byte, insts []inst, pc, sp, recLevel int, m *MatchData) (bool, int) {
 	recLevel++
 	if recLevel > maxRecursionLevel {
 		panic(newError(_UNKNOWN, "pattern/input too complex"))
-	}
-	var m *MatchData
-	if len(ms) == 0 {
-		m = newMatchState()
-	} else {
-		m = ms[0]
 	}
 redo:
 	inst := insts[pc]
 	switch inst.OpCode {
 	case opChar:
 		if sp >= len(src) || !inst.Class.Matches(int(src[sp])) {
-			return false, sp, m
+			return false, sp
 		}
 		pc++
 		sp++
 		goto redo
 	case opMatch:
-		return true, sp, m
+		return true, sp
 	case opTailMatch:
-		return sp >= len(src), sp, m
+		return sp >= len(src), sp
 	case opJmp:
 		pc = inst.Operand1
 		goto redo
 	case opSplit:
-		if ok, nsp, _ := recursiveVM(src, insts, inst.Operand1, sp, recLevel, m); ok {
-			return true, nsp, m
+		if ok, nsp := recursiveVM(src, insts, inst.Operand1, sp, recLevel, m); ok {
+			return true, nsp
 		}
 		pc = inst.Operand2
 		goto redo
 	case opSave:
 		s := m.setCapture(inst.Operand1, sp)
-		if ok, nsp, _ := recursiveVM(src, insts, pc+1, sp, recLevel, m); ok {
-			return true, nsp, m
+		if ok, nsp := recursiveVM(src, insts, pc+1, sp, recLevel, m); ok {
+			return true, nsp
 		}
 		m.restoreCapture(inst.Operand1, s)
-		return false, sp, m
+		return false, sp
 	case opPSave:
 		m.addPosCapture(inst.Operand1, sp+1)
 		pc++
 		goto redo
 	case opBrace:
 		if sp >= len(src) || int(src[sp]) != inst.Operand1 {
-			return false, sp, m
+			return false, sp
 		}
 		count := 1
 		for sp = sp + 1; sp < len(src); sp++ {
@@ -590,7 +629,7 @@ redo:
 				count++
 			}
 		}
-		return false, sp, m
+		return false, sp
 	case opNumber:
 		idx := inst.Operand1 * 2
 		if idx >= m.CaptureLength()-1 {
@@ -599,7 +638,7 @@ redo:
 		capture := src[m.Capture(idx):m.Capture(idx+1)]
 		for i := 0; i < len(capture); i++ {
 			if i+sp >= len(src) || capture[i] != src[i+sp] {
-				return false, sp, m
+				return false, sp
 			}
 		}
 		pc++
@@ -613,7 +652,11 @@ redo:
 
 /* API {{{ */
 
-func Find(p string, src []byte, offset, limit int) (matches []*MatchData, err error) {
+func Find(p string, src []byte, offset, limit int) ([]*MatchData, error) {
+	return (*Cache)(nil).Find(p, src, offset, limit)
+}
+
+func (c *Cache) Find(p string, src []byte, offset, limit int) (matches []*MatchData, err error) {
 	defer func() {
 		if v := recover(); v != nil {
 			if perr, ok := v.(*Error); ok {
@@ -623,19 +666,21 @@ func Find(p string, src []byte, offset, limit int) (matches []*MatchData, err er
 			}
 		}
 	}()
-	pat := parsePattern(newScanner([]byte(p)), true)
-	insts := compilePattern(pat)
+	cp := c.getCompiled(p)
 	matches = []*MatchData{}
+	m := &MatchData{make([]uint32, 0, cp.ncap)}
 	for sp := offset; sp <= len(src); {
-		ok, nsp, ms := recursiveVM(src, insts, 0, sp, 0)
+		m.captures = m.captures[:0]
+		ok, nsp := recursiveVM(src, cp.insts, 0, sp, 0, m)
 		sp++
 		if ok {
 			if sp < nsp {
 				sp = nsp
 			}
-			matches = append(matches, ms)
+			matches = append(matches, m)
+			m = &MatchData{make([]uint32, 0, cp.ncap)}
 		}
-		if len(matches) == limit || pat.MustHead {
+		if len(matches) == limit || cp.mustHead {
 			break
 		}
 	}

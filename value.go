@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+
+	"github.com/yuin/gopher-lua/pm"
 )
 
 type LValueType int
@@ -174,6 +176,7 @@ type Global struct {
 	builtinMts map[int]LValue
 	tempFiles  []*os.File
 	gccount    int32
+	patCache   pm.Cache
 }
 
 type LState struct {
