@@ -221,6 +221,26 @@ func (cd *codeStore) PropagateKMV(top int, save *int, reg *int, inc int) {
 	*reg = *reg + inc
 }
 
+// like PropagateKMV, but never points at a local's register
+func (cd *codeStore) PropagateK(top int, save *int, reg *int, inc int) {
+	lastinst := cd.Last()
+	if opGetArgA(lastinst) >= top && opGetOpCode(lastinst) == OP_LOADK {
+		cindex := opGetArgBx(lastinst)
+		if cindex <= opMaxIndexRk {
+			cd.Pop()
+			*save = opRkAsk(cindex)
+			return
+		}
+	}
+	*save = *reg
+	*reg = *reg + inc
+}
+
+func keepInRegister(top int, save *int, reg *int, inc int) {
+	*save = *reg
+	*reg = *reg + inc
+}
+
 func (cd *codeStore) PropagateMV(top int, save *int, reg *int, inc int) {
 	lastinst := cd.Last()
 	if opGetArgA(lastinst) >= top {
@@ -705,7 +725,12 @@ func compileAssignStmtLeft(context *funcContext, stmt *ast.AssignStmt) (int, []*
 			acs = append(acs, &assigncontext{ec, 0, 0, false, false})
 		case *ast.AttrGetExpr:
 			ac := &assigncontext{&expcontext{ecTable, regNotDefined, 0}, 0, 0, false, false}
-			compileExprWithKMVPropagation(context, st.Object, &reg, &ac.ec.reg)
+			if len(stmt.Lhs) > 1 {
+				// a later target may overwrite the local holding the table
+				compileExprWithPropagation(context, st.Object, &reg, &ac.ec.reg, keepInRegister)
+			} else {
+				compileExprWithKMVPropagation(context, st.Object, &reg, &ac.ec.reg)
+			}
 			ac.keyrk = reg
 			reg += compileExpr(context, reg, st.Key, ecnone(0))
 			if _, ok := st.Key.(*ast.StringExpr); ok {
@@ -728,6 +753,10 @@ func compileAssignStmtRight(context *funcContext, stmt *ast.AssignStmt, reg int,
 	for namesassigned < lennames {
 		ac := acs[namesassigned]
 		ec := ac.ec
+		// a, b = b, a: compile into a temporary, not straight into the local
+		if lennames > 1 && ec.ctype == ecLocal {
+			ec = ecnone(0)
+		}
 		var expr ast.Expr = nil
 		if namesassigned >= lenexprs {
 			expr = &ast.NilExpr{}
@@ -755,7 +784,11 @@ func compileAssignStmtRight(context *funcContext, stmt *ast.AssignStmt, reg int,
 		reginc := compileExpr(context, reg, expr, ec)
 		if ec.ctype == ecTable {
 			if _, ok := expr.(*ast.LogicalOpExpr); !ok {
-				context.Code.PropagateKMV(context.RegTop(), &ac.valuerk, &reg, reginc)
+				if lennames > 1 {
+					context.Code.PropagateK(context.RegTop(), &ac.valuerk, &reg, reginc)
+				} else {
+					context.Code.PropagateKMV(context.RegTop(), &ac.valuerk, &reg, reginc)
+				}
 			} else {
 				ac.valuerk = idx
 				reg += reginc
@@ -784,6 +817,7 @@ func compileAssignStmt(context *funcContext, stmt *ast.AssignStmt) { // {{{
 	code := context.Code
 	lennames := len(stmt.Lhs)
 	reg, acs := compileAssignStmtLeft(context, stmt)
+	rhsbase := reg
 	reg, acs = compileAssignStmtRight(context, stmt, reg, acs)
 
 	for i := lennames - 1; i >= 0; i-- {
@@ -806,7 +840,8 @@ func compileAssignStmt(context *funcContext, stmt *ast.AssignStmt) { // {{{
 				opcode = OP_SETTABLEKS
 			}
 			code.AddABC(opcode, acs[i].ec.reg, acs[i].keyrk, acs[i].valuerk, sline(ex))
-			if !opIsK(acs[i].valuerk) {
+			// a value pointing at a local took no temporary
+			if !opIsK(acs[i].valuerk) && acs[i].valuerk >= rhsbase {
 				reg -= 1
 			}
 		}

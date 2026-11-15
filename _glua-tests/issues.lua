@@ -490,3 +490,32 @@ function test()
   assert(b == nil)
 end
 test()
+
+-- issue #440
+function test()
+  local a, b = 0, 0
+  a, b = a + 1, a + b
+  assert(a == 1 and b == 0)
+
+  local x, y = 2, 1
+  x, y = y, x
+  assert(x == 1 and y == 2)
+
+  local function f(u)
+    local c = 1
+    u, c = u:sub(1, -2), c - 1
+    return u, c
+  end
+  local u, c = f("a)")
+  assert(u == "a" and c == 0)
+
+  local k, t = 1, {}
+  g440, t.x = 5, k
+  assert(g440 == 5 and t.x == 1)
+  g440 = nil
+
+  local s, d = {}, 4
+  s.x, d = d, 7
+  assert(s.x == 4 and d == 7)
+end
+test()

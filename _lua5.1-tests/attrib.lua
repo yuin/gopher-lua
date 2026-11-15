@@ -328,13 +328,13 @@ assert(a[2^31] == 10 and a[2^31+1] == 11 and a[-2^31] == 12 and
 a = nil
 
 
--- do
---   local a,i,j,b
---   a = {'a', 'b'}; i=1; j=2; b=a
---   i, a[i], a, j, a[j], a[i+j] = j, i, i, b, j, i
---   assert(i == 2 and b[1] == 1 and a == 1 and j == b and b[2] == 2 and
---          b[3] == 1)
--- end
+do
+  local a,i,j,b
+  a = {'a', 'b'}; i=1; j=2; b=a
+  i, a[i], a, j, a[j], a[i+j] = j, i, i, b, j, i
+  assert(i == 2 and b[1] == 1 and a == 1 and j == b and b[2] == 2 and
+         b[3] == 1)
+end
 
 print('OK')
 
