@@ -1815,6 +1815,10 @@ func patchCode(context *funcContext) { // {{{
 					break
 				}
 				distance = d
+				// Earlier jumps already contain relative offsets, not label IDs.
+				if distance < 0 {
+					break
+				}
 				count++
 			}
 			if distance == 0 {
