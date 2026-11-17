@@ -106,7 +106,7 @@ func sleep(L *LState) int {
 }
 
 func countFinalizers(L *LState) int {
-	L.Push(LNumber(numActiveUserDatas))
+	L.Push(LNumber(atomic.LoadInt32(&numActiveUserDatas)))
 	return 1
 }
 
