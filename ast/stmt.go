@@ -105,3 +105,20 @@ type GotoStmt struct {
 
 	Label string
 }
+
+type SwitchCase struct {
+	Exprs []Expr
+	Stmts []Stmt
+}
+
+type SwitchStmt struct {
+	StmtBase
+
+	Value Expr
+	Cases []*SwitchCase
+	Else  []Stmt
+}
+
+type ContinueStmt struct {
+	StmtBase
+}
