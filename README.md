@@ -45,6 +45,8 @@ There are some benchmarks on the [wiki page](https://github.com/yuin/gopher-lua/
 $ go get github.com/yuin/gopher-lua
 ```
 
+GopherLua supports >= Go1.9.
+
 ## Usage
 
 GopherLua APIs perform in much the same way as Lua, **but the stack is used only
@@ -778,6 +780,30 @@ func main() {
 - GopherLua has a function to set an environment variable : `os.setenv(name, value)`
 - GopherLua support `goto` and `::label::` statement in Lua5.2.
     - `goto` is a keyword and not a valid variable name.
+- This fork adds `switch` and `continue`.
+    - `switch`, `case` and `continue` are keywords and not valid variable names.
+    - `continue` jumps to the next iteration of the innermost enclosing loop (`while`, `repeat`, numeric and generic `for`). In a `repeat ... until` loop it must not skip the declaration of a local variable that the `until` condition can see.
+    - `switch` evaluates its value once and compares it with each `case` expression in order using `==`. A `case` takes a comma separated list of expressions. A body that does not end with `break` falls through into the next body. `else` runs only when no case matched, never by falling off the last case. Each body is its own scope, and `break` leaves the switch (to leave an enclosing loop from inside a switch, use `goto`).
+
+```lua
+switch value do
+    case "a" then
+        doA()
+        break          -- leaves the switch
+    case "b", "c" then
+        doBC()         -- no break: falls through into the next case
+    case "d" then
+        doD()
+        break
+    else
+        other()        -- runs only when no case matched
+end
+
+for i = 1, 10 do
+    if i % 2 == 0 then continue end
+    print(i)
+end
+```
 
 ## Standalone interpreter
 

@@ -355,19 +355,26 @@ func (vp *varNamePool) Register(name string) int {
 
 /* FuncContext {{{ */
 
+type continueInfo struct {
+	nlocals int
+	line    int
+}
+
 type codeBlock struct {
-	LocalVars      *varNamePool
-	BreakLabel     int
-	Parent         *codeBlock
-	RefUpvalue     bool
-	LineStart      int
-	LastLine       int
-	labels         map[string]*gotoLabelDesc
-	firstGotoIndex int
+	LocalVars       *varNamePool
+	BreakLabel      int
+	Parent          *codeBlock
+	RefUpvalue      bool
+	LineStart       int
+	LastLine        int
+	labels          map[string]*gotoLabelDesc
+	firstGotoIndex  int
+	ContinueLabel   int
+	continueTargets []continueInfo
 }
 
 func newCodeBlock(localvars *varNamePool, blabel int, parent *codeBlock, pos ast.PositionHolder, firstGotoIndex int) *codeBlock {
-	bl := &codeBlock{localvars, blabel, parent, false, 0, 0, map[string]*gotoLabelDesc{}, firstGotoIndex}
+	bl := &codeBlock{localvars, blabel, parent, false, 0, 0, map[string]*gotoLabelDesc{}, firstGotoIndex, labelNoJump, nil}
 	if pos != nil {
 		bl.LineStart = pos.Line()
 		bl.LastLine = pos.LastLine()
@@ -683,6 +690,10 @@ func compileStmt(context *funcContext, stmt ast.Stmt, isLastStmt bool) { // {{{
 		compileLabelStmt(context, st, isLastStmt)
 	case *ast.GotoStmt:
 		compileGotoStmt(context, st)
+	case *ast.SwitchStmt:
+		compileSwitchStmt(context, st)
+	case *ast.ContinueStmt:
+		compileContinueStmt(context, st)
 	}
 } // }}}
 
@@ -986,6 +997,7 @@ func compileWhileStmt(context *funcContext, stmt *ast.WhileStmt) { // {{{
 	compileBranchCondition(context, context.RegTop(), stmt.Condition, thenlabel, elselabel, false)
 	context.SetLabelPc(thenlabel, context.Code.LastPC())
 	context.EnterBlock(elselabel, stmt)
+	context.Block.ContinueLabel = condlabel
 	compileChunk(context, stmt.Stmts, false)
 	context.CloseUpvalues()
 	context.Code.AddASbx(OP_JMP, 0, condlabel, eline(stmt))
@@ -997,11 +1009,21 @@ func compileRepeatStmt(context *funcContext, stmt *ast.RepeatStmt) { // {{{
 	initlabel := context.NewLabel()
 	thenlabel := context.NewLabel()
 	elselabel := context.NewLabel()
+	contlabel := context.NewLabel()
 
 	context.SetLabelPc(initlabel, context.Code.LastPC())
 	context.SetLabelPc(elselabel, context.Code.LastPC())
 	context.EnterBlock(thenlabel, stmt)
+	context.Block.ContinueLabel = contlabel
 	compileChunk(context, stmt.Stmts, true)
+	// 'continue' jumps to the condition, which can see the locals of the body.
+	// Like Lua's goto, a continue must not skip the declaration of such a local.
+	context.SetLabelPc(contlabel, context.Code.LastPC())
+	for _, ci := range context.Block.continueTargets {
+		if names := context.Block.LocalVars.Names(); ci.nlocals < len(names) {
+			raiseCompileError(context, ci.line, "<continue> at line %d jumps into the scope of local '%s'", ci.line, names[ci.nlocals])
+		}
+	}
 	compileBranchCondition(context, context.RegTop(), stmt.Condition, thenlabel, elselabel, false)
 
 	context.SetLabelPc(thenlabel, context.Code.LastPC())
@@ -1019,9 +1041,14 @@ func compileRepeatStmt(context *funcContext, stmt *ast.RepeatStmt) { // {{{
 } // }}}
 
 func compileBreakStmt(context *funcContext, stmt *ast.BreakStmt) { // {{{
+	// A captured local may live in any block between here and the one being
+	// left (a case body, for example), so upvalues are closed if any of them
+	// has been referenced by a closure.
+	refUpvalue := false
 	for block := context.Block; block != nil; block = block.Parent {
+		refUpvalue = refUpvalue || block.RefUpvalue
 		if label := block.BreakLabel; label != labelNoJump {
-			if block.RefUpvalue {
+			if refUpvalue {
 				context.Code.AddABC(OP_CLOSE, block.Parent.LocalVars.LastIndex(), 0, 0, sline(stmt))
 			}
 			context.Code.AddASbx(OP_JMP, 0, label, sline(stmt))
@@ -1029,6 +1056,77 @@ func compileBreakStmt(context *funcContext, stmt *ast.BreakStmt) { // {{{
 		}
 	}
 	raiseCompileError(context, sline(stmt), "no loop to break")
+} // }}}
+
+func compileContinueStmt(context *funcContext, stmt *ast.ContinueStmt) { // {{{
+	refUpvalue := false
+	for block := context.Block; block != nil; block = block.Parent {
+		refUpvalue = refUpvalue || block.RefUpvalue
+		if label := block.ContinueLabel; label != labelNoJump {
+			block.continueTargets = append(block.continueTargets, continueInfo{len(block.LocalVars.Names()), sline(stmt)})
+			if refUpvalue {
+				context.Code.AddABC(OP_CLOSE, block.Parent.LocalVars.LastIndex(), 0, 0, sline(stmt))
+			}
+			context.Code.AddASbx(OP_JMP, 0, label, sline(stmt))
+			return
+		}
+	}
+	raiseCompileError(context, sline(stmt), "no loop to continue")
+} // }}}
+
+const switchValueName = "(switch value)"
+
+// compileSwitchStmt compiles
+//
+//	switch v do case a, b then ... case c then ... else ... end
+//
+// as: evaluate v once into a hidden local, test the case expressions in order
+// (each hit jumps to its body), then lay the bodies out one after another so
+// that a body that does not 'break' falls into the next one. 'else' is only
+// reachable when no case matched, never by falling off the last case.
+func compileSwitchStmt(context *funcContext, stmt *ast.SwitchStmt) { // {{{
+	code := context.Code
+	endlabel := context.NewLabel()
+	elselabel := context.NewLabel()
+	bodylabels := make([]int, len(stmt.Cases))
+	for i := range bodylabels {
+		bodylabels[i] = context.NewLabel()
+	}
+
+	context.EnterBlock(endlabel, stmt) // 'break' leaves the switch
+
+	reg := context.RegTop()
+	rvalue := context.RegisterLocalVar(switchValueName)
+	ec := &expcontext{}
+	ecupdate(ec, ecLocal, rvalue, 0)
+	compileExpr(context, reg, stmt.Value, ec)
+
+	for i, c := range stmt.Cases {
+		for _, e := range c.Exprs {
+			lhs := &ast.IdentExpr{Value: switchValueName}
+			lhs.SetLine(sline(e))
+			lhs.SetLastLine(eline(e))
+			cmp := &ast.RelationalOpExpr{Operator: "==", Lhs: lhs, Rhs: e}
+			cmp.SetLine(sline(e))
+			cmp.SetLastLine(eline(e))
+			compileRelationalOpExprAux(context, context.RegTop(), cmp, 1, bodylabels[i])
+		}
+	}
+	code.AddASbx(OP_JMP, 0, elselabel, sline(stmt))
+
+	for i, c := range stmt.Cases {
+		context.SetLabelPc(bodylabels[i], code.LastPC())
+		compileBlock(context, c.Stmts)
+	}
+
+	if len(stmt.Else) > 0 {
+		code.AddASbx(OP_JMP, 0, endlabel, eline(stmt))
+	}
+	context.SetLabelPc(elselabel, code.LastPC())
+	compileBlock(context, stmt.Else)
+
+	context.LeaveBlock()
+	context.SetLabelPc(endlabel, code.LastPC())
 } // }}}
 
 func compileFuncDefStmt(context *funcContext, stmt *ast.FuncDefStmt) { // {{{
@@ -1050,9 +1148,11 @@ func compileFuncDefStmt(context *funcContext, stmt *ast.FuncDefStmt) { // {{{
 func compileNumberForStmt(context *funcContext, stmt *ast.NumberForStmt) { // {{{
 	code := context.Code
 	endlabel := context.NewLabel()
+	contlabel := context.NewLabel()
 	ec := &expcontext{}
 
 	context.EnterBlock(endlabel, stmt)
+	context.Block.ContinueLabel = contlabel
 	reg := context.RegTop()
 	rindex := context.RegisterLocalVar("(for index)")
 	ecupdate(ec, ecLocal, rindex, 0)
@@ -1082,6 +1182,7 @@ func compileNumberForStmt(context *funcContext, stmt *ast.NumberForStmt) { // {{
 	context.LeaveBlock()
 
 	flpc := code.LastPC()
+	context.SetLabelPc(contlabel, flpc)
 	code.AddASbx(OP_FORLOOP, rindex, bodypc-(flpc+1), sline(stmt))
 
 	context.SetLabelPc(endlabel, code.LastPC())
@@ -1097,6 +1198,7 @@ func compileGenericForStmt(context *funcContext, stmt *ast.GenericForStmt) { // 
 	nnames := len(stmt.Names)
 
 	context.EnterBlock(endlabel, stmt)
+	context.Block.ContinueLabel = fllabel
 	rgen := context.RegisterLocalVar("(for generator)")
 	context.RegisterLocalVar("(for state)")
 	context.RegisterLocalVar("(for control)")

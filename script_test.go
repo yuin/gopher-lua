@@ -24,6 +24,7 @@ var gluaTests []string = []string{
 	"math.lua",
 	"strings.lua",
 	"goto.lua",
+	"switch.lua",
 }
 
 var luaTests []string = []string{
