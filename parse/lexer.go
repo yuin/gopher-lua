@@ -287,7 +287,8 @@ var reservedWords = map[string]int{
 	"end": TEnd, "false": TFalse, "for": TFor, "function": TFunction,
 	"if": TIf, "in": TIn, "local": TLocal, "nil": TNil, "not": TNot, "or": TOr,
 	"return": TReturn, "repeat": TRepeat, "then": TThen, "true": TTrue,
-	"until": TUntil, "while": TWhile, "goto": TGoto}
+	"until": TUntil, "while": TWhile, "goto": TGoto,
+	"switch": TSwitch, "case": TCase, "continue": TContinue}
 
 func (sc *Scanner) Scan(lexer *Lexer) (ast.Token, error) {
 redo:

@@ -10,6 +10,8 @@ import (
 %type<stmts> block
 %type<stmt>  stat
 %type<stmts> elseifs
+%type<switchcases> switchcases
+%type<stmts> switchelse
 %type<stmt>  laststat
 %type<funcname> funcname
 %type<funcname> funcname1
@@ -37,6 +39,8 @@ import (
   stmts    []ast.Stmt
   stmt     ast.Stmt
 
+  switchcases []*ast.SwitchCase
+
   funcname *ast.FuncName
   funcexpr *ast.FunctionExpr
 
@@ -52,7 +56,7 @@ import (
 }
 
 /* Reserved words */
-%token<token> TAnd TBreak TDo TElse TElseIf TEnd TFalse TFor TFunction TIf TIn TLocal TNil TNot TOr TReturn TRepeat TThen TTrue TUntil TWhile TGoto
+%token<token> TAnd TBreak TDo TElse TElseIf TEnd TFalse TFor TFunction TIf TIn TLocal TNil TNot TOr TReturn TRepeat TThen TTrue TUntil TWhile TGoto TSwitch TCase TContinue
 
 /* Literals */
 %token<token> TEqeq TNeq TLte TGte T2Comma T3Comma T2Colon TIdent TNumber TString '{' '('
@@ -195,6 +199,32 @@ stat:
         TGoto TIdent {
             $$ = &ast.GotoStmt{Label: $2.Str}
             $$.SetLine($1.Pos.Line)
+        } |
+        TSwitch expr TDo switchcases switchelse TEnd {
+            $$ = &ast.SwitchStmt{Value: $2, Cases: $4, Else: $5}
+            $$.SetLine($1.Pos.Line)
+            $$.SetLastLine($6.Pos.Line)
+        } |
+        TContinue {
+            $$ = &ast.ContinueStmt{}
+            $$.SetLine($1.Pos.Line)
+            $$.SetLastLine($1.Pos.Line)
+        }
+
+switchcases:
+        {
+            $$ = []*ast.SwitchCase{}
+        } |
+        switchcases TCase exprlist TThen block {
+            $$ = append($1, &ast.SwitchCase{Exprs: $3, Stmts: $5})
+        }
+
+switchelse:
+        {
+            $$ = nil
+        } |
+        TElse block {
+            $$ = $2
         }
 
 elseifs: 
