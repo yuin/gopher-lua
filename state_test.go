@@ -444,6 +444,26 @@ func TestContextCancel(t *testing.T) {
 	errorIfFalse(t, strings.Contains(err.Error(), "context canceled"), "execution must be canceled")
 }
 
+func TestContextCancelDuringPatternMatch(t *testing.T) {
+	L := NewState()
+	defer L.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	L.SetContext(ctx)
+	errch := make(chan error, 1)
+	go func() {
+		errch <- L.DoString(`string.find(string.rep("(", 100000), "%b()")`)
+	}()
+	time.Sleep(10 * time.Millisecond)
+	cancel()
+	select {
+	case err := <-errch:
+		errorIfNil(t, err)
+		errorIfFalse(t, strings.Contains(err.Error(), "context canceled"), "pattern match must be canceled")
+	case <-time.After(2 * time.Second):
+		t.Fatal("pattern match did not stop after context cancellation")
+	}
+}
+
 func TestContextWithCroutine(t *testing.T) {
 	L := NewState()
 	defer L.Close()

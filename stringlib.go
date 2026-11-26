@@ -1,6 +1,7 @@
 package lua
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -8,6 +9,18 @@ import (
 )
 
 const emptyLString LString = LString("")
+
+func findPattern(L *LState, pattern string, src []byte, offset, limit int) ([]*pm.MatchData, error) {
+	var stop <-chan struct{}
+	if L.ctx != nil {
+		stop = L.ctx.Done()
+	}
+	matches, err := pm.FindWithStop(pattern, src, offset, limit, stop)
+	if err == pm.ErrStopped && L.ctx != nil && L.ctx.Err() != nil {
+		return nil, errors.New(L.ctx.Err().Error())
+	}
+	return matches, err
+}
 
 func OpenString(L *LState) int {
 	var mod *LTable
@@ -112,7 +125,7 @@ func strFind(L *LState) int {
 		return 2
 	}
 
-	mds, err := pm.Find(pattern, unsafeFastStringToReadOnlyBytes(str), init, 1)
+	mds, err := findPattern(L, pattern, unsafeFastStringToReadOnlyBytes(str), init, 1)
 	if err != nil {
 		L.RaiseError(err.Error())
 	}
@@ -152,7 +165,7 @@ func strGsub(L *LState) int {
 	repl := L.CheckAny(3)
 	limit := L.OptInt(4, -1)
 
-	mds, err := pm.Find(pat, unsafeFastStringToReadOnlyBytes(str), 0, limit)
+	mds, err := findPattern(L, pat, unsafeFastStringToReadOnlyBytes(str), 0, limit)
 	if err != nil {
 		L.RaiseError(err.Error())
 	}
@@ -327,7 +340,7 @@ func strGmatchIter(L *LState) int {
 func strGmatch(L *LState) int {
 	str := L.CheckString(1)
 	pattern := L.CheckString(2)
-	mds, err := pm.Find(pattern, []byte(str), 0, -1)
+	mds, err := findPattern(L, pattern, []byte(str), 0, -1)
 	if err != nil {
 		L.RaiseError(err.Error())
 	}
@@ -363,7 +376,7 @@ func strMatch(L *LState) int {
 		offset = 0
 	}
 
-	mds, err := pm.Find(pattern, unsafeFastStringToReadOnlyBytes(str), offset, 1)
+	mds, err := findPattern(L, pattern, unsafeFastStringToReadOnlyBytes(str), offset, 1)
 	if err != nil {
 		L.RaiseError(err.Error())
 	}

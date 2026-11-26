@@ -527,7 +527,7 @@ func compilePattern(p pattern, ps ...*iptr) []inst {
 
 // Simple recursive virtual machine based on the
 // "Regular Expression Matching: the Virtual Machine Approach" (https://swtch.com/~rsc/regexp/regexp2.html)
-func recursiveVM(src []byte, insts []inst, pc, sp, recLevel int, ms ...*MatchData) (bool, int, *MatchData) {
+func (v *vm) recursiveVM(src []byte, insts []inst, pc, sp, recLevel int, ms ...*MatchData) (bool, int, *MatchData) {
 	recLevel++
 	if recLevel > maxRecursionLevel {
 		panic(newError(_UNKNOWN, "pattern/input too complex"))
@@ -539,6 +539,7 @@ func recursiveVM(src []byte, insts []inst, pc, sp, recLevel int, ms ...*MatchDat
 		m = ms[0]
 	}
 redo:
+	v.step()
 	inst := insts[pc]
 	switch inst.OpCode {
 	case opChar:
@@ -556,14 +557,14 @@ redo:
 		pc = inst.Operand1
 		goto redo
 	case opSplit:
-		if ok, nsp, _ := recursiveVM(src, insts, inst.Operand1, sp, recLevel, m); ok {
+		if ok, nsp, _ := v.recursiveVM(src, insts, inst.Operand1, sp, recLevel, m); ok {
 			return true, nsp, m
 		}
 		pc = inst.Operand2
 		goto redo
 	case opSave:
 		s := m.setCapture(inst.Operand1, sp)
-		if ok, nsp, _ := recursiveVM(src, insts, pc+1, sp, recLevel, m); ok {
+		if ok, nsp, _ := v.recursiveVM(src, insts, pc+1, sp, recLevel, m); ok {
 			return true, nsp, m
 		}
 		m.restoreCapture(inst.Operand1, s)
@@ -578,6 +579,7 @@ redo:
 		}
 		count := 1
 		for sp = sp + 1; sp < len(src); sp++ {
+			v.step()
 			if int(src[sp]) == inst.Operand2 {
 				count--
 			}
@@ -598,6 +600,7 @@ redo:
 		}
 		capture := src[m.Capture(idx):m.Capture(idx+1)]
 		for i := 0; i < len(capture); i++ {
+			v.step()
 			if i+sp >= len(src) || capture[i] != src[i+sp] {
 				return false, sp, m
 			}
@@ -613,7 +616,35 @@ redo:
 
 /* API {{{ */
 
+// ErrStopped is returned by FindWithStop after its stop channel is closed.
+var ErrStopped = newError(_UNKNOWN, "pattern matching stopped")
+
+type vm struct {
+	stop  <-chan struct{}
+	steps uint
+}
+
+func (v *vm) step() {
+	if v.stop == nil {
+		return
+	}
+	v.steps++
+	if v.steps%1024 != 0 {
+		return
+	}
+	select {
+	case <-v.stop:
+		panic(ErrStopped)
+	default:
+	}
+}
+
 func Find(p string, src []byte, offset, limit int) (matches []*MatchData, err error) {
+	return FindWithStop(p, src, offset, limit, nil)
+}
+
+// FindWithStop is like Find, but stops with ErrStopped after stop is closed.
+func FindWithStop(p string, src []byte, offset, limit int, stop <-chan struct{}) (matches []*MatchData, err error) {
 	defer func() {
 		if v := recover(); v != nil {
 			if perr, ok := v.(*Error); ok {
@@ -625,9 +656,10 @@ func Find(p string, src []byte, offset, limit int) (matches []*MatchData, err er
 	}()
 	pat := parsePattern(newScanner([]byte(p)), true)
 	insts := compilePattern(pat)
+	matcher := &vm{stop: stop}
 	matches = []*MatchData{}
 	for sp := offset; sp <= len(src); {
-		ok, nsp, ms := recursiveVM(src, insts, 0, sp, 0)
+		ok, nsp, ms := matcher.recursiveVM(src, insts, 0, sp, 0)
 		sp++
 		if ok {
 			if sp < nsp {
